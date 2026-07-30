@@ -1,0 +1,206 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Línea gráfica CEINFES:
+ *   Morado Formación   #5E4F9C  -> primary
+ *   Azul Pensamiento    #3A5BA7  -> secondary
+ *   Verde Transformación #024B4E -> tertiary / brand-green
+ *   Naranja acento      #EC671A  -> brand-accent (CTAs puntuales, no el hover ambiental)
+ * Los colores de estado de la grilla (success/warning/danger) son un set semántico
+ * aparte, elegido para ser inconfundible frente a los tonos de marca (ej. el amarillo
+ * de "faltan horas" es más dorado que el naranja de marca para no verse igual).
+ */
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* Marca CEINFES */
+    --color-brand-purple: var(--brand-purple);
+    --color-brand-blue: var(--brand-blue);
+    --color-brand-green: var(--brand-green);
+    --color-brand-orange: var(--brand-orange);
+
+    /* Estados de asignación de horas (grilla) */
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-success-muted: var(--success-muted);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning-muted: var(--warning-muted);
+    --color-danger: var(--danger);
+    --color-danger-foreground: var(--danger-foreground);
+    --color-danger-muted: var(--danger-muted);
+}
+
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.17 0.02 296);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.17 0.02 296);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.17 0.02 296);
+
+    /* Morado Formación #5E4F9C */
+    --primary: oklch(0.451 0.129 302.4);
+    --primary-foreground: oklch(0.985 0 0);
+
+    /* Azul Pensamiento #3A5BA7 */
+    --secondary: oklch(0.448 0.118 265.3);
+    --secondary-foreground: oklch(0.985 0 0);
+
+    --muted: oklch(0.97 0.005 296);
+    --muted-foreground: oklch(0.5 0.02 296);
+    --accent: oklch(0.955 0.02 296);
+    --accent-foreground: oklch(0.3 0.06 296);
+
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.917 0.008 296);
+    --input: oklch(0.917 0.008 296);
+    --ring: oklch(0.451 0.129 302.4 / 45%);
+
+    /* Paleta de gráficos derivada de la marca (Morado → Azul → Verde → Magenta → Naranja) */
+    --chart-1: oklch(0.451 0.129 302.4);
+    --chart-2: oklch(0.448 0.118 265.3);
+    --chart-3: oklch(0.336 0.05 194.8);
+    --chart-4: oklch(0.55 0.15 350.9);
+    --chart-5: oklch(0.665 0.184 41.6);
+
+    --radius: 0.625rem;
+
+    /* Sidebar en Verde Transformación #024B4E, oscuro por defecto para contraste con el contenido claro */
+    --sidebar: oklch(0.28 0.045 195);
+    --sidebar-foreground: oklch(0.96 0.01 195);
+    --sidebar-primary: oklch(0.665 0.184 41.6);
+    --sidebar-primary-foreground: oklch(0.145 0 0);
+    --sidebar-accent: oklch(0.36 0.05 195);
+    --sidebar-accent-foreground: oklch(0.96 0.01 195);
+    --sidebar-border: oklch(0.36 0.05 195);
+    --sidebar-ring: oklch(0.665 0.184 41.6 / 45%);
+
+    /* Marca CEINFES (tokens crudos, para usos puntuales fuera del set semántico shadcn) */
+    --brand-purple: #5e4f9c;
+    --brand-blue: #3a5ba7;
+    --brand-green: #024b4e;
+    --brand-orange: #ec671a;
+
+    /* Estados de asignación de horas — deliberadamente distintos de los tonos de marca */
+    --success: oklch(0.6 0.16 149);
+    --success-foreground: oklch(0.985 0 0);
+    --success-muted: oklch(0.94 0.05 149);
+    --warning: oklch(0.75 0.16 85);
+    --warning-foreground: oklch(0.2 0.04 85);
+    --warning-muted: oklch(0.94 0.07 90);
+    --danger: oklch(0.577 0.245 27.325);
+    --danger-foreground: oklch(0.985 0 0);
+    --danger-muted: oklch(0.93 0.06 27);
+}
+
+.dark {
+    --background: oklch(0.16 0.015 296);
+    --foreground: oklch(0.96 0.005 296);
+    --card: oklch(0.21 0.02 296);
+    --card-foreground: oklch(0.96 0.005 296);
+    --popover: oklch(0.21 0.02 296);
+    --popover-foreground: oklch(0.96 0.005 296);
+
+    --primary: oklch(0.68 0.12 302.4);
+    --primary-foreground: oklch(0.145 0 0);
+
+    --secondary: oklch(0.62 0.1 265.3);
+    --secondary-foreground: oklch(0.145 0 0);
+
+    --muted: oklch(0.27 0.015 296);
+    --muted-foreground: oklch(0.72 0.015 296);
+    --accent: oklch(0.3 0.03 296);
+    --accent-foreground: oklch(0.92 0.01 296);
+
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.68 0.12 302.4 / 45%);
+
+    --chart-1: oklch(0.68 0.12 302.4);
+    --chart-2: oklch(0.62 0.1 265.3);
+    --chart-3: oklch(0.55 0.06 194.8);
+    --chart-4: oklch(0.68 0.14 350.9);
+    --chart-5: oklch(0.72 0.16 41.6);
+
+    --sidebar: oklch(0.19 0.03 195);
+    --sidebar-foreground: oklch(0.92 0.01 195);
+    --sidebar-primary: oklch(0.72 0.16 41.6);
+    --sidebar-primary-foreground: oklch(0.145 0 0);
+    --sidebar-accent: oklch(0.26 0.035 195);
+    --sidebar-accent-foreground: oklch(0.92 0.01 195);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.72 0.16 41.6 / 45%);
+
+    --brand-purple: #8577c2;
+    --brand-blue: #6d8bd0;
+    --brand-green: #1f7a7e;
+    --brand-orange: #f0894f;
+
+    --success: oklch(0.68 0.15 149);
+    --success-foreground: oklch(0.145 0 0);
+    --success-muted: oklch(0.3 0.06 149);
+    --warning: oklch(0.78 0.15 85);
+    --warning-foreground: oklch(0.145 0 0);
+    --warning-muted: oklch(0.32 0.06 90);
+    --danger: oklch(0.704 0.191 22.216);
+    --danger-foreground: oklch(0.145 0 0);
+    --danger-muted: oklch(0.33 0.08 27);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    }
+}
