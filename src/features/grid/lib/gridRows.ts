@@ -3,14 +3,31 @@ import type { Project } from "@/features/projects/api/projectsApi"
 import type { Allocation } from "@/features/grid/api/allocationsApi"
 import type { StatusColor } from "@/types/database.types"
 
-export interface GridRow {
+// Filas = proyectos, columnas = personas — igual que la hoja de origen
+// (Julio.xlsx): una fila por proyecto/actividad, una columna por persona,
+// con los totales por persona resumidos al final (ver PersonSummary +
+// bottomSummaryRows en DistribucionPage). Antes era al revés (fila por
+// persona); se transpuso a pedido para que se vea como el Excel real.
+export interface ProjectGridRow {
+  projectId: string
+  name: string
+  color: string
+  hours: Record<string, number> // personId -> horas
+}
+
+// Tipo de las bottomSummaryRows de react-data-grid (filas "Total"/
+// "Disponible" al pie de la grilla) — vive acá para que HoursEditCell y
+// DistribucionPage compartan el mismo segundo generic de Column/RenderEditCellProps.
+export type SummaryRowId = "total" | "disponible"
+export interface SummaryRow {
+  id: SummaryRowId
+}
+
+export interface PersonSummary {
   personId: string
   name: string
-  jobTitle: string | null
   availableHours: number
-  hours: Record<string, number>
-  total: number
-  difference: number
+  totalHours: number
   statusColor: StatusColor
 }
 
@@ -20,30 +37,34 @@ export function computeStatusColor(available: number, allocated: number): Status
   return "verde"
 }
 
-// Combina personas/proyectos/asignaciones del mes activo en filas listas
-// para react-data-grid. Una fila por persona; una columna clave por
-// proyecto (project.id), más total/diferencia calculados en cliente.
-export function buildGridRows(
-  people: Person[],
+export function buildProjectGridRows(
+  projects: Project[],
   allocations: Allocation[]
-): GridRow[] {
-  return people.map((person) => {
+): ProjectGridRow[] {
+  return projects.map((project) => {
     const hours: Record<string, number> = {}
+    for (const allocation of allocations) {
+      if (allocation.project_id !== project.id) continue
+      hours[allocation.person_id] = allocation.hours
+    }
+    return { projectId: project.id, name: project.name, color: project.color, hours }
+  })
+}
+
+// Fila de resumen "Total"/"Disponible" por persona, para las
+// bottomSummaryRows de la grilla — el semáforo verde/amarillo/rojo vive acá
+// (es un concepto de la persona, no del proyecto).
+export function buildPersonSummaries(people: Person[], allocations: Allocation[]): PersonSummary[] {
+  return people.map((person) => {
     let total = 0
     for (const allocation of allocations) {
-      if (allocation.person_id !== person.id) continue
-      hours[allocation.project_id] = allocation.hours
-      total += allocation.hours
+      if (allocation.person_id === person.id) total += allocation.hours
     }
-    const difference = person.available_hours - total
     return {
       personId: person.id,
       name: person.name,
-      jobTitle: person.job_title,
       availableHours: person.available_hours,
-      hours,
-      total,
-      difference,
+      totalHours: total,
       statusColor: computeStatusColor(person.available_hours, total),
     }
   })

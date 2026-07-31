@@ -25,8 +25,15 @@ import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
 import { useAllocations, useUpsertAllocation } from "@/features/grid/hooks/useAllocationsQueries"
 import { useRealtimeAllocations } from "@/features/grid/hooks/useRealtimeAllocations"
-import { buildGridRows, sortActiveProjectsFirst, type GridRow } from "@/features/grid/lib/gridRows"
-import { getContrastText, tintBackground } from "@/features/grid/lib/colorContrast"
+import {
+  buildPersonSummaries,
+  buildProjectGridRows,
+  sortActiveProjectsFirst,
+  type PersonSummary,
+  type ProjectGridRow,
+  type SummaryRow,
+} from "@/features/grid/lib/gridRows"
+import { tintBackground } from "@/features/grid/lib/colorContrast"
 import HoursEditCell from "@/features/grid/components/HoursEditCell"
 import { useCommentsByCell, useRealtimeComments } from "@/features/comments/hooks/useCommentsQueries"
 import CellCommentsDialog from "@/features/comments/components/CellCommentsDialog"
@@ -40,14 +47,18 @@ import { useSessionStore } from "@/stores/sessionStore"
 import { isGestorOrAdmin } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 
-type SortField = "name" | "total" | "availableHours"
+type SortField = "name" | "total"
 
-const STATUS_CLASS: Record<GridRow["statusColor"], string> = {
+const STATUS_CLASS: Record<PersonSummary["statusColor"], string> = {
   verde: "bg-success-muted text-success",
   amarillo: "bg-warning-muted text-warning",
   rojo: "bg-danger-muted text-danger",
 }
 
+// Filas = proyectos, columnas = personas (igual que la hoja Julio.xlsx
+// original), con los totales/disponibles por persona resumidos al final de
+// la tabla en vez de al final de cada fila — ver buildPersonSummaries en
+// gridRows.ts y bottomSummaryRows más abajo.
 export default function DistribucionPage() {
   const { activeMonthId } = useActiveMonthStore()
   const profile = useSessionStore((s) => s.profile)
@@ -75,74 +86,96 @@ export default function DistribucionPage() {
 
   const activePosition = useRef<{ rowIdx: number; columnKey: string } | null>(null)
 
+  const visiblePeople = useMemo(() => [...(people ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [people])
+
   const visibleProjects = useMemo(
     () => sortActiveProjectsFirst((projects ?? []).filter((p) => p.status !== "archivado")),
     [projects]
   )
 
   const allRows = useMemo(
-    () => buildGridRows(people ?? [], allocations ?? []),
+    () => buildProjectGridRows(visibleProjects, allocations ?? []),
+    [visibleProjects, allocations]
+  )
+
+  const personSummaries = useMemo(
+    () => buildPersonSummaries(people ?? [], allocations ?? []),
     [people, allocations]
   )
+  const summaryByPerson = useMemo(() => {
+    const map = new Map<string, PersonSummary>()
+    for (const s of personSummaries) map.set(s.personId, s)
+    return map
+  }, [personSummaries])
+
+  const rowTotals = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const row of allRows) {
+      map.set(
+        row.projectId,
+        Object.values(row.hours).reduce((sum, h) => sum + h, 0)
+      )
+    }
+    return map
+  }, [allRows])
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase()
     const filtered = q ? allRows.filter((r) => r.name.toLowerCase().includes(q)) : allRows
     const sorted = [...filtered].sort((a, b) => {
-      let cmp = 0
-      if (sortField === "name") cmp = a.name.localeCompare(b.name)
-      else cmp = a[sortField] - b[sortField]
+      const cmp =
+        sortField === "name"
+          ? a.name.localeCompare(b.name)
+          : (rowTotals.get(a.projectId) ?? 0) - (rowTotals.get(b.projectId) ?? 0)
       return sortDir === "asc" ? cmp : -cmp
     })
     return sorted
-  }, [allRows, search, sortField, sortDir])
+  }, [allRows, search, sortField, sortDir, rowTotals])
 
-  const columns = useMemo<Column<GridRow>[]>(() => {
-    const nameCol: Column<GridRow> = {
+  const summaryRows = useMemo<SummaryRow[]>(() => [{ id: "total" }, { id: "disponible" }], [])
+
+  const columns = useMemo<Column<ProjectGridRow, SummaryRow>[]>(() => {
+    const projectCol: Column<ProjectGridRow, SummaryRow> = {
       key: "name",
-      name: "Persona",
+      name: "Proyecto",
       frozen: true,
-      width: 220,
+      width: 240,
       resizable: true,
       renderCell: ({ row }) => (
-        <div className="flex h-full flex-col justify-center py-1 leading-tight">
-          <span className="truncate font-medium">{row.name}</span>
-          {row.jobTitle && (
-            <span className="truncate text-xs text-muted-foreground">{row.jobTitle}</span>
-          )}
+        <div className="flex h-full items-center gap-2 py-1 leading-tight" title={row.name}>
+          <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
+          <span className="line-clamp-2 whitespace-normal font-medium">{row.name}</span>
+        </div>
+      ),
+      renderSummaryCell: ({ row }) => (
+        <div className="flex h-full items-center px-2 text-sm font-semibold">
+          {row.id === "total" ? "Total" : "Disponible"}
         </div>
       ),
     }
 
-    const projectCols: Column<GridRow>[] = visibleProjects.map((project) => ({
-      key: project.id,
-      name: project.name,
-      width: 130,
+    const personCols: Column<ProjectGridRow, SummaryRow>[] = visiblePeople.map((person) => ({
+      key: person.id,
+      name: person.name,
+      width: 120,
       resizable: true,
-      // Si la celda ya tiene actividades, sus horas son la suma calculada
-      // por el trigger sync_allocation_hours_from_activities — se edita
-      // solo agregando/editando actividades, no escribiendo el número.
       editable: (row) =>
-        canEdit && (activitiesByCell.get(`${row.personId}:${project.id}`) ?? []).length === 0,
+        canEdit && (activitiesByCell.get(`${person.id}:${row.projectId}`) ?? []).length === 0,
       renderHeaderCell: () => (
-        <div
-          className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-semibold"
-          style={{ backgroundColor: project.color, color: getContrastText(project.color) }}
-          title={project.name}
-        >
-          <span className="truncate">{project.name}</span>
+        <div className="flex h-full w-full flex-col items-center justify-center px-1 text-center text-xs font-semibold leading-tight">
+          <span className="line-clamp-2 whitespace-normal">{person.name}</span>
         </div>
       ),
       renderCell: ({ row }) => {
-        const value = row.hours[project.id] ?? 0
-        const cellComments = commentsByCell.get(`${row.personId}:${project.id}`) ?? []
+        const value = row.hours[person.id] ?? 0
+        const cellComments = commentsByCell.get(`${person.id}:${row.projectId}`) ?? []
         const hasComments = cellComments.length > 0
-        const cellActivities = activitiesByCell.get(`${row.personId}:${project.id}`) ?? []
+        const cellActivities = activitiesByCell.get(`${person.id}:${row.projectId}`) ?? []
         const hasActivities = cellActivities.length > 0
         return (
           <div
             className="relative flex h-full items-center justify-end px-2 tabular-nums"
-            style={{ backgroundColor: tintBackground(project.color) }}
+            style={{ backgroundColor: tintBackground(row.color) }}
           >
             <Tooltip>
               <TooltipTrigger asChild>
@@ -154,7 +187,7 @@ export default function DistribucionPage() {
                   )}
                   onClick={(e) => {
                     e.stopPropagation()
-                    setCommentCell({ personId: row.personId, projectId: project.id })
+                    setCommentCell({ personId: person.id, projectId: row.projectId })
                   }}
                   aria-label="Comentarios de la celda"
                 >
@@ -178,7 +211,7 @@ export default function DistribucionPage() {
                     )}
                     onClick={(e) => {
                       e.stopPropagation()
-                      setActivityCell({ personId: row.personId, projectId: project.id })
+                      setActivityCell({ personId: person.id, projectId: row.projectId })
                     }}
                     aria-label="Desglose de actividades"
                   >
@@ -199,53 +232,47 @@ export default function DistribucionPage() {
         )
       },
       renderEditCell: canEdit ? (props) => <HoursEditCell {...props} /> : undefined,
+      renderSummaryCell: ({ row }) => {
+        const summary = summaryByPerson.get(person.id)
+        if (!summary) return null
+        if (row.id === "disponible") {
+          return (
+            <div className="flex h-full items-center justify-end px-2 tabular-nums text-muted-foreground">
+              {summary.availableHours}
+            </div>
+          )
+        }
+        return (
+          <div
+            className={cn(
+              "flex h-full items-center justify-end px-2 font-semibold tabular-nums",
+              STATUS_CLASS[summary.statusColor]
+            )}
+          >
+            {summary.totalHours}
+          </div>
+        )
+      },
     }))
 
-    const totalCol: Column<GridRow> = {
-      key: "total",
-      name: "Total",
-      width: 100,
-      renderCell: ({ row }) => (
-        <div
-          className={cn(
-            "flex h-full items-center justify-end px-2 font-semibold tabular-nums",
-            STATUS_CLASS[row.statusColor]
-          )}
-        >
-          {row.total}
-        </div>
-      ),
-    }
+    return [projectCol, ...personCols]
+  }, [visiblePeople, canEdit, commentsByCell, activitiesByCell, summaryByPerson])
 
-    const availableCol: Column<GridRow> = {
-      key: "availableHours",
-      name: "Disponible",
-      width: 100,
-      renderCell: ({ row }) => (
-        <div className="flex h-full items-center justify-end px-2 tabular-nums text-muted-foreground">
-          {row.availableHours}
-        </div>
-      ),
-    }
-
-    return [nameCol, ...projectCols, totalCol, availableCol]
-  }, [visibleProjects, canEdit, commentsByCell, activitiesByCell])
-
-  const projectIdAtColumnOffset = (anchorColumnKey: string, offset: number): string | null => {
-    const idx = visibleProjects.findIndex((p) => p.id === anchorColumnKey)
+  const personIdAtColumnOffset = (anchorColumnKey: string, offset: number): string | null => {
+    const idx = visiblePeople.findIndex((p) => p.id === anchorColumnKey)
     if (idx === -1) return null
-    return visibleProjects[idx + offset]?.id ?? null
+    return visiblePeople[idx + offset]?.id ?? null
   }
 
   const handleRowsChange = (
-    changedRows: GridRow[],
+    changedRows: ProjectGridRow[],
     { indexes, column }: { indexes: number[]; column: { key: string } }
   ) => {
     if (!activeMonthId) return
     for (const idx of indexes) {
       const row = changedRows[idx]
       const hours = row.hours[column.key] ?? 0
-      upsertAllocation.mutate({ personId: row.personId, projectId: column.key, hours })
+      upsertAllocation.mutate({ personId: column.key, projectId: row.projectId, hours })
     }
   }
 
@@ -255,8 +282,8 @@ export default function DistribucionPage() {
     if (!anchor) return
     const text = event.clipboardData.getData("text/plain")
     if (!text) return
-    const isProjectColumn = visibleProjects.some((p) => p.id === anchor.columnKey)
-    if (!isProjectColumn) return
+    const isPersonColumn = visiblePeople.some((p) => p.id === anchor.columnKey)
+    if (!isPersonColumn) return
 
     event.preventDefault()
     const lines = text.replace(/\r/g, "").split("\n")
@@ -266,17 +293,17 @@ export default function DistribucionPage() {
       const targetRow = rows[anchor.rowIdx + rowOffset]
       if (!targetRow) return
       line.split("\t").forEach((rawValue, colOffset) => {
-        const projectId =
-          colOffset === 0 ? anchor.columnKey : projectIdAtColumnOffset(anchor.columnKey, colOffset)
-        if (!projectId) return
+        const personId =
+          colOffset === 0 ? anchor.columnKey : personIdAtColumnOffset(anchor.columnKey, colOffset)
+        if (!personId) return
         const parsed = Number(rawValue.replace(",", ".").trim())
         if (!Number.isFinite(parsed) || parsed < 0) return
-        upsertAllocation.mutate({ personId: targetRow.personId, projectId, hours: parsed })
+        upsertAllocation.mutate({ personId, projectId: targetRow.projectId, hours: parsed })
       })
     })
   }
 
-  const handleActivePositionChange = (args: PositionChangeArgs<GridRow>) => {
+  const handleActivePositionChange = (args: PositionChangeArgs<ProjectGridRow, SummaryRow>) => {
     activePosition.current = args.column ? { rowIdx: args.rowIdx, columnKey: args.column.key } : null
   }
 
@@ -308,20 +335,19 @@ export default function DistribucionPage() {
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar persona…"
+            placeholder="Buscar proyecto…"
             className="pl-8"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="name">Ordenar por nombre</SelectItem>
-            <SelectItem value="total">Ordenar por total</SelectItem>
-            <SelectItem value="availableHours">Ordenar por disponible</SelectItem>
+            <SelectItem value="total">Ordenar por horas totales</SelectItem>
           </SelectContent>
         </Select>
         <Button
@@ -340,9 +366,9 @@ export default function DistribucionPage() {
             <Skeleton key={i} className="h-9 w-full" />
           ))}
         </div>
-      ) : visibleProjects.length === 0 ? (
+      ) : visiblePeople.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Crea al menos un proyecto activo en este mes para poder distribuir horas.
+          Agrega al menos una persona a este mes para poder distribuir horas.
         </p>
       ) : (
         <div onPaste={handlePaste} className="overflow-hidden rounded-md border border-border">
@@ -350,15 +376,17 @@ export default function DistribucionPage() {
             className="sabana-grid"
             columns={columns}
             rows={rows}
-            rowKeyGetter={(row) => row.personId}
+            rowKeyGetter={(row) => row.projectId}
             onRowsChange={handleRowsChange}
+            bottomSummaryRows={summaryRows}
             onFill={({ columnKey, sourceRow, targetRow }) => ({
               ...targetRow,
               hours: { ...targetRow.hours, [columnKey]: sourceRow.hours[columnKey] ?? 0 },
             })}
             onActivePositionChange={handleActivePositionChange}
-            rowHeight={44}
-            headerRowHeight={40}
+            rowHeight={48}
+            headerRowHeight={44}
+            summaryRowHeight={36}
             style={{ blockSize: "min(70svh, 640px)" }}
           />
         </div>
@@ -367,7 +395,7 @@ export default function DistribucionPage() {
       {commentCell &&
         activeMonthId &&
         (() => {
-          const person = allRows.find((r) => r.personId === commentCell.personId)
+          const person = visiblePeople.find((p) => p.id === commentCell.personId)
           const project = visibleProjects.find((p) => p.id === commentCell.projectId)
           if (!person || !project) return null
           return (
@@ -387,7 +415,7 @@ export default function DistribucionPage() {
       {activityCell &&
         activeMonthId &&
         (() => {
-          const person = allRows.find((r) => r.personId === activityCell.personId)
+          const person = visiblePeople.find((p) => p.id === activityCell.personId)
           const project = visibleProjects.find((p) => p.id === activityCell.projectId)
           if (!person || !project) return null
           return (
