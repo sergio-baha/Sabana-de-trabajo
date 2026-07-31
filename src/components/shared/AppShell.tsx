@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useSessionStore } from "@/stores/sessionStore"
+import MonthSwitcher from "@/components/shared/MonthSwitcher"
 import { applyTheme, getSavedTheme, type Theme } from "@/lib/theme"
 import { roleLabel } from "@/lib/roles"
 import { signOut } from "@/features/auth/api/authApi"
@@ -166,6 +167,7 @@ export default function AppShell() {
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
+          <MonthSwitcher />
           <Button variant="ghost" size="icon" className="ml-auto" onClick={toggleTheme}>
             {theme === "dark" ? <Sun /> : <Moon />}
           </Button>

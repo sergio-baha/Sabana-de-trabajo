@@ -28,7 +28,6 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: "dashboard", element: <DashboardPage /> },
           { path: "distribucion", element: <DistribucionPage /> },
-          { path: "distribucion/:monthId", element: <DistribucionPage /> },
           { path: "meses", element: <MesesPage /> },
           { path: "proyectos", element: <ProyectosPage /> },
           { path: "personas", element: <PersonasPage /> },

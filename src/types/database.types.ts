@@ -1,6 +1,12 @@
 // Tipos escritos a mano siguiendo el esquema de supabase/migrations/.
 // Reemplazar por `supabase gen types typescript --linked` una vez exista un
 // proyecto Supabase real (ver docs/INSTALACION.md) para mantenerlos exactos.
+//
+// Los tipos Insert/Update se escriben como objetos planos (no como
+// `Partial<Row> & {...}` autorreferenciado): supabase-js necesita esa forma
+// exacta para poder inferir correctamente los genéricos de `.insert()`,
+// `.update()` y `.rpc()` — una intersección autorreferenciada rompe esa
+// inferencia y todo el cliente tipado degrada a `never`.
 
 export type AppRole = "administrador" | "gestor" | "analista"
 export type PersonStatus = "activo" | "inactivo"
@@ -10,6 +16,11 @@ export type TaskStatus = "pendiente" | "en_progreso" | "completada"
 export type InvitationStatus = "pendiente" | "aceptada" | "revocada"
 export type AuditAction = "insert" | "update" | "delete"
 export type StatusColor = "verde" | "amarillo" | "rojo"
+
+// GenericTable/GenericView (postgrest-js) exigen un campo Relationships
+// aunque esté vacío — sin él, TS no reconoce el objeto como
+// GenericTable/GenericView y toda la inferencia de
+// .insert()/.update()/.select() colapsa a `never`.
 
 export interface Database {
   public: {
@@ -25,12 +36,21 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & {
+        Insert: {
           id: string
           email: string
           full_name: string
+          role?: AppRole
+          is_active?: boolean
+          avatar_url?: string | null
         }
-        Update: Partial<Database["public"]["Tables"]["profiles"]["Row"]>
+        Update: {
+          role?: AppRole
+          is_active?: boolean
+          avatar_url?: string | null
+          full_name?: string
+        }
+        Relationships: []
       }
       months: {
         Row: {
@@ -45,10 +65,23 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Partial<Database["public"]["Tables"]["months"]["Row"]> & {
+        Insert: {
           name: string
+          status?: MonthStatus
+          default_hours?: number
+          working_days?: number | null
+          notes?: string | null
+          source_month_id?: string | null
+          created_by?: string | null
         }
-        Update: Partial<Database["public"]["Tables"]["months"]["Row"]>
+        Update: {
+          name?: string
+          status?: MonthStatus
+          default_hours?: number
+          working_days?: number | null
+          notes?: string | null
+        }
+        Relationships: []
       }
       people: {
         Row: {
@@ -64,11 +97,23 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Partial<Database["public"]["Tables"]["people"]["Row"]> & {
+        Insert: {
           month_id: string
           name: string
+          job_title?: string | null
+          available_hours?: number
+          status?: PersonStatus
+          notes?: string | null
+          created_by?: string | null
         }
-        Update: Partial<Database["public"]["Tables"]["people"]["Row"]>
+        Update: {
+          name?: string
+          job_title?: string | null
+          available_hours?: number
+          status?: PersonStatus
+          notes?: string | null
+        }
+        Relationships: []
       }
       projects: {
         Row: {
@@ -83,11 +128,21 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Partial<Database["public"]["Tables"]["projects"]["Row"]> & {
+        Insert: {
           month_id: string
           name: string
+          color?: string
+          status?: ProjectStatus
+          description?: string | null
+          created_by?: string | null
         }
-        Update: Partial<Database["public"]["Tables"]["projects"]["Row"]>
+        Update: {
+          name?: string
+          color?: string
+          status?: ProjectStatus
+          description?: string | null
+        }
+        Relationships: []
       }
       project_managers: {
         Row: {
@@ -98,12 +153,16 @@ export interface Database {
           is_primary: boolean
           created_at: string
         }
-        Insert: Partial<Database["public"]["Tables"]["project_managers"]["Row"]> & {
+        Insert: {
           month_id: string
           project_id: string
           person_id: string
+          is_primary?: boolean
         }
-        Update: Partial<Database["public"]["Tables"]["project_managers"]["Row"]>
+        Update: {
+          is_primary?: boolean
+        }
+        Relationships: []
       }
       tasks: {
         Row: {
@@ -119,12 +178,24 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Partial<Database["public"]["Tables"]["tasks"]["Row"]> & {
+        Insert: {
           month_id: string
           project_id: string
           title: string
+          description?: string | null
+          status?: TaskStatus
+          assigned_person_id?: string | null
+          due_date?: string | null
+          created_by?: string | null
         }
-        Update: Partial<Database["public"]["Tables"]["tasks"]["Row"]>
+        Update: {
+          title?: string
+          description?: string | null
+          status?: TaskStatus
+          assigned_person_id?: string | null
+          due_date?: string | null
+        }
+        Relationships: []
       }
       allocations: {
         Row: {
@@ -137,12 +208,16 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Partial<Database["public"]["Tables"]["allocations"]["Row"]> & {
+        Insert: {
           month_id: string
           person_id: string
           project_id: string
+          hours?: number
         }
-        Update: Partial<Database["public"]["Tables"]["allocations"]["Row"]>
+        Update: {
+          hours?: number
+        }
+        Relationships: []
       }
       comments: {
         Row: {
@@ -155,12 +230,18 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Partial<Database["public"]["Tables"]["comments"]["Row"]> & {
+        Insert: {
           allocation_id: string
+          parent_comment_id?: string | null
           author_id: string
           body: string
+          resolved?: boolean
         }
-        Update: Partial<Database["public"]["Tables"]["comments"]["Row"]>
+        Update: {
+          body?: string
+          resolved?: boolean
+        }
+        Relationships: []
       }
       settings: {
         Row: {
@@ -173,8 +254,21 @@ export interface Database {
           updated_by: string | null
           updated_at: string
         }
-        Insert: Partial<Database["public"]["Tables"]["settings"]["Row"]>
-        Update: Partial<Database["public"]["Tables"]["settings"]["Row"]>
+        Insert: {
+          company_name?: string
+          logo_url?: string | null
+          default_hours?: number
+          default_hours_options?: number[]
+          default_working_days?: number
+        }
+        Update: {
+          company_name?: string
+          logo_url?: string | null
+          default_hours?: number
+          default_hours_options?: number[]
+          default_working_days?: number
+        }
+        Relationships: []
       }
       invitations: {
         Row: {
@@ -187,10 +281,18 @@ export interface Database {
           accepted_at: string | null
           revoked_at: string | null
         }
-        Insert: Partial<Database["public"]["Tables"]["invitations"]["Row"]> & {
+        Insert: {
           email: string
+          role?: AppRole
+          status?: InvitationStatus
+          invited_by?: string | null
         }
-        Update: Partial<Database["public"]["Tables"]["invitations"]["Row"]>
+        Update: {
+          status?: InvitationStatus
+          accepted_at?: string | null
+          revoked_at?: string | null
+        }
+        Relationships: []
       }
       audit_logs: {
         Row: {
@@ -207,6 +309,7 @@ export interface Database {
         }
         Insert: never
         Update: never
+        Relationships: []
       }
       month_snapshots: {
         Row: {
@@ -219,6 +322,7 @@ export interface Database {
         }
         Insert: never
         Update: never
+        Relationships: []
       }
     }
     Views: {
@@ -234,6 +338,7 @@ export interface Database {
           difference_hours: number
           status_color: StatusColor
         }
+        Relationships: []
       }
       v_project_month_totals: {
         Row: {
@@ -245,6 +350,7 @@ export interface Database {
           allocated_hours: number
           people_count: number
         }
+        Relationships: []
       }
       v_manager_month_totals: {
         Row: {
@@ -254,6 +360,7 @@ export interface Database {
           allocated_hours: number
           projects_count: number
         }
+        Relationships: []
       }
     }
     Functions: {
