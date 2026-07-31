@@ -7,15 +7,22 @@
 
 /*
  * ── Línea gráfica CEINFES ──────────────────────────────────────────────
- * Tokens tomados del brandbook tal como están implementados en el proyecto
- * hermano "Experia by CEINFES" (src/styles.css), para que ambas apps se
- * vean como la misma familia:
+ * Tokens verificados contra el CSS de producción de ceinfes.com
+ * (_next/static/css), no aproximados:
  *   Morado Formación     #5E4F9C  (PANTONE 3574 C) — primario
  *   Azul Pensamiento     #3A5BA7  (PANTONE 7455 C) — secundario
  *   Verde Transformación #024B4E  (PANTONE 7722 C) — superficies profundas
  *   Naranja Evolución    #EC671A                   — acento/CTA
+ *   Amarillo             #FFCF53                   — paso en gradientes cálidos
  *   Magenta de paso      #C0538A                   — transición morado→naranja
  * Tipografía corporativa: Inter variable.
+ *
+ * Tres rasgos son la firma visual del sitio y se replican tal cual:
+ *   1. Sombras TEÑIDAS de verde petróleo rgba(2,75,78,…) — nunca gris/negro
+ *      neutro — muy difusas y con spread negativo grande.
+ *   2. Radios generosos (1–3rem): superficies suaves, no cajas duras.
+ *   3. Eyebrows en mayúscula con tracking muy abierto (.1–.2em) contra
+ *      titulares grandes con tracking cerrado (-.025em).
  *
  * Los colores de estado de la grilla (success/warning/danger) son un set
  * semántico aparte, deliberadamente distinto de los tonos de marca para que
@@ -69,6 +76,7 @@
     --color-brand-blue: var(--brand-blue);
     --color-brand-green: var(--brand-green);
     --color-brand-orange: var(--brand-orange);
+    --color-brand-yellow: var(--brand-yellow);
     --color-brand-magenta: var(--brand-magenta);
 
     /* Estados de asignación de horas (grilla) */
@@ -124,7 +132,8 @@
     --chart-4: oklch(0.55 0.15 350.9);
     --chart-5: oklch(0.665 0.184 41.6);
 
-    --radius: 0.75rem;
+    /* Radio generoso, como el sitio (usa 1–3rem según la jerarquía) */
+    --radius: 1rem;
 
     /* Sidebar en Verde Transformación #024B4E */
     --sidebar: oklch(0.28 0.045 195);
@@ -142,6 +151,7 @@
     --brand-blue: #3a5ba7;
     --brand-green: #024b4e;
     --brand-orange: #ec671a;
+    --brand-yellow: #ffcf53;
     --brand-magenta: #c0538a;
 
     /* Gradientes de marca — la firma visual CEINFES */
@@ -152,7 +162,8 @@
         var(--brand-magenta) 64%,
         var(--brand-orange) 100%
     );
-    --gradient-orange: linear-gradient(135deg, #ec671a 0%, #f59e33 100%);
+    /* Cálido con paso por el amarillo, como los bloques destacados del sitio */
+    --gradient-orange: linear-gradient(135deg, #ec671a 0%, #ffcf53 100%);
     --gradient-deep: linear-gradient(140deg, #012f31 0%, var(--brand-green) 55%, #0d5f5b 100%);
     --gradient-soft: linear-gradient(
         135deg,
@@ -171,13 +182,15 @@
     --danger-foreground: oklch(0.985 0 0);
     --danger-muted: oklch(0.93 0.06 27);
 
-    /* Sombras con tinte de marca (nunca negro puro) */
-    --sh-sm: 0 1px 2px rgba(26, 26, 46, 0.04), 0 1px 3px rgba(26, 26, 46, 0.06);
-    --sh-md: 0 2px 4px rgba(26, 26, 46, 0.04), 0 6px 16px rgba(26, 26, 46, 0.08);
-    --sh-lg: 0 4px 8px rgba(26, 26, 46, 0.05), 0 12px 32px rgba(26, 26, 46, 0.1);
-    --sh-xl: 0 8px 16px rgba(26, 26, 46, 0.06), 0 24px 56px rgba(26, 26, 46, 0.16);
-    --sh-purple: 0 8px 24px -8px rgba(94, 79, 156, 0.4);
-    --sh-orange: 0 8px 24px -8px rgba(236, 103, 26, 0.45);
+    /* Sombras teñidas de Verde Transformación, difusas y con spread negativo
+       grande — copiadas de los valores de producción de ceinfes.com. Es lo
+       que hace que las superficies "floten" en vez de verse recortadas. */
+    --sh-sm: 0 2px 8px -4px rgba(2, 75, 78, 0.1);
+    --sh-md: 0 12px 40px -20px rgba(2, 75, 78, 0.14);
+    --sh-lg: 0 16px 48px -20px rgba(2, 75, 78, 0.16);
+    --sh-xl: 0 24px 80px -20px rgba(2, 75, 78, 0.18);
+    --sh-purple: 0 20px 48px -18px rgba(94, 79, 156, 0.32);
+    --sh-orange: 0 20px 48px -18px rgba(254, 80, 0, 0.18);
 
     /* Glass */
     --glass-bg: rgba(255, 255, 255, 0.72);
@@ -235,6 +248,7 @@
     --brand-blue: #6d8bd0;
     --brand-green: #1f7a7e;
     --brand-orange: #f0894f;
+    --brand-yellow: #ffd977;
     --brand-magenta: #d477a6;
 
     --gradient-soft: linear-gradient(
@@ -253,13 +267,14 @@
     --danger-foreground: oklch(0.145 0 0);
     --danger-muted: oklch(0.33 0.08 27);
 
-    /* Sombras más suaves sobre oscuro para evitar halos duros */
-    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.24);
-    --sh-md: 0 2px 4px rgba(0, 0, 0, 0.22), 0 6px 16px rgba(0, 0, 0, 0.3);
-    --sh-lg: 0 4px 8px rgba(0, 0, 0, 0.24), 0 12px 32px rgba(0, 0, 0, 0.36);
-    --sh-xl: 0 8px 16px rgba(0, 0, 0, 0.26), 0 24px 56px rgba(0, 0, 0, 0.44);
-    --sh-purple: 0 8px 24px -8px rgba(133, 119, 194, 0.44);
-    --sh-orange: 0 8px 24px -8px rgba(240, 137, 79, 0.44);
+    /* Sobre oscuro el tinte verde no se lee: se mantiene la misma difusión y
+       spread negativo, pero en negro suave para no generar halos. */
+    --sh-sm: 0 2px 8px -4px rgba(0, 0, 0, 0.4);
+    --sh-md: 0 12px 40px -20px rgba(0, 0, 0, 0.55);
+    --sh-lg: 0 16px 48px -20px rgba(0, 0, 0, 0.6);
+    --sh-xl: 0 24px 80px -20px rgba(0, 0, 0, 0.65);
+    --sh-purple: 0 20px 48px -18px rgba(133, 119, 194, 0.4);
+    --sh-orange: 0 20px 48px -18px rgba(240, 137, 79, 0.35);
 
     --glass-bg: rgba(28, 27, 40, 0.72);
     --glass-border: rgba(255, 255, 255, 0.1);
@@ -286,9 +301,15 @@
    Un set corto y reutilizable; la duración/curva se comparte con Experia
    para que ambas apps se "sientan" igual al moverse.
    ===================================================================== */
+/* Recorrido de 30px como el fadeInUp del sitio — más presencia que un
+   desplazamiento corto, sin llegar a sentirse lento. */
 @keyframes sabana-fade-up {
-    from { opacity: 0; transform: translateY(14px); }
+    from { opacity: 0; transform: translateY(30px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sabana-float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-20px); }
 }
 @keyframes sabana-fade-in {
     from { opacity: 0; }
@@ -329,6 +350,27 @@
 }
 .animate-scale-in {
     animation: sabana-scale-in 0.35s var(--ease-spring) both;
+}
+/* Flotación lenta para elementos ambientales (halos del hero/login) */
+.animate-float {
+    animation: sabana-float 6s ease-in-out infinite;
+}
+
+/*
+ * Tratamiento tipográfico del sitio: etiquetas pequeñas en mayúscula con
+ * tracking muy abierto, contra titulares grandes con tracking cerrado.
+ * Ese contraste es buena parte de lo que hace que se vea editorial.
+ */
+.text-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+}
+.text-display {
+    letter-spacing: -0.025em;
+    line-height: 1.1;
 }
 
 /* Barras de progreso que crecen desde la izquierda al aparecer */

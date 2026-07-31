@@ -88,20 +88,20 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-5">
       {/* Hero con el gradiente de marca — ancla visual de la app */}
-      <div className="surface-brand animate-fade-in relative overflow-hidden rounded-2xl p-6 shadow-brand-lg">
+      <div className="surface-brand animate-fade-in relative overflow-hidden rounded-3xl p-7 shadow-brand-xl">
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 -right-16 size-64 rounded-full opacity-25 blur-3xl"
+          className="animate-float pointer-events-none absolute -top-24 -right-16 size-64 rounded-full opacity-25 blur-3xl"
           style={{ background: "var(--gradient-brand)" }}
         />
         <div className="relative flex flex-wrap items-end justify-between gap-4">
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-white/70 uppercase">
+          <div className="flex flex-col gap-2">
+            <div className="text-eyebrow flex items-center gap-2 text-white/70">
               <CalendarRange className="size-3.5" />
               Mes activo
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold text-white">
+              <h1 className="text-display text-4xl font-semibold text-white">
                 {activeMonth?.name ?? "Sin mes"}
               </h1>
               {activeMonth && <MonthStatusBadge status={activeMonth.status} />}

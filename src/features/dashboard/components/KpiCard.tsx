@@ -59,10 +59,8 @@ export default function KpiCard({
           {icon}
         </div>
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            {label}
-          </span>
-          <span className="text-2xl leading-tight font-semibold">
+          <span className="text-eyebrow truncate text-muted-foreground">{label}</span>
+          <span className="text-display text-2xl font-semibold">
             <AnimatedNumber value={value} decimals={decimals} suffix={suffix} />
           </span>
           {hint && <span className="truncate text-xs text-muted-foreground">{hint}</span>}
