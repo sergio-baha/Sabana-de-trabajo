@@ -5,11 +5,11 @@ import { supabase } from "@/lib/supabaseClient"
 import {
   createComment,
   deleteComment,
-  getOrCreateAllocationId,
   listCommentsForMonth,
   updateComment,
   type CommentWithCell,
 } from "@/features/comments/api/commentsApi"
+import { getOrCreateAllocationId } from "@/features/grid/api/allocationsApi"
 import type { Database } from "@/types/database.types"
 
 export const commentsKeys = {

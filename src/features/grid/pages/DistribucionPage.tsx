@@ -1,7 +1,13 @@
 import { useMemo, useRef, useState } from "react"
 import { DataGrid, type Column, type PositionChangeArgs } from "react-data-grid"
 import "react-data-grid/lib/styles.css"
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, MessageSquare, Search } from "lucide-react"
+import {
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
+  ListChecks,
+  MessageSquare,
+  Search,
+} from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +30,11 @@ import { getContrastText, tintBackground } from "@/features/grid/lib/colorContra
 import HoursEditCell from "@/features/grid/components/HoursEditCell"
 import { useCommentsByCell, useRealtimeComments } from "@/features/comments/hooks/useCommentsQueries"
 import CellCommentsDialog from "@/features/comments/components/CellCommentsDialog"
+import {
+  useActivitiesByCell,
+  useRealtimeActivities,
+} from "@/features/activities/hooks/useActivitiesQueries"
+import ActivityBreakdownDialog from "@/features/activities/components/ActivityBreakdownDialog"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
 import { isGestorOrAdmin } from "@/lib/roles"
@@ -49,11 +60,16 @@ export default function DistribucionPage() {
   useRealtimeAllocations(activeMonthId)
   const { byCell: commentsByCell } = useCommentsByCell(activeMonthId)
   useRealtimeComments(activeMonthId)
+  const { byCell: activitiesByCell } = useActivitiesByCell(activeMonthId)
+  useRealtimeActivities(activeMonthId)
 
   const [search, setSearch] = useState("")
   const [sortField, setSortField] = useState<SortField>("name")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
   const [commentCell, setCommentCell] = useState<{ personId: string; projectId: string } | null>(
+    null
+  )
+  const [activityCell, setActivityCell] = useState<{ personId: string; projectId: string } | null>(
     null
   )
 
@@ -103,7 +119,11 @@ export default function DistribucionPage() {
       name: project.name,
       width: 130,
       resizable: true,
-      editable: canEdit,
+      // Si la celda ya tiene actividades, sus horas son la suma calculada
+      // por el trigger sync_allocation_hours_from_activities — se edita
+      // solo agregando/editando actividades, no escribiendo el número.
+      editable: (row) =>
+        canEdit && (activitiesByCell.get(`${row.personId}:${project.id}`) ?? []).length === 0,
       renderHeaderCell: () => (
         <div
           className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-semibold"
@@ -117,6 +137,8 @@ export default function DistribucionPage() {
         const value = row.hours[project.id] ?? 0
         const cellComments = commentsByCell.get(`${row.personId}:${project.id}`) ?? []
         const hasComments = cellComments.length > 0
+        const cellActivities = activitiesByCell.get(`${row.personId}:${project.id}`) ?? []
+        const hasActivities = cellActivities.length > 0
         return (
           <div
             className="relative flex h-full items-center justify-end px-2 tabular-nums"
@@ -145,6 +167,33 @@ export default function DistribucionPage() {
                 </TooltipContent>
               )}
             </Tooltip>
+            {canEdit && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "absolute bottom-1 left-1 flex size-4 items-center justify-center rounded-full",
+                      hasActivities ? "text-primary" : "text-muted-foreground/40"
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setActivityCell({ personId: row.personId, projectId: project.id })
+                    }}
+                    aria-label="Desglose de actividades"
+                  >
+                    <ListChecks className="size-3" />
+                  </button>
+                </TooltipTrigger>
+                {hasActivities && (
+                  <TooltipContent className="max-w-56">
+                    <p className="text-xs">
+                      {cellActivities.length} actividad{cellActivities.length > 1 ? "es" : ""}
+                    </p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            )}
             {value > 0 ? value : ""}
           </div>
         )
@@ -180,7 +229,7 @@ export default function DistribucionPage() {
     }
 
     return [nameCol, ...projectCols, totalCol, availableCol]
-  }, [visibleProjects, canEdit, commentsByCell])
+  }, [visibleProjects, canEdit, commentsByCell, activitiesByCell])
 
   const projectIdAtColumnOffset = (anchorColumnKey: string, offset: number): string | null => {
     const idx = visibleProjects.findIndex((p) => p.id === anchorColumnKey)
@@ -331,6 +380,29 @@ export default function DistribucionPage() {
               personName={person.name}
               projectName={project.name}
               comments={commentsByCell.get(`${commentCell.personId}:${commentCell.projectId}`) ?? []}
+            />
+          )
+        })()}
+
+      {activityCell &&
+        activeMonthId &&
+        (() => {
+          const person = allRows.find((r) => r.personId === activityCell.personId)
+          const project = visibleProjects.find((p) => p.id === activityCell.projectId)
+          if (!person || !project) return null
+          return (
+            <ActivityBreakdownDialog
+              open
+              onOpenChange={(open) => !open && setActivityCell(null)}
+              monthId={activeMonthId}
+              personId={activityCell.personId}
+              projectId={activityCell.projectId}
+              personName={person.name}
+              projectName={project.name}
+              activities={
+                activitiesByCell.get(`${activityCell.personId}:${activityCell.projectId}`) ?? []
+              }
+              readOnly={!canEdit}
             />
           )
         })()}

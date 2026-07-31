@@ -3,6 +3,8 @@ import { Clock, FileSpreadsheet, FileText, FolderKanban, TrendingUp, Users } fro
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import KpiCard from "@/features/dashboard/components/KpiCard"
@@ -27,17 +29,26 @@ export default function ReportesPage() {
   const { data: managers, isLoading: loadingManagers } = useManagerTotals(activeMonthId)
 
   const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null)
+  // Solo afecta el desglose por proyecto (gráfico + "Total de proyectos") —
+  // las horas asignadas/disponibles por persona sí incluyen tiempo
+  // institucional siempre, porque consume su capacidad real igual que
+  // cualquier otro proyecto.
+  const [includeInstitutional, setIncludeInstitutional] = useState(false)
+
+  const portfolioProjects = useMemo(() => {
+    const active = (projects ?? []).filter((x) => x.status !== "archivado")
+    return includeInstitutional ? active : active.filter((x) => x.category !== "institucional")
+  }, [projects, includeInstitutional])
 
   const metrics = useMemo(() => {
     const p = people ?? []
-    const pr = (projects ?? []).filter((x) => x.status !== "archivado")
     return {
       totalPeople: p.length,
-      totalProjects: pr.length,
+      totalProjects: portfolioProjects.length,
       allocatedHours: p.reduce((sum, x) => sum + x.allocated_hours, 0),
       availableHours: p.reduce((sum, x) => sum + x.available_hours, 0),
     }
-  }, [people, projects])
+  }, [people, portfolioProjects])
 
   const isLoading = loadingPeople || loadingProjects || loadingManagers
 
@@ -132,9 +143,19 @@ export default function ReportesPage() {
           <CardHeader>
             <CardTitle>Horas por proyecto</CardTitle>
             <CardDescription>Distribución de horas asignadas por proyecto activo.</CardDescription>
+            <div className="flex items-center gap-2 pt-1">
+              <Switch
+                id="include-institutional"
+                checked={includeInstitutional}
+                onCheckedChange={setIncludeInstitutional}
+              />
+              <Label htmlFor="include-institutional" className="text-xs font-normal text-muted-foreground">
+                Incluir tiempo institucional
+              </Label>
+            </div>
           </CardHeader>
           <CardContent className="h-64">
-            {isLoading ? <Skeleton className="h-full w-full" /> : <ProjectHoursChart projects={projects ?? []} />}
+            {isLoading ? <Skeleton className="h-full w-full" /> : <ProjectHoursChart projects={portfolioProjects} />}
           </CardContent>
         </Card>
 

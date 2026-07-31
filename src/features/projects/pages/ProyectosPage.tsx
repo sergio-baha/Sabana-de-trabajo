@@ -123,6 +123,7 @@ export default function ProyectosPage() {
                 <TableRow>
                   <TableHead>Proyecto</TableHead>
                   <TableHead>Gerente responsable</TableHead>
+                  <TableHead>Categoría</TableHead>
                   <TableHead>Estado</TableHead>
                   {canWrite && <TableHead className="w-10" />}
                 </TableRow>
@@ -140,6 +141,13 @@ export default function ProyectosPage() {
                       </div>
                     </TableCell>
                     <TableCell>{managerNameByProject.get(project.id) ?? "—"}</TableCell>
+                    <TableCell>
+                      {project.category === "institucional" ? (
+                        <Badge variant="secondary">Institucional</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">Proyecto</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">{STATUS_LABEL[project.status]}</Badge>
                     </TableCell>
@@ -179,7 +187,7 @@ export default function ProyectosPage() {
                 ))}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
                       Sin resultados.
                     </TableCell>
                   </TableRow>

@@ -31,3 +31,32 @@ export async function upsertAllocation(
   if (error) throw error
   return data
 }
+
+// Encuentra la fila de allocations para esta celda o la crea en 0 horas —
+// necesario para que un Analista pueda anclar un comentario a una celda que
+// nunca se guardó (ver migración *_allocations_allow_comment_anchor.sql), y
+// para que Gestor/Admin puedan agregar la primera actividad de una celda
+// vacía (features/activities).
+export async function getOrCreateAllocationId(
+  monthId: string,
+  personId: string,
+  projectId: string
+): Promise<string> {
+  const { data: existing, error: selectError } = await supabase
+    .from("allocations")
+    .select("id")
+    .eq("month_id", monthId)
+    .eq("person_id", personId)
+    .eq("project_id", projectId)
+    .maybeSingle()
+  if (selectError) throw selectError
+  if (existing) return existing.id
+
+  const { data: created, error: insertError } = await supabase
+    .from("allocations")
+    .insert({ month_id: monthId, person_id: personId, project_id: projectId, hours: 0 })
+    .select("id")
+    .single()
+  if (insertError) throw insertError
+  return created.id
+}

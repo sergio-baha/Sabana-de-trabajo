@@ -41,6 +41,7 @@ const schema = z.object({
   name: z.string().min(1, "El nombre es obligatorio"),
   color: z.string().min(1),
   status: z.enum(["activo", "pausado", "finalizado", "archivado"]),
+  category: z.enum(["proyecto", "institucional"]),
   managerId: z.string().optional(),
   description: z.string().optional(),
 })
@@ -75,6 +76,7 @@ export default function ProjectFormDialog({
       name: "",
       color: "#3A5BA7",
       status: "activo",
+      category: "proyecto",
       managerId: "",
       description: "",
     },
@@ -86,6 +88,7 @@ export default function ProjectFormDialog({
         name: project?.name ?? "",
         color: project?.color ?? "#3A5BA7",
         status: project?.status ?? "activo",
+        category: project?.category ?? "proyecto",
         managerId: currentManager?.person_id ?? "",
         description: project?.description ?? "",
       })
@@ -201,6 +204,31 @@ export default function ProjectFormDialog({
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categoría</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="proyecto">Proyecto</SelectItem>
+                      <SelectItem value="institucional">Tiempo institucional</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    "Tiempo institucional" agrupa capacitaciones, feedback u otros bloques que no
+                    son un proyecto del portafolio — Reportes puede excluirlos.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="description"
