@@ -100,12 +100,14 @@
 }
 
 :root {
-    --background: oklch(0.985 0.003 296);
-    --foreground: oklch(0.22 0.03 288);
+    /* Base blanca tibia, como el sitio (bg-white con acentos crema #f5f0e8),
+       no el gris azulado que traía por defecto. */
+    --background: oklch(0.988 0.004 75);
+    --foreground: oklch(0.24 0.02 60);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.22 0.03 288);
+    --card-foreground: oklch(0.24 0.02 60);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.22 0.03 288);
+    --popover-foreground: oklch(0.24 0.02 60);
 
     /* Naranja Evolución #EC671A — en ceinfes.com la clase `.from-primary`
        resuelve a este color, así que el primario de la marca es el naranja
@@ -143,14 +145,19 @@
     /* Radio generoso, como el sitio (usa 1–3rem según la jerarquía) */
     --radius: 1rem;
 
-    /* Sidebar en Verde Transformación #024B4E */
-    --sidebar: oklch(0.28 0.045 195);
-    --sidebar-foreground: oklch(0.96 0.01 195);
+    /* Sidebar claro sobre crema tibio (#f5f0e8 del sitio), con el naranja
+       marcando el elemento activo. ceinfes.com es blanco-dominante y usa el
+       naranja como acento (bg-naranjaEvolucion 34 usos, text-naranjaEvolucion
+       94, frente a 5 del verde): un sidebar verde oscuro dominaba la vista y
+       leía como una app "verde", que es lo contrario a la marca. */
+    --sidebar: oklch(0.975 0.008 75);
+    --sidebar-foreground: oklch(0.3 0.025 55);
     --sidebar-primary: oklch(0.665 0.184 41.6);
-    --sidebar-primary-foreground: oklch(0.145 0 0);
-    --sidebar-accent: oklch(0.36 0.05 195);
-    --sidebar-accent-foreground: oklch(0.96 0.01 195);
-    --sidebar-border: oklch(0.36 0.05 195);
+    --sidebar-primary-foreground: oklch(0.2 0.03 265);
+    /* Estado activo/hover: tinte naranja con tinta naranja oscura (4.5:1) */
+    --sidebar-accent: oklch(0.93 0.05 62);
+    --sidebar-accent-foreground: oklch(0.47 0.15 45);
+    --sidebar-border: oklch(0.9 0.012 70);
     --sidebar-ring: oklch(0.665 0.184 41.6 / 45%);
 
     /* Tokens crudos de marca */
@@ -175,6 +182,11 @@
     /* Cálido con paso por el amarillo, como los bloques destacados del sitio */
     --gradient-orange: linear-gradient(135deg, #ec671a 0%, #ffcf53 100%);
     --gradient-deep: linear-gradient(140deg, #012f31 0%, var(--brand-green) 55%, #0d5f5b 100%);
+    /* Gradiente para superficies grandes con texto blanco encima: recorre
+       naranja → magenta → morado profundo, pero arrancando en un naranja
+       quemado (#B84E00, 5.1:1 con blanco) en vez del naranja puro (3.2:1),
+       para que el texto sea legible en todo el recorrido. */
+    --gradient-hero: linear-gradient(125deg, #b84e00 0%, #a8410b 22%, #8a3a62 62%, #45397a 100%);
     --gradient-soft: linear-gradient(
         135deg,
         rgba(94, 79, 156, 0.09) 0%,
@@ -214,13 +226,13 @@
 }
 
 .dark {
-    /* Superficies gris-violeta desaturadas (tinte de marca), no azul frío */
-    --background: oklch(0.16 0.015 296);
-    --foreground: oklch(0.93 0.006 296);
-    --card: oklch(0.213 0.019 293);
-    --card-foreground: oklch(0.93 0.006 296);
-    --popover: oklch(0.213 0.019 293);
-    --popover-foreground: oklch(0.93 0.006 296);
+    /* Superficies neutras cálidas (tinte de marca), no azul frío */
+    --background: oklch(0.165 0.008 55);
+    --foreground: oklch(0.93 0.005 60);
+    --card: oklch(0.215 0.01 52);
+    --card-foreground: oklch(0.93 0.005 60);
+    --popover: oklch(0.215 0.01 52);
+    --popover-foreground: oklch(0.93 0.005 60);
 
     /* Naranja algo más claro sobre oscuro, para no perder saturación */
     --primary: oklch(0.72 0.17 45);
@@ -245,14 +257,16 @@
     --chart-4: oklch(0.55 0.06 194.8);
     --chart-5: oklch(0.68 0.14 350.9);
 
-    --sidebar: oklch(0.19 0.03 195);
-    --sidebar-foreground: oklch(0.92 0.01 195);
-    --sidebar-primary: oklch(0.72 0.16 41.6);
-    --sidebar-primary-foreground: oklch(0.145 0 0);
-    --sidebar-accent: oklch(0.26 0.035 195);
-    --sidebar-accent-foreground: oklch(0.92 0.01 195);
+    /* En oscuro el sidebar es un neutro cálido (no verde), con el naranja
+       marcando el activo — misma jerarquía que en claro. */
+    --sidebar: oklch(0.205 0.014 55);
+    --sidebar-foreground: oklch(0.92 0.008 60);
+    --sidebar-primary: oklch(0.72 0.17 45);
+    --sidebar-primary-foreground: oklch(0.16 0.02 45);
+    --sidebar-accent: oklch(0.31 0.045 50);
+    --sidebar-accent-foreground: oklch(0.87 0.09 62);
     --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.72 0.16 41.6 / 45%);
+    --sidebar-ring: oklch(0.72 0.17 45 / 45%);
 
     --brand-purple: #8577c2;
     --brand-purple-deep: #6558a8;
@@ -414,10 +428,13 @@
     animation: sabana-gradient-shift 9s var(--ease) infinite;
 }
 
-/* Panel con el gradiente profundo de marca (hero del dashboard, login) */
+/* Panel destacado (hero del dashboard): gradiente cálido de marca, con
+   suficiente profundidad para que el texto blanco se lea en todo el ancho. */
 .surface-brand {
-    background: var(--gradient-deep);
-    color: #f3f7f7;
+    background: var(--gradient-hero);
+    background-size: 160% 160%;
+    animation: sabana-gradient-shift 14s var(--ease) infinite;
+    color: #fff;
 }
 .surface-brand-accent {
     background: var(--gradient-brand);

@@ -60,7 +60,7 @@ export default function LoginPage() {
       <div
         aria-hidden
         className="pointer-events-none absolute -right-24 -bottom-32 size-[26rem] rounded-full opacity-15 blur-3xl"
-        style={{ background: "var(--gradient-deep)" }}
+        style={{ background: "var(--gradient-orange)" }}
       />
       <Card className="animate-scale-in relative w-full max-w-sm shadow-brand-xl">
         <CardHeader>
