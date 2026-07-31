@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Copy, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { Copy, History, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -21,6 +21,7 @@ import ConfirmDialog from "@/components/shared/ConfirmDialog"
 import MonthFormDialog from "@/features/months/components/MonthFormDialog"
 import DuplicateMonthDialog from "@/features/months/components/DuplicateMonthDialog"
 import MonthStatusBadge from "@/features/months/components/MonthStatusBadge"
+import SnapshotsDialog from "@/features/snapshots/components/SnapshotsDialog"
 import { useDeleteMonth, useMonths, useUpdateMonth } from "@/features/months/hooks/useMonthsQueries"
 import type { Month } from "@/features/months/api/monthsApi"
 import { useSessionStore } from "@/stores/sessionStore"
@@ -39,6 +40,7 @@ export default function MesesPage() {
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [duplicateSourceId, setDuplicateSourceId] = useState<string | undefined>()
   const [monthToDelete, setMonthToDelete] = useState<Month | null>(null)
+  const [snapshotsMonth, setSnapshotsMonth] = useState<Month | null>(null)
 
   const canWrite = isGestorOrAdmin(profile?.role)
   const canArchive = isAdmin(profile?.role)
@@ -154,6 +156,11 @@ export default function MesesPage() {
                             <Copy /> Duplicar
                           </DropdownMenuItem>
                           {canWrite && (
+                            <DropdownMenuItem onClick={() => setSnapshotsMonth(month)}>
+                              <History /> Versiones
+                            </DropdownMenuItem>
+                          )}
+                          {canWrite && (
                             <DropdownMenuItem onClick={() => openEdit(month)}>
                               <Pencil /> Editar
                             </DropdownMenuItem>
@@ -212,6 +219,14 @@ export default function MesesPage() {
           if (activeMonthId === monthToDelete.id) setActiveMonthId(null)
         }}
       />
+      {snapshotsMonth && (
+        <SnapshotsDialog
+          open
+          onOpenChange={(open) => !open && setSnapshotsMonth(null)}
+          monthId={snapshotsMonth.id}
+          monthName={snapshotsMonth.name}
+        />
+      )}
     </div>
   )
 }
