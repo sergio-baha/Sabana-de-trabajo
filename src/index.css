@@ -204,3 +204,26 @@
     @apply font-sans;
     }
 }
+
+/*
+ * Grilla de Distribución de trabajo (react-data-grid): en vez de alternar
+ * las clases .rdg-light/.rdg-dark del paquete (que no reaccionan a nuestro
+ * toggle de tema), pisamos sus variables --rdg-* con las mismas variables
+ * de tema que usa el resto de la app — así la grilla sigue el modo claro/
+ * oscuro automáticamente sin lógica adicional en el componente.
+ */
+.sabana-grid {
+  --rdg-color: var(--foreground);
+  --rdg-border-color: var(--border);
+  --rdg-summary-border-color: var(--border);
+  --rdg-background-color: var(--background);
+  --rdg-header-background-color: var(--muted);
+  --rdg-header-draggable-background-color: var(--accent);
+  --rdg-row-hover-background-color: var(--accent);
+  --rdg-row-selected-background-color: color-mix(in oklch, var(--primary) 12%, var(--background));
+  --rdg-row-selected-hover-background-color: color-mix(in oklch, var(--primary) 18%, var(--background));
+  --rdg-selection-color: var(--primary);
+  --rdg-font-size: 0.875rem;
+  block-size: 100%;
+  border: none;
+}
