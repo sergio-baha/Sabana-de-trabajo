@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Mail, X } from "lucide-react"
+import { Mail, UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -38,11 +38,19 @@ import {
 import { roleLabel } from "@/lib/roles"
 import type { InvitationStatus } from "@/types/database.types"
 
-const schema = z.object({
-  email: z.string().min(1, "Ingresa un correo").email("Correo inválido"),
-  fullName: z.string().optional(),
-  role: z.enum(["administrador", "gestor", "analista"]),
-})
+const schema = z
+  .object({
+    email: z.string().min(1, "Ingresa un correo").email("Correo inválido"),
+    fullName: z.string().optional(),
+    role: z.enum(["administrador", "gestor", "analista"]),
+    mode: z.enum(["invitacion", "password"]),
+    password: z.string().optional(),
+  })
+  // La contraseña solo es obligatoria en el modo de alta directa.
+  .refine((v) => v.mode === "invitacion" || (v.password ?? "").length >= 8, {
+    message: "Mínimo 8 caracteres",
+    path: ["password"],
+  })
 
 type FormValues = z.infer<typeof schema>
 
@@ -65,19 +73,37 @@ export default function InvitationsPanel() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", fullName: "", role: "analista" },
+    defaultValues: {
+      email: "",
+      fullName: "",
+      role: "analista",
+      mode: "password",
+      password: "",
+    },
   })
 
+  const mode = form.watch("mode")
+
   const onSubmit = async (values: FormValues) => {
-    await inviteUser.mutateAsync(values)
+    await inviteUser.mutateAsync({
+      email: values.email,
+      role: values.role,
+      fullName: values.fullName,
+      // En modo invitación no se manda contraseña: la persona la fija
+      // siguiendo el enlace del correo.
+      password: values.mode === "password" ? values.password : undefined,
+    })
     form.reset()
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Invitaciones</CardTitle>
-        <CardDescription>Invita a un nuevo usuario por correo.</CardDescription>
+        <CardTitle>Usuarios nuevos</CardTitle>
+        <CardDescription>
+          Crea la cuenta con una contraseña para entregarla directamente, o envía una invitación
+          por correo para que la persona elija su propia contraseña.
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Form {...form}>
@@ -133,11 +159,63 @@ export default function InvitationsPanel() {
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="mode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Método</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger className="w-56">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="password">Crear con contraseña</SelectItem>
+                      <SelectItem value="invitacion">Invitar por correo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+            {mode === "password" && (
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem className="min-w-48">
+                    <FormLabel>Contraseña inicial</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        autoComplete="off"
+                        placeholder="Mínimo 8 caracteres"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <Button type="submit" disabled={inviteUser.isPending}>
-              <Mail /> {inviteUser.isPending ? "Enviando…" : "Invitar"}
+              {mode === "password" ? <UserPlus /> : <Mail />}
+              {inviteUser.isPending
+                ? "Creando…"
+                : mode === "password"
+                  ? "Crear cuenta"
+                  : "Enviar invitación"}
             </Button>
           </form>
         </Form>
+
+        {mode === "password" && (
+          <p className="text-xs text-muted-foreground">
+            La cuenta queda activa de inmediato. Comparte la contraseña por un canal seguro y pide
+            que la cambie en su primer ingreso desde "¿Olvidaste tu contraseña?".
+          </p>
+        )}
 
         {isLoading ? (
           <Skeleton className="h-24 w-full" />

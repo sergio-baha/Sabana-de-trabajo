@@ -12,13 +12,25 @@ export function useInvitations() {
 export function useInviteUser() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ email, role, fullName }: { email: string; role: AppRole; fullName?: string }) =>
-      inviteUser(email, role, fullName),
-    onSuccess: () => {
+    mutationFn: ({
+      email,
+      role,
+      fullName,
+      password,
+    }: {
+      email: string
+      role: AppRole
+      fullName?: string
+      password?: string
+    }) => inviteUser(email, role, fullName, password),
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: invitationsKeys.all })
-      toast.success("Invitación enviada")
+      queryClient.invalidateQueries({ queryKey: ["profiles"] })
+      toast.success(
+        variables.password ? "Cuenta creada y lista para usar" : "Invitación enviada por correo"
+      )
     },
-    onError: (error) => toast.error("No se pudo enviar la invitación", { description: error.message }),
+    onError: (error) => toast.error("No se pudo crear el usuario", { description: error.message }),
   })
 }
 

@@ -107,30 +107,38 @@
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.22 0.03 288);
 
-    /* Morado Formación #5E4F9C */
-    --primary: oklch(0.451 0.129 302.4);
-    --primary-foreground: oklch(0.985 0 0);
+    /* Naranja Evolución #EC671A — en ceinfes.com la clase `.from-primary`
+       resuelve a este color, así que el primario de la marca es el naranja
+       (no el morado, que es acento).
+       El texto encima va en tinta oscura, no blanca: sobre este naranja el
+       blanco da 3.2:1 (falla WCAG AA para texto normal) mientras que la
+       tinta oscura da 5.5:1. Así se conserva el color de marca exacto sin
+       perder legibilidad. */
+    --primary: oklch(0.665 0.184 41.6);
+    --primary-foreground: oklch(0.2 0.03 265);
 
-    /* Azul Pensamiento #3A5BA7 */
-    --secondary: oklch(0.448 0.118 265.3);
+    /* Morado Formación #5E4F9C como acento secundario */
+    --secondary: oklch(0.451 0.129 302.4);
     --secondary-foreground: oklch(0.985 0 0);
 
-    --muted: oklch(0.965 0.006 296);
-    --muted-foreground: oklch(0.505 0.022 288);
-    --accent: oklch(0.955 0.02 296);
-    --accent-foreground: oklch(0.3 0.06 296);
+    --muted: oklch(0.965 0.005 60);
+    --muted-foreground: oklch(0.505 0.02 50);
+    --accent: oklch(0.955 0.025 62);
+    --accent-foreground: oklch(0.38 0.11 44);
 
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.917 0.008 296);
-    --input: oklch(0.917 0.008 296);
-    --ring: oklch(0.451 0.129 302.4 / 45%);
+    --border: oklch(0.918 0.006 60);
+    --input: oklch(0.918 0.006 60);
+    --ring: oklch(0.665 0.184 41.6 / 45%);
 
-    /* Paleta de gráficos derivada de la marca (Morado → Azul → Verde → Magenta → Naranja) */
-    --chart-1: oklch(0.451 0.129 302.4);
-    --chart-2: oklch(0.448 0.118 265.3);
-    --chart-3: oklch(0.336 0.05 194.8);
-    --chart-4: oklch(0.55 0.15 350.9);
-    --chart-5: oklch(0.665 0.184 41.6);
+    /* Paleta de gráficos: arranca en el naranja de marca y se aleja en tono
+       (Naranja → Morado → Azul → Verde → Magenta) para que series vecinas
+       sean distinguibles, incluida visión con deficiencia de color. */
+    --chart-1: oklch(0.665 0.184 41.6);
+    --chart-2: oklch(0.451 0.129 302.4);
+    --chart-3: oklch(0.448 0.118 265.3);
+    --chart-4: oklch(0.336 0.05 194.8);
+    --chart-5: oklch(0.55 0.15 350.9);
 
     /* Radio generoso, como el sitio (usa 1–3rem según la jerarquía) */
     --radius: 1rem;
@@ -154,13 +162,15 @@
     --brand-yellow: #ffcf53;
     --brand-magenta: #c0538a;
 
-    /* Gradientes de marca — la firma visual CEINFES */
+    /* Gradientes de marca — la firma visual CEINFES.
+       Orientado con el naranja al frente: es el color primario del sitio,
+       así que es el que debe dominar la lectura. */
     --gradient-brand: linear-gradient(
         125deg,
-        var(--brand-purple-deep) 0%,
-        var(--brand-purple) 32%,
-        var(--brand-magenta) 64%,
-        var(--brand-orange) 100%
+        var(--brand-orange) 0%,
+        var(--brand-magenta) 45%,
+        var(--brand-purple) 80%,
+        var(--brand-purple-deep) 100%
     );
     /* Cálido con paso por el amarillo, como los bloques destacados del sitio */
     --gradient-orange: linear-gradient(135deg, #ec671a 0%, #ffcf53 100%);
@@ -212,27 +222,28 @@
     --popover: oklch(0.213 0.019 293);
     --popover-foreground: oklch(0.93 0.006 296);
 
-    --primary: oklch(0.68 0.12 302.4);
-    --primary-foreground: oklch(0.145 0 0);
+    /* Naranja algo más claro sobre oscuro, para no perder saturación */
+    --primary: oklch(0.72 0.17 45);
+    --primary-foreground: oklch(0.16 0.02 45);
 
-    --secondary: oklch(0.62 0.1 265.3);
+    --secondary: oklch(0.68 0.12 302.4);
     --secondary-foreground: oklch(0.145 0 0);
 
-    --muted: oklch(0.27 0.018 293);
-    --muted-foreground: oklch(0.7 0.018 293);
-    --accent: oklch(0.3 0.03 296);
-    --accent-foreground: oklch(0.92 0.01 296);
+    --muted: oklch(0.27 0.015 55);
+    --muted-foreground: oklch(0.7 0.016 55);
+    --accent: oklch(0.31 0.035 50);
+    --accent-foreground: oklch(0.93 0.02 60);
 
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.68 0.12 302.4 / 45%);
+    --ring: oklch(0.72 0.17 45 / 45%);
 
-    --chart-1: oklch(0.68 0.12 302.4);
-    --chart-2: oklch(0.62 0.1 265.3);
-    --chart-3: oklch(0.55 0.06 194.8);
-    --chart-4: oklch(0.68 0.14 350.9);
-    --chart-5: oklch(0.72 0.16 41.6);
+    --chart-1: oklch(0.72 0.16 41.6);
+    --chart-2: oklch(0.68 0.12 302.4);
+    --chart-3: oklch(0.62 0.1 265.3);
+    --chart-4: oklch(0.55 0.06 194.8);
+    --chart-5: oklch(0.68 0.14 350.9);
 
     --sidebar: oklch(0.19 0.03 195);
     --sidebar-foreground: oklch(0.92 0.01 195);

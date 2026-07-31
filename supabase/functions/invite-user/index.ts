@@ -71,25 +71,40 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Solo un administrador puede invitar usuarios" }, 403)
     }
 
-    const { email, role, fullName } = await req.json()
+    const { email, role, fullName, password } = await req.json()
 
     if (!email || typeof email !== "string") {
-      return jsonResponse({ error: "Falta el correo del invitado" }, 400)
+      return jsonResponse({ error: "Falta el correo del usuario" }, 400)
     }
     if (!["administrador", "gestor", "analista"].includes(role)) {
       return jsonResponse({ error: "Rol inválido" }, 400)
     }
 
+    // Dos modos:
+    //   - sin password → invitación por correo (la persona fija su clave).
+    //   - con password → alta directa con la clave que puso el admin, ya
+    //     confirmada, para entregarla en mano sin depender del correo.
+    const withPassword = typeof password === "string" && password.length > 0
+    if (withPassword && password.length < 8) {
+      return jsonResponse({ error: "La contraseña debe tener al menos 8 caracteres" }, 400)
+    }
+
     // Cliente con service_role — bypassa RLS, único que puede crear cuentas.
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
-    const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
-      email,
-      { data: { full_name: fullName ?? null } }
-    )
+    const { data: created, error: createError } = withPassword
+      ? await adminClient.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: fullName ?? null },
+        })
+      : await adminClient.auth.admin.inviteUserByEmail(email, {
+          data: { full_name: fullName ?? null },
+        })
 
-    if (inviteError || !invited.user) {
-      return jsonResponse({ error: inviteError?.message ?? "No se pudo invitar al usuario" }, 400)
+    if (createError || !created.user) {
+      return jsonResponse({ error: createError?.message ?? "No se pudo crear el usuario" }, 400)
     }
 
     // handle_new_user ya creó el perfil con role='analista' por defecto
@@ -98,25 +113,26 @@ Deno.serve(async (req) => {
     // de auto-escalación.
     const { error: roleUpdateError } = await adminClient
       .from("profiles")
-      .update({ role })
-      .eq("id", invited.user.id)
+      .update({ role, full_name: fullName || email.split("@")[0] })
+      .eq("id", created.user.id)
 
     if (roleUpdateError) {
       return jsonResponse({ error: roleUpdateError.message }, 500)
     }
 
-    // Queda 'pendiente' hasta que la persona invitada siga el enlace del
-    // correo y confirme su cuenta — no hay forma de saberlo desde aquí sin
-    // un webhook adicional, así que un administrador puede marcarla o
-    // revocarla manualmente desde Configuración > Usuarios.
+    // Con contraseña la cuenta queda usable de inmediato → 'aceptada'. Por
+    // invitación queda 'pendiente' hasta que la persona siga el enlace del
+    // correo; no hay forma de saberlo desde aquí sin un webhook adicional,
+    // así que el admin puede revocarla a mano desde Configuración.
     await adminClient.from("invitations").insert({
       email,
       role,
-      status: "pendiente",
+      status: withPassword ? "aceptada" : "pendiente",
       invited_by: caller.id,
+      accepted_at: withPassword ? new Date().toISOString() : null,
     })
 
-    return jsonResponse({ userId: invited.user.id })
+    return jsonResponse({ userId: created.user.id })
   } catch (error) {
     return jsonResponse(
       { error: error instanceof Error ? error.message : "Error inesperado" },

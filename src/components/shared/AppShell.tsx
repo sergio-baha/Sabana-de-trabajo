@@ -93,10 +93,12 @@ export default function AppShell() {
     <SidebarProvider>
       <Sidebar collapsible="icon">
         <SidebarHeader>
-          <div className="flex items-center gap-2.5 px-2 py-1.5">
+          {/* En modo ícono el rail mide 48px: se quita el padding lateral y
+              el gap para que el logo quede centrado y no desplazado. */}
+          <div className="flex items-center gap-2.5 px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
             <div
               className="flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
-              style={{ background: "var(--gradient-brand)", boxShadow: "var(--sh-purple)" }}
+              style={{ background: "var(--gradient-brand)", boxShadow: "var(--sh-orange)" }}
             >
               DT
             </div>
@@ -132,17 +134,20 @@ export default function AppShell() {
           {profile && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg">
-                  <Avatar className="size-6">
-                    <AvatarFallback className="text-xs">
+                {/* size=lg pone p-0 en modo ícono, así que el avatar se
+                    centra a mano para que no quede pegado al borde. */}
+                <SidebarMenuButton
+                  size="lg"
+                  className="group-data-[collapsible=icon]:justify-center"
+                >
+                  <Avatar className="size-7 shrink-0">
+                    <AvatarFallback className="bg-sidebar-accent text-xs text-sidebar-accent-foreground">
                       {initialsFor(profile.full_name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col overflow-hidden text-left group-data-[collapsible=icon]:hidden">
                     <span className="truncate text-sm font-medium">{profile.full_name}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {roleLabel[profile.role]}
-                    </span>
+                    <span className="truncate text-xs opacity-70">{roleLabel[profile.role]}</span>
                   </div>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>

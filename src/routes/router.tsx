@@ -8,6 +8,10 @@ import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage"
 import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage"
 import ProfilePage from "@/features/auth/pages/ProfilePage"
 
+// Marca de que ya se recargó por un chunk faltante, para no entrar en un
+// bucle de recargas si el fallo es por otra causa (ej. sin conexión).
+const STALE_RELOAD_KEY = "sabana-stale-chunk-reload"
+
 // Páginas autenticadas cargadas bajo demanda (`lazy`, soportado nativamente
 // por el data router de react-router): cada módulo -incluida la grilla con
 // react-data-grid y Reportes con recharts/exportPdf, las dependencias más
@@ -15,10 +19,42 @@ import ProfilePage from "@/features/auth/pages/ProfilePage"
 // viajar todo junto en el bundle inicial. react-router espera un export
 // nombrado `Component`, así que se remapea el `export default` de cada
 // página.
+//
+// El try/catch resuelve un problema real de producción: al desplegar, los
+// archivos con hash viejo dejan de existir. Una pestaña que quedó abierta
+// con el index anterior pide un chunk que ya no está y react-router muestra
+// "Failed to fetch dynamically imported module". Recargar trae el index
+// nuevo con los hashes correctos — que es justo lo que el usuario hacía a
+// mano. Se hace una sola vez por sesión para no arriesgar un bucle.
 const lazyPage = (importFn: () => Promise<{ default: ComponentType }>) =>
   async () => {
-    const { default: Component } = await importFn()
-    return { Component }
+    try {
+      const { default: Component } = await importFn()
+      // Cargó bien: se limpia la marca para que un despliegue futuro en
+      // esta misma sesión también pueda recargar.
+      try {
+        sessionStorage.removeItem(STALE_RELOAD_KEY)
+      } catch {
+        /* modo incógnito */
+      }
+      return { Component }
+    } catch (error) {
+      let alreadyReloaded = true
+      try {
+        alreadyReloaded = sessionStorage.getItem(STALE_RELOAD_KEY) === "1"
+        if (!alreadyReloaded) sessionStorage.setItem(STALE_RELOAD_KEY, "1")
+      } catch {
+        /* sin sessionStorage no se intenta recargar */
+      }
+
+      if (!alreadyReloaded) {
+        window.location.reload()
+        // La página se está recargando; esta promesa nunca resuelve, así
+        // react-router no alcanza a pintar la pantalla de error.
+        return new Promise<{ Component: ComponentType }>(() => {})
+      }
+      throw error
+    }
   }
 
 export const router = createBrowserRouter([
