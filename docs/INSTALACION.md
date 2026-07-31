@@ -108,10 +108,16 @@ npm run dev
 4. Variables de entorno del build (Settings → Environment variables):
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-5. Despliega. `public/_redirects` ya deja el SPA routing configurado
-   (`/* /index.html 200`) y `public/_headers` aplica cabeceras de seguridad
-   (CSP, X-Frame-Options, etc.) — revisa el `connect-src` de `_headers` si
-   tu proyecto Supabase usa un dominio distinto a `*.supabase.co`.
+5. Despliega. El SPA routing (servir `index.html` en cualquier ruta que no
+   sea un archivo estático, para que recargar `/dashboard` no dé 404) queda
+   configurado por `wrangler.jsonc` (`assets.not_found_handling:
+   "single-page-application"`) — **no** uses un `public/_redirects` con
+   `/* /index.html 200`: Cloudflare lo rechaza como falso positivo de
+   "infinite loop" en su validador actual (ver
+   [cloudflare/workers-sdk#11824](https://github.com/cloudflare/workers-sdk/issues/11824)).
+   `public/_headers` sigue aplicando cabeceras de seguridad (CSP,
+   X-Frame-Options, etc.) con normalidad — revisa el `connect-src` ahí si tu
+   proyecto Supabase usa un dominio distinto a `*.supabase.co`.
 
 ## 9. Después del primer despliegue
 

@@ -12,7 +12,6 @@ import ProjectHoursChart from "@/features/reports/components/ProjectHoursChart"
 import ManagerHoursChart from "@/features/reports/components/ManagerHoursChart"
 import WorkloadRankingChart from "@/features/reports/components/WorkloadRankingChart"
 import { exportReportToExcel } from "@/features/reports/lib/exportExcel"
-import { exportReportToPdf } from "@/features/reports/lib/exportPdf"
 import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { useSettings } from "@/features/settings/hooks/useSettingsQueries"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
@@ -60,6 +59,10 @@ export default function ReportesPage() {
     if (!activeMonth || !people || !projects || !managers) return
     setExporting("pdf")
     try {
+      // Carga diferida: @react-pdf/renderer trae su propio motor de layout
+      // (yoga) y pesa varios MB — no tiene sentido que viaje en el bundle
+      // principal para una acción que la mayoría de sesiones no dispara.
+      const { exportReportToPdf } = await import("@/features/reports/lib/exportPdf")
       await exportReportToPdf({
         companyName: settings?.company_name ?? "Mi Empresa",
         monthName: activeMonth.name,
