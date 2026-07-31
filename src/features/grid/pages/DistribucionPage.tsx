@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react"
 import { DataGrid, type Column, type PositionChangeArgs } from "react-data-grid"
 import "react-data-grid/lib/styles.css"
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, Search } from "lucide-react"
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, MessageSquare, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
@@ -21,6 +22,8 @@ import { useRealtimeAllocations } from "@/features/grid/hooks/useRealtimeAllocat
 import { buildGridRows, sortActiveProjectsFirst, type GridRow } from "@/features/grid/lib/gridRows"
 import { getContrastText, tintBackground } from "@/features/grid/lib/colorContrast"
 import HoursEditCell from "@/features/grid/components/HoursEditCell"
+import { useCommentsByCell, useRealtimeComments } from "@/features/comments/hooks/useCommentsQueries"
+import CellCommentsDialog from "@/features/comments/components/CellCommentsDialog"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
 import { isGestorOrAdmin } from "@/lib/roles"
@@ -44,10 +47,15 @@ export default function DistribucionPage() {
   const { data: allocations, isLoading: loadingAllocations } = useAllocations(activeMonthId)
   const upsertAllocation = useUpsertAllocation(activeMonthId ?? "")
   useRealtimeAllocations(activeMonthId)
+  const { byCell: commentsByCell } = useCommentsByCell(activeMonthId)
+  useRealtimeComments(activeMonthId)
 
   const [search, setSearch] = useState("")
   const [sortField, setSortField] = useState<SortField>("name")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
+  const [commentCell, setCommentCell] = useState<{ personId: string; projectId: string } | null>(
+    null
+  )
 
   const activePosition = useRef<{ rowIdx: number; columnKey: string } | null>(null)
 
@@ -107,11 +115,36 @@ export default function DistribucionPage() {
       ),
       renderCell: ({ row }) => {
         const value = row.hours[project.id] ?? 0
+        const cellComments = commentsByCell.get(`${row.personId}:${project.id}`) ?? []
+        const hasComments = cellComments.length > 0
         return (
           <div
-            className="flex h-full items-center justify-end px-2 tabular-nums"
+            className="relative flex h-full items-center justify-end px-2 tabular-nums"
             style={{ backgroundColor: tintBackground(project.color) }}
           >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "absolute left-1 top-1 flex size-4 items-center justify-center rounded-full",
+                    hasComments ? "text-primary" : "text-muted-foreground/40"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setCommentCell({ personId: row.personId, projectId: project.id })
+                  }}
+                  aria-label="Comentarios de la celda"
+                >
+                  <MessageSquare className="size-3" fill={hasComments ? "currentColor" : "none"} />
+                </button>
+              </TooltipTrigger>
+              {hasComments && (
+                <TooltipContent className="max-w-56">
+                  <p className="text-xs">{cellComments[cellComments.length - 1].body}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
             {value > 0 ? value : ""}
           </div>
         )
@@ -147,7 +180,7 @@ export default function DistribucionPage() {
     }
 
     return [nameCol, ...projectCols, totalCol, availableCol]
-  }, [visibleProjects, canEdit])
+  }, [visibleProjects, canEdit, commentsByCell])
 
   const projectIdAtColumnOffset = (anchorColumnKey: string, offset: number): string | null => {
     const idx = visibleProjects.findIndex((p) => p.id === anchorColumnKey)
@@ -281,6 +314,26 @@ export default function DistribucionPage() {
           />
         </div>
       )}
+
+      {commentCell &&
+        activeMonthId &&
+        (() => {
+          const person = allRows.find((r) => r.personId === commentCell.personId)
+          const project = visibleProjects.find((p) => p.id === commentCell.projectId)
+          if (!person || !project) return null
+          return (
+            <CellCommentsDialog
+              open
+              onOpenChange={(open) => !open && setCommentCell(null)}
+              monthId={activeMonthId}
+              personId={commentCell.personId}
+              projectId={commentCell.projectId}
+              personName={person.name}
+              projectName={project.name}
+              comments={commentsByCell.get(`${commentCell.personId}:${commentCell.projectId}`) ?? []}
+            />
+          )
+        })()}
     </div>
   )
 }
