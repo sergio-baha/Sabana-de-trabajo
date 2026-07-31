@@ -16,7 +16,7 @@ export async function listSnapshots(monthId: string): Promise<MonthSnapshot[]> {
 export async function createSnapshot(monthId: string, label: string | null): Promise<string> {
   const { data, error } = await supabase.rpc("create_month_snapshot", {
     p_month_id: monthId,
-    p_label: label,
+    p_label: label ?? undefined,
   })
   if (error) throw error
   return data
