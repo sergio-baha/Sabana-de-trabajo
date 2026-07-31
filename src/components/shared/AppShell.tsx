@@ -93,8 +93,11 @@ export default function AppShell() {
     <SidebarProvider>
       <Sidebar collapsible="icon">
         <SidebarHeader>
-          <div className="flex items-center gap-2 px-2 py-1.5">
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
+          <div className="flex items-center gap-2.5 px-2 py-1.5">
+            <div
+              className="flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
+              style={{ background: "var(--gradient-brand)", boxShadow: "var(--sh-purple)" }}
+            >
               DT
             </div>
             <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
@@ -164,15 +167,22 @@ export default function AppShell() {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+        <header className="surface-glass sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-x-0 border-t-0 border-b border-border px-4">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
           <MonthSwitcher />
-          <Button variant="ghost" size="icon" className="ml-auto" onClick={toggleTheme}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-auto"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+          >
             {theme === "dark" ? <Sun /> : <Moon />}
           </Button>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+        {/* key por ruta: reinicia la animación de entrada en cada navegación */}
+        <main key={location.pathname} className="page-enter flex flex-1 flex-col gap-4 p-4 md:p-6">
           <Outlet />
         </main>
       </SidebarInset>

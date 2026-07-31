@@ -1,34 +1,71 @@
 import type { ReactNode } from "react"
 import { Card, CardContent } from "@/components/ui/card"
+import AnimatedNumber from "@/components/shared/AnimatedNumber"
 import { cn } from "@/lib/utils"
+
+export type KpiTone = "default" | "brand" | "success" | "warning" | "danger"
 
 interface KpiCardProps {
   label: string
-  value: string | number
+  value: number
   icon: ReactNode
-  tone?: "default" | "success" | "warning" | "danger"
+  /** Texto de apoyo bajo el número (ej. "de 833 h disponibles"). */
+  hint?: string
+  suffix?: string
+  decimals?: number
+  tone?: KpiTone
+  /** Índice para la entrada escalonada (stagger-item). */
+  index?: number
 }
 
-const TONE_CLASS: Record<NonNullable<KpiCardProps["tone"]>, string> = {
+// El ícono es lo único que lleva color: neutro cuando el dato es puramente
+// informativo, y de estado (danger/warning) solo cuando el número en sí
+// significa un problema. Nunca color decorativo sin significado.
+const TONE_CLASS: Record<KpiTone, string> = {
   default: "bg-muted text-muted-foreground",
+  brand: "text-white",
   success: "bg-success-muted text-success",
   warning: "bg-warning-muted text-warning",
   danger: "bg-danger-muted text-danger",
 }
 
-// Tile de KPI: etiqueta muted + número grande (tabular-nums), ícono con
-// acento de color solo cuando el dato representa un estado (sobreasignación,
-// disponibilidad) — nunca color decorativo sin significado.
-export default function KpiCard({ label, value, icon, tone = "default" }: KpiCardProps) {
+export default function KpiCard({
+  label,
+  value,
+  icon,
+  hint,
+  suffix,
+  decimals = 0,
+  tone = "default",
+  index = 0,
+}: KpiCardProps) {
   return (
-    <Card>
+    <Card
+      className="stagger-item card-lift overflow-hidden"
+      style={{ "--i": index } as React.CSSProperties}
+    >
       <CardContent className="flex items-center gap-3">
-        <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", TONE_CLASS[tone])}>
+        <div
+          className={cn(
+            "flex size-11 shrink-0 items-center justify-center rounded-xl",
+            TONE_CLASS[tone]
+          )}
+          style={
+            tone === "brand"
+              ? { background: "var(--gradient-brand)", boxShadow: "var(--sh-purple)" }
+              : undefined
+          }
+        >
           {icon}
         </div>
-        <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground">{label}</span>
-          <span className="text-2xl font-semibold tabular-nums">{value}</span>
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {label}
+          </span>
+          <span className="text-2xl leading-tight font-semibold">
+            <AnimatedNumber value={value} decimals={decimals} suffix={suffix} />
+          </span>
+          {hint && <span className="truncate text-xs text-muted-foreground">{hint}</span>}
         </div>
       </CardContent>
     </Card>

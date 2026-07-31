@@ -50,9 +50,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
+    <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-4">
+      {/* Halos de marca difuminados de fondo — profundidad sin robar atención */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 -left-24 size-[28rem] rounded-full opacity-20 blur-3xl"
+        style={{ background: "var(--gradient-brand)" }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-24 -bottom-32 size-[26rem] rounded-full opacity-15 blur-3xl"
+        style={{ background: "var(--gradient-deep)" }}
+      />
+      <Card className="animate-scale-in relative w-full max-w-sm shadow-brand-xl">
         <CardHeader>
+          <div
+            className="mb-1 flex size-11 items-center justify-center rounded-xl text-base font-bold text-white"
+            style={{ background: "var(--gradient-brand)", boxShadow: "var(--sh-purple)" }}
+          >
+            DT
+          </div>
           <CardTitle className="text-xl">Distribución de Trabajo</CardTitle>
           <CardDescription>Inicia sesión con tu cuenta corporativa.</CardDescription>
         </CardHeader>

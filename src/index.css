@@ -1,23 +1,29 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Línea gráfica CEINFES:
- *   Morado Formación   #5E4F9C  -> primary
- *   Azul Pensamiento    #3A5BA7  -> secondary
- *   Verde Transformación #024B4E -> tertiary / brand-green
- *   Naranja acento      #EC671A  -> brand-accent (CTAs puntuales, no el hover ambiental)
- * Los colores de estado de la grilla (success/warning/danger) son un set semántico
- * aparte, elegido para ser inconfundible frente a los tonos de marca (ej. el amarillo
- * de "faltan horas" es más dorado que el naranja de marca para no verse igual).
+ * ── Línea gráfica CEINFES ──────────────────────────────────────────────
+ * Tokens tomados del brandbook tal como están implementados en el proyecto
+ * hermano "Experia by CEINFES" (src/styles.css), para que ambas apps se
+ * vean como la misma familia:
+ *   Morado Formación     #5E4F9C  (PANTONE 3574 C) — primario
+ *   Azul Pensamiento     #3A5BA7  (PANTONE 7455 C) — secundario
+ *   Verde Transformación #024B4E  (PANTONE 7722 C) — superficies profundas
+ *   Naranja Evolución    #EC671A                   — acento/CTA
+ *   Magenta de paso      #C0538A                   — transición morado→naranja
+ * Tipografía corporativa: Inter variable.
+ *
+ * Los colores de estado de la grilla (success/warning/danger) son un set
+ * semántico aparte, deliberadamente distinto de los tonos de marca para que
+ * "faltan horas" nunca se confunda con el naranja institucional.
  */
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -59,9 +65,11 @@
 
     /* Marca CEINFES */
     --color-brand-purple: var(--brand-purple);
+    --color-brand-purple-deep: var(--brand-purple-deep);
     --color-brand-blue: var(--brand-blue);
     --color-brand-green: var(--brand-green);
     --color-brand-orange: var(--brand-orange);
+    --color-brand-magenta: var(--brand-magenta);
 
     /* Estados de asignación de horas (grilla) */
     --color-success: var(--success);
@@ -73,15 +81,23 @@
     --color-danger: var(--danger);
     --color-danger-foreground: var(--danger-foreground);
     --color-danger-muted: var(--danger-muted);
+
+    /* Sombras con tinte de marca (no gris neutro) */
+    --shadow-brand-sm: var(--sh-sm);
+    --shadow-brand-md: var(--sh-md);
+    --shadow-brand-lg: var(--sh-lg);
+    --shadow-brand-xl: var(--sh-xl);
+    --shadow-glow-purple: var(--sh-purple);
+    --shadow-glow-orange: var(--sh-orange);
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.17 0.02 296);
+    --background: oklch(0.985 0.003 296);
+    --foreground: oklch(0.22 0.03 288);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.17 0.02 296);
+    --card-foreground: oklch(0.22 0.03 288);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.17 0.02 296);
+    --popover-foreground: oklch(0.22 0.03 288);
 
     /* Morado Formación #5E4F9C */
     --primary: oklch(0.451 0.129 302.4);
@@ -91,8 +107,8 @@
     --secondary: oklch(0.448 0.118 265.3);
     --secondary-foreground: oklch(0.985 0 0);
 
-    --muted: oklch(0.97 0.005 296);
-    --muted-foreground: oklch(0.5 0.02 296);
+    --muted: oklch(0.965 0.006 296);
+    --muted-foreground: oklch(0.505 0.022 288);
     --accent: oklch(0.955 0.02 296);
     --accent-foreground: oklch(0.3 0.06 296);
 
@@ -108,9 +124,9 @@
     --chart-4: oklch(0.55 0.15 350.9);
     --chart-5: oklch(0.665 0.184 41.6);
 
-    --radius: 0.625rem;
+    --radius: 0.75rem;
 
-    /* Sidebar en Verde Transformación #024B4E, oscuro por defecto para contraste con el contenido claro */
+    /* Sidebar en Verde Transformación #024B4E */
     --sidebar: oklch(0.28 0.045 195);
     --sidebar-foreground: oklch(0.96 0.01 195);
     --sidebar-primary: oklch(0.665 0.184 41.6);
@@ -120,13 +136,31 @@
     --sidebar-border: oklch(0.36 0.05 195);
     --sidebar-ring: oklch(0.665 0.184 41.6 / 45%);
 
-    /* Marca CEINFES (tokens crudos, para usos puntuales fuera del set semántico shadcn) */
+    /* Tokens crudos de marca */
     --brand-purple: #5e4f9c;
+    --brand-purple-deep: #45397a;
     --brand-blue: #3a5ba7;
     --brand-green: #024b4e;
     --brand-orange: #ec671a;
+    --brand-magenta: #c0538a;
 
-    /* Estados de asignación de horas — deliberadamente distintos de los tonos de marca */
+    /* Gradientes de marca — la firma visual CEINFES */
+    --gradient-brand: linear-gradient(
+        125deg,
+        var(--brand-purple-deep) 0%,
+        var(--brand-purple) 32%,
+        var(--brand-magenta) 64%,
+        var(--brand-orange) 100%
+    );
+    --gradient-orange: linear-gradient(135deg, #ec671a 0%, #f59e33 100%);
+    --gradient-deep: linear-gradient(140deg, #012f31 0%, var(--brand-green) 55%, #0d5f5b 100%);
+    --gradient-soft: linear-gradient(
+        135deg,
+        rgba(94, 79, 156, 0.09) 0%,
+        rgba(236, 103, 26, 0.09) 100%
+    );
+
+    /* Estados de asignación de horas */
     --success: oklch(0.6 0.16 149);
     --success-foreground: oklch(0.985 0 0);
     --success-muted: oklch(0.94 0.05 149);
@@ -136,15 +170,34 @@
     --danger: oklch(0.577 0.245 27.325);
     --danger-foreground: oklch(0.985 0 0);
     --danger-muted: oklch(0.93 0.06 27);
+
+    /* Sombras con tinte de marca (nunca negro puro) */
+    --sh-sm: 0 1px 2px rgba(26, 26, 46, 0.04), 0 1px 3px rgba(26, 26, 46, 0.06);
+    --sh-md: 0 2px 4px rgba(26, 26, 46, 0.04), 0 6px 16px rgba(26, 26, 46, 0.08);
+    --sh-lg: 0 4px 8px rgba(26, 26, 46, 0.05), 0 12px 32px rgba(26, 26, 46, 0.1);
+    --sh-xl: 0 8px 16px rgba(26, 26, 46, 0.06), 0 24px 56px rgba(26, 26, 46, 0.16);
+    --sh-purple: 0 8px 24px -8px rgba(94, 79, 156, 0.4);
+    --sh-orange: 0 8px 24px -8px rgba(236, 103, 26, 0.45);
+
+    /* Glass */
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.55);
+    --glass-blur: saturate(1.5) blur(16px);
+
+    /* Curvas de animación */
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .dark {
+    /* Superficies gris-violeta desaturadas (tinte de marca), no azul frío */
     --background: oklch(0.16 0.015 296);
-    --foreground: oklch(0.96 0.005 296);
-    --card: oklch(0.21 0.02 296);
-    --card-foreground: oklch(0.96 0.005 296);
-    --popover: oklch(0.21 0.02 296);
-    --popover-foreground: oklch(0.96 0.005 296);
+    --foreground: oklch(0.93 0.006 296);
+    --card: oklch(0.213 0.019 293);
+    --card-foreground: oklch(0.93 0.006 296);
+    --popover: oklch(0.213 0.019 293);
+    --popover-foreground: oklch(0.93 0.006 296);
 
     --primary: oklch(0.68 0.12 302.4);
     --primary-foreground: oklch(0.145 0 0);
@@ -152,8 +205,8 @@
     --secondary: oklch(0.62 0.1 265.3);
     --secondary-foreground: oklch(0.145 0 0);
 
-    --muted: oklch(0.27 0.015 296);
-    --muted-foreground: oklch(0.72 0.015 296);
+    --muted: oklch(0.27 0.018 293);
+    --muted-foreground: oklch(0.7 0.018 293);
     --accent: oklch(0.3 0.03 296);
     --accent-foreground: oklch(0.92 0.01 296);
 
@@ -178,9 +231,17 @@
     --sidebar-ring: oklch(0.72 0.16 41.6 / 45%);
 
     --brand-purple: #8577c2;
+    --brand-purple-deep: #6558a8;
     --brand-blue: #6d8bd0;
     --brand-green: #1f7a7e;
     --brand-orange: #f0894f;
+    --brand-magenta: #d477a6;
+
+    --gradient-soft: linear-gradient(
+        135deg,
+        rgba(133, 119, 194, 0.14) 0%,
+        rgba(240, 137, 79, 0.12) 100%
+    );
 
     --success: oklch(0.68 0.15 149);
     --success-foreground: oklch(0.145 0 0);
@@ -191,6 +252,17 @@
     --danger: oklch(0.704 0.191 22.216);
     --danger-foreground: oklch(0.145 0 0);
     --danger-muted: oklch(0.33 0.08 27);
+
+    /* Sombras más suaves sobre oscuro para evitar halos duros */
+    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.24);
+    --sh-md: 0 2px 4px rgba(0, 0, 0, 0.22), 0 6px 16px rgba(0, 0, 0, 0.3);
+    --sh-lg: 0 4px 8px rgba(0, 0, 0, 0.24), 0 12px 32px rgba(0, 0, 0, 0.36);
+    --sh-xl: 0 8px 16px rgba(0, 0, 0, 0.26), 0 24px 56px rgba(0, 0, 0, 0.44);
+    --sh-purple: 0 8px 24px -8px rgba(133, 119, 194, 0.44);
+    --sh-orange: 0 8px 24px -8px rgba(240, 137, 79, 0.44);
+
+    --glass-bg: rgba(28, 27, 40, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 @layer base {
@@ -199,9 +271,138 @@
     }
   body {
     @apply bg-background text-foreground;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     }
   html {
     @apply font-sans;
+    }
+}
+
+/* =====================================================================
+   ANIMACIONES
+   Un set corto y reutilizable; la duración/curva se comparte con Experia
+   para que ambas apps se "sientan" igual al moverse.
+   ===================================================================== */
+@keyframes sabana-fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sabana-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes sabana-scale-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+}
+@keyframes sabana-shimmer {
+    from { background-position: -200% 0; }
+    to   { background-position: 200% 0; }
+}
+@keyframes sabana-gradient-shift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+@keyframes sabana-bar-grow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+
+/* Entrada de página — se aplica al <main> en cada navegación */
+.page-enter {
+    animation: sabana-fade-up 0.42s var(--ease-out) both;
+}
+
+/* Entrada escalonada de tarjetas: el índice lo pone el componente con
+   `style={{ '--i': n }}`, así el retardo no se hardcodea en CSS. */
+.stagger-item {
+    animation: sabana-fade-up 0.5s var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+.animate-fade-in {
+    animation: sabana-fade-in 0.4s var(--ease-out) both;
+}
+.animate-scale-in {
+    animation: sabana-scale-in 0.35s var(--ease-spring) both;
+}
+
+/* Barras de progreso que crecen desde la izquierda al aparecer */
+.animate-bar {
+    transform-origin: left center;
+    animation: sabana-bar-grow 0.7s var(--ease-out) both;
+}
+
+/* Superficie premium: elevación + realce sutil del borde al pasar el mouse */
+.card-lift {
+    transition:
+        transform 0.28s var(--ease-out),
+        box-shadow 0.28s var(--ease-out),
+        border-color 0.28s var(--ease-out);
+    will-change: transform;
+}
+.card-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sh-lg);
+    border-color: color-mix(in oklch, var(--primary) 28%, var(--border));
+}
+
+/* Texto con el gradiente de marca (títulos de sección destacados) */
+.text-gradient-brand {
+    background: var(--gradient-brand);
+    background-size: 180% 180%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: sabana-gradient-shift 9s var(--ease) infinite;
+}
+
+/* Panel con el gradiente profundo de marca (hero del dashboard, login) */
+.surface-brand {
+    background: var(--gradient-deep);
+    color: #f3f7f7;
+}
+.surface-brand-accent {
+    background: var(--gradient-brand);
+    background-size: 200% 200%;
+    animation: sabana-gradient-shift 12s var(--ease) infinite;
+    color: #fff;
+}
+
+.surface-glass {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+}
+
+/* Skeletons con brillo que recorre, en vez de solo parpadear */
+.shimmer {
+    background-image: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in oklch, var(--foreground) 7%, transparent) 50%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: sabana-shimmer 1.6s var(--ease) infinite;
+}
+
+/* Respeta la preferencia del sistema: sin movimiento, sin animaciones. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    .card-lift:hover {
+        transform: none;
     }
 }
 
@@ -215,8 +416,8 @@
 .sabana-grid {
   --rdg-color: var(--foreground);
   --rdg-border-color: var(--border);
-  --rdg-summary-border-color: var(--border);
-  --rdg-background-color: var(--background);
+  --rdg-summary-border-color: color-mix(in oklch, var(--primary) 35%, var(--border));
+  --rdg-background-color: var(--card);
   --rdg-header-background-color: var(--muted);
   --rdg-header-draggable-background-color: var(--accent);
   --rdg-row-hover-background-color: var(--accent);
@@ -226,4 +427,11 @@
   --rdg-font-size: 0.875rem;
   block-size: 100%;
   border: none;
+}
+
+/* Las filas de resumen (Total/Disponible) son la conclusión de la tabla:
+   se despegan del cuerpo con un fondo propio y tipografía más firme. */
+.sabana-grid .rdg-summary-row {
+  background-color: var(--muted);
+  font-weight: 600;
 }
