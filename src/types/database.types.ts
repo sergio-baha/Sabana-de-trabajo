@@ -697,44 +697,78 @@ export type Database = {
       tasks: {
         Row: {
           assigned_person_id: string | null
+          board_order: number
+          completed_at: string | null
+          completed_hours: number | null
           created_at: string
           created_by: string | null
           description: string | null
           due_date: string | null
+          estimated_hours: number | null
           id: string
           month_id: string
+          parent_task_id: string | null
+          priority: number
           project_id: string
+          started_at: string | null
           status: Database["public"]["Enums"]["task_status"]
+          tags: string[]
           title: string
           updated_at: string
+          work_item_type: Database["public"]["Enums"]["work_item_type"]
         }
         Insert: {
           assigned_person_id?: string | null
+          board_order?: number
+          completed_at?: string | null
+          completed_hours?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
           month_id: string
+          parent_task_id?: string | null
+          priority?: number
           project_id: string
+          started_at?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          tags?: string[]
           title: string
           updated_at?: string
+          work_item_type?: Database["public"]["Enums"]["work_item_type"]
         }
         Update: {
           assigned_person_id?: string | null
+          board_order?: number
+          completed_at?: string | null
+          completed_hours?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
           month_id?: string
+          parent_task_id?: string | null
+          priority?: number
           project_id?: string
+          started_at?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          tags?: string[]
           title?: string
           updated_at?: string
+          work_item_type?: Database["public"]["Enums"]["work_item_type"]
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_assigned_person_id_fkey"
             columns: ["assigned_person_id"]
@@ -892,7 +926,13 @@ export type Database = {
       person_status: "activo" | "inactivo"
       project_category: "proyecto" | "institucional"
       project_status: "activo" | "pausado" | "finalizado" | "archivado"
-      task_status: "pendiente" | "en_progreso" | "completada"
+      task_status:
+        | "pendiente"
+        | "en_progreso"
+        | "en_revision"
+        | "bloqueada"
+        | "completada"
+      work_item_type: "epica" | "historia" | "tarea" | "bug"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1037,7 +1077,14 @@ export const Constants = {
       person_status: ["activo", "inactivo"],
       project_category: ["proyecto", "institucional"],
       project_status: ["activo", "pausado", "finalizado", "archivado"],
-      task_status: ["pendiente", "en_progreso", "completada"],
+      task_status: [
+        "pendiente",
+        "en_progreso",
+        "en_revision",
+        "bloqueada",
+        "completada",
+      ],
+      work_item_type: ["epica", "historia", "tarea", "bug"],
     },
   },
 } as const
@@ -1051,6 +1098,7 @@ export type ProjectStatus = Database["public"]["Enums"]["project_status"]
 export type ProjectCategory = Database["public"]["Enums"]["project_category"]
 export type MonthStatus = Database["public"]["Enums"]["month_status"]
 export type TaskStatus = Database["public"]["Enums"]["task_status"]
+export type WorkItemType = Database["public"]["Enums"]["work_item_type"]
 export type InvitationStatus = Database["public"]["Enums"]["invitation_status"]
 export type AuditAction = Database["public"]["Enums"]["audit_action"]
 export type ActivityPhase = Database["public"]["Enums"]["activity_phase"]

@@ -5,6 +5,7 @@ import {
   FolderKanban,
   Grid3x3,
   History,
+  KanbanSquare,
   LayoutDashboard,
   LogOut,
   Moon,
@@ -55,6 +56,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/distribucion", label: "Distribución de trabajo", icon: Grid3x3 },
+  { to: "/tareas", label: "Tareas", icon: KanbanSquare },
   { to: "/meses", label: "Meses", icon: CalendarRange },
   { to: "/proyectos", label: "Proyectos", icon: FolderKanban },
   { to: "/personas", label: "Personas", icon: Users },

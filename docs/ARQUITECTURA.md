@@ -32,6 +32,9 @@ erDiagram
     projects ||--o{ tasks : project_id
     projects }o--o| projects : cloned_from_id
 
+    tasks }o--o| tasks : parent_task_id
+    people ||--o{ tasks : assigned_person_id
+
     allocations ||--o{ comments : allocation_id
     comments }o--o| comments : parent_comment_id
     profiles ||--o{ comments : author_id
@@ -82,8 +85,12 @@ erDiagram
     tasks {
         uuid id PK
         uuid project_id FK
+        uuid parent_task_id FK
         text title
         task_status status
+        work_item_type work_item_type
+        smallint priority
+        numeric board_order
     }
     comments {
         uuid id PK
@@ -196,6 +203,17 @@ optimista actualiza el cache y la grilla recalcula Total/Diferencia/color
 de estado en el siguiente render. Copiar/pegar multi-celda (bloques TSV
 desde Excel) se maneja con un handler propio en vez del `onCellPaste` de
 una sola celda que trae la librería por defecto.
+
+### Tablero de tareas
+
+`board_order` es `numeric`, no un entero de posición: soltar una tarjeta
+entre otras dos calcula el punto medio de sus órdenes, así que reordenar es
+un solo UPDATE en vez de reescribir toda la columna. El arrastre usa la API
+nativa de HTML5 en vez de una librería de DnD (el módulo solo mueve tarjetas
+entre cinco columnas, no justifica el peso). `started_at`/`completed_at` los
+sella el trigger `tasks_track_status_timestamps` en el servidor, para que el
+dato sea el mismo se cambie el estado desde el tablero, el backlog o el
+detalle. Ver [`DOCUMENTACION.md`](DOCUMENTACION.md#6-módulo-tareas).
 
 ### Tema
 

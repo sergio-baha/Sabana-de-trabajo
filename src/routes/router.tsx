@@ -77,6 +77,10 @@ export const router = createBrowserRouter([
             lazy: lazyPage(() => import("@/features/grid/pages/DistribucionPage")),
           },
           {
+            path: "tareas",
+            lazy: lazyPage(() => import("@/features/tasks/pages/TareasPage")),
+          },
+          {
             path: "meses",
             lazy: lazyPage(() => import("@/features/months/pages/MesesPage")),
           },

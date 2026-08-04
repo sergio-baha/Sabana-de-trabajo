@@ -22,13 +22,14 @@ rol, auditoría completa, reportes exportables y duplicación de meses.
 
 1. **Dashboard** — mes activo, totales, sobreasignaciones, últimos cambios.
 2. **Distribución de trabajo** — grilla personas × proyectos, autoguardado, verde/amarillo/rojo.
-3. **Gestión de meses** — crear, duplicar (copia personas/proyectos/horas), cerrar, archivar, versiones restaurables.
-4. **Gestión de proyectos** — CRUD, color, gerente responsable.
-5. **Gestión de personas** — CRUD, cargo, horas disponibles, estado.
-6. **Configuración** — datos de la empresa, horas por defecto, usuarios, invitaciones.
-7. **Comentarios** — hilo por celda, respuestas.
-8. **Reportes** — resumen ejecutivo, gráficos, exportar a Excel/PDF.
-9. **Historial** — auditoría completa de cambios (solo Administrador).
+3. **Tareas** — tablero kanban y backlog de work items (tipo, prioridad, jerarquía, etiquetas), estilo Azure DevOps Boards.
+4. **Gestión de meses** — crear, duplicar (copia personas/proyectos/horas), cerrar, archivar, versiones restaurables.
+5. **Gestión de proyectos** — CRUD, color, gerente responsable.
+6. **Gestión de personas** — CRUD, cargo, horas disponibles, estado.
+7. **Configuración** — datos de la empresa, horas por defecto, usuarios, invitaciones.
+8. **Comentarios** — hilo por celda, respuestas.
+9. **Reportes** — resumen ejecutivo, gráficos, exportar a Excel/PDF.
+10. **Historial** — auditoría completa de cambios (solo Administrador).
 
 ## Roles
 
@@ -51,6 +52,9 @@ npm run dev
 Guía completa de puesta en marcha (crear el proyecto Supabase, aplicar
 migraciones, bootstrap del primer administrador, desplegar en Cloudflare
 Pages): [`docs/INSTALACION.md`](docs/INSTALACION.md).
+
+Documentación completa del proyecto (módulos, reglas de negocio,
+convenciones para extenderlo): [`docs/DOCUMENTACION.md`](docs/DOCUMENTACION.md).
 
 Arquitectura, modelo de datos y matriz de permisos:
 [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
