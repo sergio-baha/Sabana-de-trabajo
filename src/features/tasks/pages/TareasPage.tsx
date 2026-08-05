@@ -23,9 +23,10 @@ import { STATUS_LABELS, WORK_ITEM_OPTIONS } from "@/features/tasks/lib/taskLabel
 import type { Task } from "@/features/tasks/api/tasksApi"
 import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
+import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { isGestorOrAdmin } from "@/lib/roles"
+import { canManageTasks, isAnalistaTecnologia } from "@/lib/roles"
 import type { TaskStatus } from "@/types/database.types"
 
 const ALL = "all"
@@ -33,9 +34,14 @@ const ALL = "all"
 export default function TareasPage() {
   const { activeMonthId } = useActiveMonthStore()
   const profile = useSessionStore((s) => s.profile)
-  // Igual que la grilla: el gating por rol es solo de UX, y RLS
-  // (can_write_month) es lo que además bloquea escribir en un mes cerrado.
-  const canWrite = isGestorOrAdmin(profile?.role)
+  // Igual que la grilla: el gating por rol es solo de UX, y RLS es lo que
+  // además bloquea escribir en un mes cerrado y, para el Analista de
+  // Tecnología, acota todo a sus propias tarjetas.
+  const restrictedToSelf = isAnalistaTecnologia(profile?.role)
+  const { myPerson } = useMyPerson(activeMonthId)
+  // Sin vínculo cuenta ↔ roster, RLS rechazaría cualquier tarea que creara
+  // (no podría asignársela a sí mismo), así que no se ofrece la acción.
+  const canWrite = canManageTasks(profile?.role) && (!restrictedToSelf || Boolean(myPerson))
 
   const { data: tasks, isLoading } = useTasks(activeMonthId)
   const { data: projects } = useProjects(activeMonthId)
@@ -108,6 +114,14 @@ export default function TareasPage() {
         )}
       </div>
 
+      {restrictedToSelf && !myPerson && (
+        <div className="rounded-lg border border-warning/40 bg-warning-muted/40 p-3 text-sm">
+          Tu cuenta todavía no está vinculada a una persona del mes activo, así que aquí no
+          aparecerá ninguna tarea. Pide a un administrador o gestor que la vincule desde
+          Personas → editar → Cuenta vinculada.
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -131,19 +145,23 @@ export default function TareasPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={personFilter} onValueChange={setPersonFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Persona" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todas las personas</SelectItem>
-            {(people ?? []).map((person) => (
-              <SelectItem key={person.id} value={person.id}>
-                {person.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Un Analista de Tecnología solo recibe sus propias tareas desde
+            la base: filtrar por persona no tendría nada que filtrar. */}
+        {!restrictedToSelf && (
+          <Select value={personFilter} onValueChange={setPersonFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Persona" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todas las personas</SelectItem>
+              {(people ?? []).map((person) => (
+                <SelectItem key={person.id} value={person.id}>
+                  {person.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Tipo" />
@@ -211,6 +229,7 @@ export default function TareasPage() {
         projects={projects ?? []}
         people={people ?? []}
         readOnly={!canWrite}
+        lockedPersonId={restrictedToSelf ? myPerson?.id : null}
       />
       <ConfirmDialog
         open={Boolean(taskToDelete)}

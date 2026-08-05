@@ -77,7 +77,23 @@ Notion o Airtable), no un parámetro de la URL. Vive en `activeMonthStore`
 del header, disponible en toda la app. Distribución, Tareas, Proyectos,
 Personas y Reportes operan sobre él.
 
-### 4.2 Personas y proyectos "scoped" por mes
+### 4.2 Cuentas y personas son cosas distintas
+
+`profiles` son las cuentas que inician sesión. `people` es el roster de un
+mes: filas que se duplican mes a mes. **`people.profile_id`** es el puente
+entre ambos, y es lo que hace posible la regla "cada quien ve lo suyo".
+
+Es opcional: hay personas del roster sin cuenta en la plataforma. Pero un
+Analista de Tecnología **sin** vínculo en el mes activo no verá ninguna
+tarea ni cronograma — la app lo dice explícitamente en vez de mostrar
+pantallas vacías. Se asigna en Personas → editar → **Cuenta vinculada**, y
+se conserva al duplicar el mes.
+
+Un índice único `(month_id, profile_id)` impide vincular la misma cuenta a
+dos personas del mismo mes: si ocurriera, "mis tareas" devolvería dos
+rosters y las horas se contarían dos veces.
+
+### 4.3 Personas y proyectos "scoped" por mes
 
 `people` y `projects` **no** son catálogos globales: cada fila lleva
 `month_id` y pertenece a un único mes. Crear un mes nuevo desde otro
@@ -87,7 +103,7 @@ el linaje en `cloned_from_id`.
 Consecuencia deliberada: editar las personas de julio nunca toca las de
 marzo, y el histórico de cada mes queda congelado tal como se trabajó.
 
-### 4.3 Estados de un mes
+### 4.4 Estados de un mes
 
 `abierto` → `cerrado` → `archivado`.
 
@@ -97,7 +113,7 @@ marzo, y el histórico de cada mes queda congelado tal como se trabajó.
   a archivado y el borrado son exclusivos de administrador
   (trigger `guard_month_status_transition`).
 
-### 4.4 Horas: tres niveles
+### 4.5 Horas: tres niveles
 
 | Nivel | Tabla | Entra en el cálculo del mes |
 |---|---|---|
@@ -144,37 +160,42 @@ La grilla personas × proyectos, corazón de la app.
 Tablero y backlog de work items del mes activo, con el vocabulario de Azure
 DevOps Boards. Detalle completo en la [sección 6](#6-módulo-tareas).
 
-### 5.4 Gestión de meses (`/meses`)
+### 5.4 Cronograma (`/cronograma`)
+
+El trabajo de una persona sobre el eje del tiempo, en dos pestañas.
+Detalle completo en la [sección 7](#7-módulo-cronograma).
+
+### 5.5 Gestión de meses (`/meses`)
 
 Crear, duplicar, cerrar, archivar y eliminar meses. Duplicar copia personas,
 proyectos, gerentes, tareas y la distribución de horas del mes de origen.
 Cada mes admite **snapshots**: checkpoints restaurables de su estado.
 
-### 5.5 Proyectos (`/proyectos`)
+### 5.6 Proyectos (`/proyectos`)
 
 CRUD del portafolio del mes: nombre, color (identifica la columna en la
 grilla), gerente responsable, estado y categoría. La categoría
 `institucional` marca bloques que no son un proyecto del portafolio
 (capacitación, feedback…) para poder excluirlos en Reportes.
 
-### 5.6 Personas (`/personas`)
+### 5.7 Personas (`/personas`)
 
 CRUD del equipo del mes: nombre, cargo, horas disponibles y estado.
 `available_hours` es el denominador del semáforo de la grilla.
 
-### 5.7 Reportes (`/reportes`)
+### 5.8 Reportes (`/reportes`)
 
 Resumen ejecutivo con gráficos (horas por proyecto, por gerente, ranking de
 carga) y exportación a Excel y PDF. Se apoya en tres vistas de Postgres:
 `v_person_month_totals`, `v_project_month_totals` y
 `v_manager_month_totals`.
 
-### 5.8 Historial (`/historial`, solo administrador)
+### 5.9 Historial (`/historial`, solo administrador)
 
 Auditoría completa: una fila por campo modificado, con quién, cuándo y los
 valores anterior y nuevo.
 
-### 5.9 Configuración (`/configuracion`, solo administrador)
+### 5.10 Configuración (`/configuracion`, solo administrador)
 
 Datos de la empresa, horas por defecto, gestión de usuarios e invitaciones.
 
@@ -197,7 +218,7 @@ Vive en `src/features/tasks/` y se apoya en la tabla `tasks`.
 | `parent_task_id` | Jerarquía épica → historia → tarea (opcional) |
 | `tags` | Etiquetas libres, `text[]` |
 | `estimated_hours` / `completed_hours` | Estimación y avance del work item |
-| `due_date` | Fecha límite |
+| `start_date` / `due_date` | Rango de fechas — es lo que dibuja la barra del Gantt |
 | `board_order` | Posición dentro de su columna del tablero |
 | `started_at` / `completed_at` | Marcas de flujo, las sella el servidor |
 
@@ -256,17 +277,101 @@ o etiqueta), proyecto, persona y tipo de work item.
 
 ---
 
-## 7. Roles y seguridad
+## 7. Módulo Cronograma
 
-### 7.1 Los tres roles
+El trabajo de **una persona** sobre el eje del tiempo. Vive en
+`src/features/schedule/` y no tiene tablas propias: combina lo que ya
+existe (`tasks` para la planeación, `activities` para el tiempo real).
+
+### 7.1 Las dos pestañas
+
+**Gantt de tareas** — una barra por work item entre `start_date` y
+`due_date`, coloreada con el color de su proyecto, sobre un eje de días.
+Marca el día de hoy y atenúa lo completado. Las tareas **sin fechas** no se
+esconden: se listan aparte, para que se note que les falta planificación en
+vez de desaparecer sin explicación.
+
+**Calendario de horas** — rejilla proyecto × día con las horas realmente
+registradas, más totales por día, por proyecto y del período. Al hacer clic
+en una celda se abre el registro de ese día: qué se trabajó, cuántas horas y
+en qué fase.
+
+Las filas del calendario son **proyectos y no tareas** porque el registro de
+tiempo del sistema son las `activities`, que cuelgan de una celda persona ×
+proyecto y no de un work item. El Gantt cubre la otra mitad de la pregunta:
+qué tarea ocupa qué días.
+
+### 7.2 De quién es el cronograma
+
+Siempre es "el de alguien", y por defecto el propio (resuelto con
+`people.profile_id`, ver [4.2](#42-cuentas-y-personas-son-cosas-distintas)):
+
+- **Administrador, Gestor, Analista** eligen a cualquier persona del roster
+  desde un selector.
+- **Analista de Tecnología** no ve el selector: RLS solo le devuelve lo
+  suyo, así que elegir a otra persona mostraría listas vacías.
+
+### 7.3 El eje temporal se deriva de los datos
+
+`months` guarda un **nombre de texto**, no un rango de fechas — el esquema
+nunca tuvo día de inicio y fin. Así que el eje del cronograma se calcula a
+partir de las fechas que sí existen (tareas y actividades) y, cuando no hay
+ninguna, cae al mes natural en curso. Un rango de menos de una semana se
+ensancha al mes que lo contiene, para que una tarea suelta no se vea como
+una columna aislada sin contexto.
+
+### 7.4 Registrar tiempo cambia la distribución del mes
+
+Es una consecuencia deliberada y conviene tenerla presente: el calendario
+escribe en `activities`, y el trigger
+`sync_allocation_hours_from_activities` mantiene
+`allocations.hours = suma de sus actividades`. Es decir, **las horas que un
+analista registra aquí quedan reflejadas en la distribución oficial del
+mes**.
+
+Es el punto del módulo — que cada quien gestione su tiempo — y está acotado:
+solo sobre sus propias celdas, solo con el mes abierto, y todo queda en
+auditoría como cualquier otro cambio.
+
+### 7.5 Límites conocidos
+
+- Las barras del Gantt no se arrastran: las fechas se cambian abriendo el
+  work item. Mover barras exigiría el mismo tipo de arrastre del tablero
+  sobre un eje continuo, y no estaba en el alcance.
+- Una tarea con solo una de las dos fechas se dibuja como una barra de un
+  día en esa fecha.
+- El calendario muestra todos los proyectos no archivados del mes como
+  filas, tenga o no horas la persona: es lo que permite registrar tiempo en
+  un proyecto donde aún no tenía nada.
+
+## 8. Roles y seguridad
+
+### 8.1 Los cuatro roles
 
 - **Administrador** — todo, incluida gestión de usuarios, auditoría, y
   escritura sobre meses cerrados o archivados.
 - **Gestor** — edita horas, tareas, proyectos, personas y meses **mientras
   el mes esté abierto**; no administra usuarios.
 - **Analista** — consulta, filtra, busca y comenta; no edita horas.
+- **Analista de Tecnología** — ver abajo.
 
-### 7.2 Dónde vive la seguridad
+Los tres primeros se distinguen por **cuánto** pueden hacer sobre todo el
+mes. El cuarto se distingue por **sobre qué**: solo su propio trabajo.
+
+#### Analista de Tecnología
+
+| | |
+|---|---|
+| **Módulos** | Tareas y Cronograma, nada más. El resto ni aparece en el menú ni es alcanzable por URL (`RoleRoute`). |
+| **Ve** | Solo work items asignados a él, sus celdas de horas, sus actividades y su propia fila del roster. Una tarea sin asignar tampoco le aparece. |
+| **Escribe** | Sus tareas (crear, editar, mover, borrar) y su registro de tiempo, **mientras el mes esté abierto**. |
+| **No puede** | Asignar una tarea a otra persona, ni "regalar" una suya: el `with check` de la política lo exige asignado a sí mismo. |
+| **Requisito** | Su cuenta debe estar vinculada a una persona del roster del mes (ver [4.2](#42-cuentas-y-personas-son-cosas-distintas)). Sin vínculo no ve nada, y la app se lo explica. |
+
+El aislamiento es de **base de datos, no de interfaz**: aunque consulte la
+API directamente con su token, Postgres no le devuelve trabajo ajeno.
+
+### 8.2 Dónde vive la seguridad
 
 **En las políticas RLS de `supabase/migrations/`, no en el frontend.**
 `RoleRoute` y los chequeos de `lib/roles.ts` solo ocultan acciones que el
@@ -280,20 +385,27 @@ Funciones `security definer` que usan las políticas:
 | `is_gestor_or_admin()` | rol `administrador` o `gestor` |
 | `is_month_locked(month_id)` | el mes no está `abierto` |
 | `can_write_month(month_id)` | admin siempre; gestor solo si el mes sigue abierto |
+| `is_analista_tecnologia()` | rol `analista_tecnologia` del usuario actual |
+| `is_own_person(person_id)` | esa fila del roster tiene `profile_id = auth.uid()`; false si es null |
+| `is_own_allocation(allocation_id)` | esa celda es de la persona vinculada al usuario actual |
+| `can_write_own_work(month_id, person_id)` | analista de tecnología + mes abierto + es suyo |
 
 Resumen de permisos por tabla (el detalle completo está en
 [`ARQUITECTURA.md`](ARQUITECTURA.md#roles-y-rls)):
 
 | Tabla | Lectura | Escritura |
 |---|---|---|
-| `people`, `projects`, `project_managers`, `tasks`, `allocations`, `activities` | autenticado | `can_write_month()` |
-| `allocations` (excepción) | — | insertar con `hours = 0` lo puede hacer cualquiera, para que un Analista ancle un comentario a una celda vacía |
-| `comments` | autenticado | insertar: cualquiera (autor = self); editar/borrar: autor o admin |
+| `projects`, `project_managers` | autenticado | `can_write_month()` |
+| `tasks` | autenticado, salvo analista de tecnología → solo las asignadas a él | `can_write_month()` o `can_write_own_work()` |
+| `allocations`, `activities` | autenticado, salvo analista de tecnología → solo las suyas | `can_write_month()`; `activities` además el analista sobre sus celdas con el mes abierto |
+| `people` | autenticado, salvo analista de tecnología → solo su propia fila | `can_write_month()` |
+| `allocations` (excepción) | — | insertar con `hours = 0` lo puede hacer cualquiera, para anclar un comentario o registrar tiempo en una celda vacía |
+| `comments` | autenticado, salvo analista de tecnología → solo las de sus celdas | insertar: cualquiera (autor = self); editar/borrar: autor o admin |
 | `profiles` | autenticado | propio perfil; `role`/`is_active` solo admin |
 | `settings` / `invitations` | `settings`: cualquiera / `invitations`: admin | solo admin |
 | `audit_logs`, `month_snapshots` | admin (snapshots: gestor+admin) | ninguna — solo escriben triggers/RPC |
 
-### 7.3 Alta de usuarios
+### 8.3 Alta de usuarios
 
 El trigger `handle_new_user` crea todo perfil nuevo como `analista`, sin
 mirar el rol que venga en el payload de registro: así nadie puede
@@ -302,7 +414,7 @@ por SQL (ver [`INSTALACION.md`](INSTALACION.md), paso 4) y a partir de ahí
 las cuentas se crean desde Configuración → Invitaciones, que usa el Edge
 Function `invite-user`.
 
-## 8. Auditoría
+## 9. Auditoría
 
 `audit_row_change()` es un trigger genérico (`security definer`) sobre
 `months`, `people`, `projects`, `project_managers`, `tasks`, `allocations` y
@@ -315,21 +427,23 @@ Function `invite-user`.
 `audit_logs.record_id` **no** es una foreign key a propósito: el historial
 debe sobrevivir al borrado de la fila original.
 
-## 9. RPCs
+## 10. RPCs
 
 - **`create_month_from_previous(source_month_id, new_name)`** — duplica un
   mes completo. Es una sola función `security definer` en vez de varios
   inserts desde el cliente porque hay que remapear IDs entre cuatro tablas
   de forma atómica (tablas temporales `_people_map` / `_project_map`); si el
   cliente lo hiciera en varios round-trips y se cortara la conexión,
-  quedaría un mes a medio copiar. Copia personas, proyectos, gerentes,
-  tareas y asignaciones. **No** copia comentarios ni auditoría.
+  quedaría un mes a medio copiar. Copia personas (incluido su
+  `profile_id`, para que nadie pierda acceso a su trabajo al abrirse el mes
+  nuevo), proyectos, gerentes, tareas —con sus fechas y campos de tablero— y
+  asignaciones. **No** copia comentarios ni auditoría.
 - **`create_month_snapshot` / `restore_month_snapshot`** — checkpoint `jsonb`
   de personas, proyectos, gerentes y asignaciones. Restaurar borra y
   reinserta con los mismos IDs para que los comentarios existentes se
   reconecten.
 
-## 10. Convenciones para extender el proyecto
+## 11. Convenciones para extender el proyecto
 
 1. **Un módulo nuevo = una carpeta en `src/features/`** con
    `api / hooks / components / pages`. La página no llama a Supabase
@@ -350,7 +464,7 @@ debe sobrevivir al borrado de la fila original.
    (`success` / `warning` / `danger`) son sets distintos y no deben
    mezclarse.
 
-## 11. Despliegue
+## 12. Despliegue
 
 Frontend en Cloudflare Pages (`npm run build` → `dist`), backend en Supabase
 hosteado. El SPA routing lo resuelve `wrangler.jsonc`

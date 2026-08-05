@@ -1,7 +1,9 @@
 import type { ComponentType } from "react"
-import { createBrowserRouter, Navigate } from "react-router"
+import { createBrowserRouter } from "react-router"
 import ProtectedRoute from "@/routes/ProtectedRoute"
 import RoleRoute from "@/routes/RoleRoute"
+import HomeRedirect from "@/routes/HomeRedirect"
+import { TEAM_WIDE_ROLES } from "@/lib/roles"
 import AppShell from "@/components/shared/AppShell"
 import LoginPage from "@/features/auth/pages/LoginPage"
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage"
@@ -67,36 +69,50 @@ export const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          { index: true, element: <Navigate to="/dashboard" replace /> },
-          {
-            path: "dashboard",
-            lazy: lazyPage(() => import("@/features/dashboard/pages/DashboardPage")),
-          },
-          {
-            path: "distribucion",
-            lazy: lazyPage(() => import("@/features/grid/pages/DistribucionPage")),
-          },
+          { index: true, element: <HomeRedirect /> },
+          // Módulos accesibles a todos los roles. El Analista de Tecnología
+          // solo entra aquí: RLS le devuelve únicamente su propio trabajo,
+          // así que las pantallas son las mismas para todos.
           {
             path: "tareas",
             lazy: lazyPage(() => import("@/features/tasks/pages/TareasPage")),
           },
           {
-            path: "meses",
-            lazy: lazyPage(() => import("@/features/months/pages/MesesPage")),
-          },
-          {
-            path: "proyectos",
-            lazy: lazyPage(() => import("@/features/projects/pages/ProyectosPage")),
-          },
-          {
-            path: "personas",
-            lazy: lazyPage(() => import("@/features/people/pages/PersonasPage")),
-          },
-          {
-            path: "reportes",
-            lazy: lazyPage(() => import("@/features/reports/pages/ReportesPage")),
+            path: "cronograma",
+            lazy: lazyPage(() => import("@/features/schedule/pages/CronogramaPage")),
           },
           { path: "perfil", element: <ProfilePage /> },
+          // Módulos de planeación de todo el equipo: quedan fuera del
+          // alcance del Analista de Tecnología, que no ve el trabajo ajeno.
+          {
+            element: <RoleRoute allow={TEAM_WIDE_ROLES} />,
+            children: [
+              {
+                path: "dashboard",
+                lazy: lazyPage(() => import("@/features/dashboard/pages/DashboardPage")),
+              },
+              {
+                path: "distribucion",
+                lazy: lazyPage(() => import("@/features/grid/pages/DistribucionPage")),
+              },
+              {
+                path: "meses",
+                lazy: lazyPage(() => import("@/features/months/pages/MesesPage")),
+              },
+              {
+                path: "proyectos",
+                lazy: lazyPage(() => import("@/features/projects/pages/ProyectosPage")),
+              },
+              {
+                path: "personas",
+                lazy: lazyPage(() => import("@/features/people/pages/PersonasPage")),
+              },
+              {
+                path: "reportes",
+                lazy: lazyPage(() => import("@/features/reports/pages/ReportesPage")),
+              },
+            ],
+          },
           {
             element: <RoleRoute allow={["administrador"]} />,
             children: [
@@ -114,5 +130,5 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  { path: "*", element: <Navigate to="/dashboard" replace /> },
+  { path: "*", element: <HomeRedirect /> },
 ])

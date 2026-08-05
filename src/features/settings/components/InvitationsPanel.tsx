@@ -35,14 +35,14 @@ import {
   useInviteUser,
   useRevokeInvitation,
 } from "@/features/settings/hooks/useInvitationsQueries"
-import { roleLabel } from "@/lib/roles"
+import { ASSIGNABLE_ROLES, roleLabel } from "@/lib/roles"
 import type { InvitationStatus } from "@/types/database.types"
 
 const schema = z
   .object({
     email: z.string().min(1, "Ingresa un correo").email("Correo inválido"),
     fullName: z.string().optional(),
-    role: z.enum(["administrador", "gestor", "analista"]),
+    role: z.enum(["administrador", "gestor", "analista", "analista_tecnologia"]),
     mode: z.enum(["invitacion", "password"]),
     password: z.string().optional(),
   })
@@ -149,7 +149,7 @@ export default function InvitationsPanel() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {(["administrador", "gestor", "analista"] as const).map((role) => (
+                      {ASSIGNABLE_ROLES.map((role) => (
                         <SelectItem key={role} value={role}>
                           {roleLabel[role]}
                         </SelectItem>

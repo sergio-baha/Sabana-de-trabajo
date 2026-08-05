@@ -49,6 +49,7 @@ const schema = z.object({
   priority: z.number().int().min(1).max(4),
   assignedPersonId: z.string(),
   parentTaskId: z.string(),
+  startDate: z.string(),
   dueDate: z.string(),
   // Se validan como texto y se convierten al enviar: un input vacío da ""
   // (no undefined), y "" no es un número — así el campo puede quedarse en
@@ -57,6 +58,12 @@ const schema = z.object({
   completedHours: z.string(),
   tags: z.string(),
 })
+  // Mismo orden que exige el check `tasks_dates_ordered` en la base: se
+  // valida aquí para dar el error en el campo y no como un fallo de red.
+  .refine((v) => !v.startDate || !v.dueDate || v.startDate <= v.dueDate, {
+    message: "La fecha de inicio no puede ser posterior a la fecha límite",
+    path: ["dueDate"],
+  })
 
 type FormValues = z.infer<typeof schema>
 
@@ -70,6 +77,11 @@ interface TaskFormDialogProps {
   projects: Project[]
   people: Person[]
   readOnly: boolean
+  // Cuando quien edita solo puede trabajar sobre lo suyo (Analista de
+  // Tecnología), la tarea queda fijada a su persona: RLS rechaza cualquier
+  // otro responsable, así que dejar el campo libre solo produciría un error
+  // al guardar.
+  lockedPersonId?: string | null
 }
 
 const toNumberOrNull = (value: string) => {
@@ -95,6 +107,7 @@ export default function TaskFormDialog({
   projects,
   people,
   readOnly,
+  lockedPersonId = null,
 }: TaskFormDialogProps) {
   const isEdit = Boolean(task)
   const createTask = useCreateTask(monthId)
@@ -111,6 +124,7 @@ export default function TaskFormDialog({
       priority: 3,
       assignedPersonId: "",
       parentTaskId: "",
+      startDate: "",
       dueDate: "",
       estimatedHours: "",
       completedHours: "",
@@ -127,14 +141,15 @@ export default function TaskFormDialog({
       workItemType: task?.work_item_type ?? "tarea",
       status: task?.status ?? defaultStatus,
       priority: task?.priority ?? 3,
-      assignedPersonId: task?.assigned_person_id ?? "",
+      assignedPersonId: task?.assigned_person_id ?? lockedPersonId ?? "",
       parentTaskId: task?.parent_task_id ?? "",
+      startDate: task?.start_date ?? "",
       dueDate: task?.due_date ?? "",
       estimatedHours: task?.estimated_hours?.toString() ?? "",
       completedHours: task?.completed_hours?.toString() ?? "",
       tags: task?.tags.join(", ") ?? "",
     })
-  }, [open, task, defaultStatus, form])
+  }, [open, task, defaultStatus, lockedPersonId, form])
 
   const submitting = createTask.isPending || updateTask.isPending
 
@@ -154,6 +169,7 @@ export default function TaskFormDialog({
       priority: values.priority,
       assigned_person_id: values.assignedPersonId || null,
       parent_task_id: values.parentTaskId || null,
+      start_date: values.startDate || null,
       due_date: values.dueDate || null,
       estimated_hours: toNumberOrNull(values.estimatedHours),
       completed_hours: toNumberOrNull(values.completedHours),
@@ -323,7 +339,7 @@ export default function TaskFormDialog({
                     <Select
                       value={field.value || "none"}
                       onValueChange={(v) => field.onChange(v === "none" ? "" : v)}
-                      disabled={readOnly}
+                      disabled={readOnly || Boolean(lockedPersonId)}
                     >
                       <FormControl>
                         <SelectTrigger className="w-full">
@@ -371,6 +387,22 @@ export default function TaskFormDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fecha de inicio</FormLabel>
+                    <FormControl>
+                      <Input type="date" disabled={readOnly} {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

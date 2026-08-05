@@ -15,6 +15,7 @@ nunca toca las de marzo.
 ```mermaid
 erDiagram
     profiles ||--o{ months : created_by
+    profiles ||--o{ people : profile_id
     months ||--o{ people : month_id
     months ||--o{ projects : month_id
     months ||--o{ project_managers : month_id
@@ -56,6 +57,7 @@ erDiagram
     people {
         uuid id PK
         uuid month_id FK
+        uuid profile_id FK
         text name
         numeric available_hours
         person_status status
@@ -140,14 +142,29 @@ Funciones `security definer` usadas por las políticas:
 | `is_gestor_or_admin()` | rol `administrador` o `gestor` |
 | `is_month_locked(month_id)` | el mes no está `abierto` |
 | `can_write_month(month_id)` | admin siempre; gestor solo si el mes sigue abierto |
+| `is_analista_tecnologia()` | rol `analista_tecnologia` del usuario actual |
+| `is_own_person(person_id)` | la fila del roster tiene `profile_id = auth.uid()` (false si es null) |
+| `is_own_allocation(allocation_id)` | la celda es de la persona vinculada al usuario actual |
+| `can_write_own_work(month_id, person_id)` | analista de tecnología + mes abierto + la fila es suya |
+
+El rol **Analista de Tecnología** introduce un segundo eje en RLS: los tres
+roles originales se distinguen por *cuánto* pueden escribir sobre todo el
+mes; este se distingue por *sobre qué filas* puede leer y escribir. El
+puente que lo hace expresable es `people.profile_id` — sin él no hay forma
+de relacionar una cuenta (`profiles`) con las filas del roster de un mes
+(`people`), que es a quien se asignan tareas y horas.
 
 | Tabla | Lectura | Escritura |
 |---|---|---|
 | `profiles` | cualquier autenticado | propio perfil (columnas no privilegiadas) o admin; `role`/`is_active` solo admin (trigger `guard_profile_privileged_columns`) |
 | `months` | cualquier autenticado | crear/cerrar: gestor+admin; archivar/eliminar: solo admin (trigger `guard_month_status_transition`) |
-| `people`, `projects`, `project_managers`, `tasks`, `allocations` | cualquier autenticado | `can_write_month()` — admin siempre, gestor solo si el mes está abierto |
-| `allocations` (excepción) | — | insertar con `hours = 0` permitido a cualquiera, para que un Analista pueda anclar un comentario a una celda vacía sin poder asignar horas reales |
-| `comments` | cualquier autenticado | insertar: cualquiera (autor = self); editar/borrar: autor o admin |
+| `projects`, `project_managers` | cualquier autenticado | `can_write_month()` — admin siempre, gestor solo si el mes está abierto |
+| `people` | cualquier autenticado; analista de tecnología solo su propia fila | `can_write_month()` |
+| `tasks` | cualquier autenticado; analista de tecnología solo las asignadas a él (una tarea sin asignar tampoco le aparece) | `can_write_month()` o `can_write_own_work()`; el `with check` le impide asignarle la tarea a otra persona |
+| `allocations` | cualquier autenticado; analista de tecnología solo las suyas | `can_write_month()` |
+| `activities` | cualquier autenticado; analista de tecnología solo las de sus celdas | `can_write_month()`, o analista de tecnología sobre sus celdas con el mes abierto |
+| `allocations` (excepción) | — | insertar con `hours = 0` permitido a cualquiera, para anclar un comentario a una celda vacía o registrar tiempo en ella, sin poder asignar horas reales |
+| `comments` | cualquier autenticado; analista de tecnología solo las de sus celdas | insertar: cualquiera (autor = self); editar/borrar: autor o admin |
 | `settings`, `invitations` | `settings`: cualquiera / `invitations`: solo admin | solo admin |
 | `audit_logs`, `month_snapshots` | admin (`month_snapshots`: gestor+admin) | ninguna política de insert — solo escriben los triggers/RPC `security definer`, que corren como dueño de la tabla y no pasan por RLS |
 
@@ -214,6 +231,17 @@ entre cinco columnas, no justifica el peso). `started_at`/`completed_at` los
 sella el trigger `tasks_track_status_timestamps` en el servidor, para que el
 dato sea el mismo se cambie el estado desde el tablero, el backlog o el
 detalle. Ver [`DOCUMENTACION.md`](DOCUMENTACION.md#6-módulo-tareas).
+
+### Cronograma
+
+No tiene tablas propias: el Gantt lee `tasks` (`start_date`/`due_date`) y el
+calendario de horas lee `activities`. El eje temporal se **deriva de los
+datos** porque `months` guarda un nombre de texto y nunca tuvo rango de
+fechas; sin datos con fecha, cae al mes natural en curso. Registrar tiempo
+desde el calendario escribe en `activities`, así que el trigger
+`sync_allocation_hours_from_activities` lo refleja en `allocations.hours`:
+el auto-reporte de un analista sí mueve la distribución oficial del mes.
+Ver [`DOCUMENTACION.md`](DOCUMENTACION.md#7-módulo-cronograma).
 
 ### Tema
 

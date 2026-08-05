@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     if (!email || typeof email !== "string") {
       return jsonResponse({ error: "Falta el correo del usuario" }, 400)
     }
-    if (!["administrador", "gestor", "analista"].includes(role)) {
+    if (!["administrador", "gestor", "analista", "analista_tecnologia"].includes(role)) {
       return jsonResponse({ error: "Rol inválido" }, 400)
     }
 

@@ -23,19 +23,23 @@ rol, auditoría completa, reportes exportables y duplicación de meses.
 1. **Dashboard** — mes activo, totales, sobreasignaciones, últimos cambios.
 2. **Distribución de trabajo** — grilla personas × proyectos, autoguardado, verde/amarillo/rojo.
 3. **Tareas** — tablero kanban y backlog de work items (tipo, prioridad, jerarquía, etiquetas), estilo Azure DevOps Boards.
-4. **Gestión de meses** — crear, duplicar (copia personas/proyectos/horas), cerrar, archivar, versiones restaurables.
-5. **Gestión de proyectos** — CRUD, color, gerente responsable.
-6. **Gestión de personas** — CRUD, cargo, horas disponibles, estado.
-7. **Configuración** — datos de la empresa, horas por defecto, usuarios, invitaciones.
-8. **Comentarios** — hilo por celda, respuestas.
-9. **Reportes** — resumen ejecutivo, gráficos, exportar a Excel/PDF.
-10. **Historial** — auditoría completa de cambios (solo Administrador).
+4. **Cronograma** — Gantt de tareas y calendario de horas por día, por persona.
+5. **Gestión de meses** — crear, duplicar (copia personas/proyectos/horas), cerrar, archivar, versiones restaurables.
+6. **Gestión de proyectos** — CRUD, color, gerente responsable.
+7. **Gestión de personas** — CRUD, cargo, horas disponibles, estado, cuenta vinculada.
+8. **Configuración** — datos de la empresa, horas por defecto, usuarios, invitaciones.
+9. **Comentarios** — hilo por celda, respuestas.
+10. **Reportes** — resumen ejecutivo, gráficos, exportar a Excel/PDF.
+11. **Historial** — auditoría completa de cambios (solo Administrador).
 
 ## Roles
 
 - **Administrador**: todo, incluida gestión de usuarios y auditoría.
 - **Gestor**: edita horas, proyectos, personas, meses; no administra usuarios.
 - **Analista**: consulta, filtra, busca y comenta; no edita horas.
+- **Analista de Tecnología**: solo Tareas y Cronograma, y solo lo asignado a
+  él — no ve el trabajo del resto del equipo. Requiere que su cuenta esté
+  vinculada a una persona del roster (Personas → Cuenta vinculada).
 
 La seguridad real vive en las políticas RLS de `supabase/migrations/`, no en
 la UI — el frontend solo oculta acciones que el backend rechazaría de todos

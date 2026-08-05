@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router"
 import {
   CalendarRange,
   FolderKanban,
+  GanttChartSquare,
   Grid3x3,
   History,
   KanbanSquare,
@@ -42,7 +43,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useSessionStore } from "@/stores/sessionStore"
 import MonthSwitcher from "@/components/shared/MonthSwitcher"
 import { applyTheme, getSavedTheme, type Theme } from "@/lib/theme"
-import { roleLabel } from "@/lib/roles"
+import { roleLabel, TEAM_WIDE_ROLES } from "@/lib/roles"
 import { signOut } from "@/features/auth/api/authApi"
 import type { AppRole } from "@/types/database.types"
 
@@ -50,17 +51,24 @@ interface NavItem {
   to: string
   label: string
   icon: typeof LayoutDashboard
-  allow?: AppRole[]
+  allow: AppRole[]
 }
 
+const ALL_ROLES: AppRole[] = [...TEAM_WIDE_ROLES, "analista_tecnologia"]
+
+// `allow` se declara siempre, incluso cuando son todos los roles: así,
+// agregar un rol nuevo obliga a decidir explícitamente qué módulos ve, en
+// vez de heredar acceso por omisión. Debe ir en línea con las mismas
+// restricciones del router (RoleRoute) — esto solo oculta el enlace.
 const NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/distribucion", label: "Distribución de trabajo", icon: Grid3x3 },
-  { to: "/tareas", label: "Tareas", icon: KanbanSquare },
-  { to: "/meses", label: "Meses", icon: CalendarRange },
-  { to: "/proyectos", label: "Proyectos", icon: FolderKanban },
-  { to: "/personas", label: "Personas", icon: Users },
-  { to: "/reportes", label: "Reportes", icon: FolderKanban },
+  { to: "/tareas", label: "Tareas", icon: KanbanSquare, allow: ALL_ROLES },
+  { to: "/cronograma", label: "Cronograma", icon: GanttChartSquare, allow: ALL_ROLES },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, allow: TEAM_WIDE_ROLES },
+  { to: "/distribucion", label: "Distribución de trabajo", icon: Grid3x3, allow: TEAM_WIDE_ROLES },
+  { to: "/meses", label: "Meses", icon: CalendarRange, allow: TEAM_WIDE_ROLES },
+  { to: "/proyectos", label: "Proyectos", icon: FolderKanban, allow: TEAM_WIDE_ROLES },
+  { to: "/personas", label: "Personas", icon: Users, allow: TEAM_WIDE_ROLES },
+  { to: "/reportes", label: "Reportes", icon: FolderKanban, allow: TEAM_WIDE_ROLES },
   { to: "/historial", label: "Historial", icon: History, allow: ["administrador"] },
   { to: "/configuracion", label: "Configuración", icon: Settings, allow: ["administrador"] },
 ]
@@ -88,7 +96,7 @@ export default function AppShell() {
   }
 
   const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.allow || (profile && item.allow.includes(profile.role))
+    (item) => profile && item.allow.includes(profile.role)
   )
 
   return (

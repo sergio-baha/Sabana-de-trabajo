@@ -126,6 +126,12 @@ npm run dev
 - Invita al resto del equipo desde Configuración → Invitaciones — cada
   invitación envía un correo de Supabase con un enlace para fijar
   contraseña.
+- Si invitas a alguien como **Analista de Tecnología**, vincula además su
+  cuenta con su fila del roster en Personas → editar → **Cuenta vinculada**.
+  Sin ese vínculo no verá ninguna tarea ni su cronograma: las políticas RLS
+  acotan lo que lee a las filas donde figura como responsable, y sin
+  `people.profile_id` no hay ninguna. El vínculo se conserva al duplicar el
+  mes.
 - Considera restringir el CORS del Edge Function `invite-user` (hoy usa
   `Access-Control-Allow-Origin: *`) al dominio final de Cloudflare Pages
   una vez lo conozcas — no es una vulnerabilidad (la función valida el rol

@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useProfiles } from "@/hooks/useProfiles"
 import { useSetProfileActive, useUpdateProfileRole } from "@/features/settings/hooks/useUsersQueries"
 import { useSessionStore } from "@/stores/sessionStore"
-import { roleLabel } from "@/lib/roles"
+import { ASSIGNABLE_ROLES, roleLabel } from "@/lib/roles"
 import type { AppRole } from "@/types/database.types"
 
 export default function UsersTable() {
@@ -68,7 +68,7 @@ export default function UsersTable() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {(["administrador", "gestor", "analista"] as const).map((role) => (
+                          {ASSIGNABLE_ROLES.map((role) => (
                             <SelectItem key={role} value={role}>
                               {roleLabel[role]}
                             </SelectItem>

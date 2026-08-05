@@ -29,6 +29,8 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { useCreatePerson, useUpdatePerson } from "@/features/people/hooks/usePeopleQueries"
+import { useProfiles } from "@/hooks/useProfiles"
+import { roleLabel } from "@/lib/roles"
 import type { Person } from "@/features/people/api/peopleApi"
 
 const schema = z.object({
@@ -37,6 +39,8 @@ const schema = z.object({
   available_hours: z.coerce.number().min(0, "No puede ser negativo"),
   status: z.enum(["activo", "inactivo"]),
   notes: z.string().optional(),
+  // "" = sin cuenta vinculada; se traduce a null al guardar.
+  profile_id: z.string(),
 })
 
 // z.coerce.number() difiere en tipo de entrada/salida — ver nota en
@@ -60,6 +64,7 @@ export default function PersonFormDialog({
   const isEdit = Boolean(person)
   const createPerson = useCreatePerson(monthId)
   const updatePerson = useUpdatePerson(monthId)
+  const { data: profiles } = useProfiles()
 
   const form = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(schema),
@@ -69,6 +74,7 @@ export default function PersonFormDialog({
       available_hours: 160,
       status: "activo",
       notes: "",
+      profile_id: "",
     },
   })
 
@@ -80,6 +86,7 @@ export default function PersonFormDialog({
         available_hours: person?.available_hours ?? 160,
         status: person?.status ?? "activo",
         notes: person?.notes ?? "",
+        profile_id: person?.profile_id ?? "",
       })
     }
   }, [open, person, form])
@@ -87,10 +94,11 @@ export default function PersonFormDialog({
   const submitting = createPerson.isPending || updatePerson.isPending
 
   const onSubmit = async (values: FormValues) => {
+    const patch = { ...values, profile_id: values.profile_id || null }
     if (isEdit && person) {
-      await updatePerson.mutateAsync({ id: person.id, patch: values })
+      await updatePerson.mutateAsync({ id: person.id, patch })
     } else {
-      await createPerson.mutateAsync({ ...values, month_id: monthId })
+      await createPerson.mutateAsync({ ...patch, month_id: monthId })
     }
     onOpenChange(false)
   }
@@ -174,6 +182,39 @@ export default function PersonFormDialog({
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="profile_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cuenta vinculada</FormLabel>
+                  <Select
+                    value={field.value || "none"}
+                    onValueChange={(v) => field.onChange(v === "none" ? "" : v)}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Sin cuenta" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Sin cuenta</SelectItem>
+                      {(profiles ?? []).map((profile) => (
+                        <SelectItem key={profile.id} value={profile.id}>
+                          {profile.full_name} · {roleLabel[profile.role]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Conecta esta persona del roster con quien inicia sesión. Es lo que permite
+                    que un Analista de Tecnología vea sus tareas y su cronograma. Se conserva al
+                    duplicar el mes.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="notes"

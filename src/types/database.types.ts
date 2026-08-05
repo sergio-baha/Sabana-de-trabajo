@@ -426,6 +426,7 @@ export type Database = {
           month_id: string
           name: string
           notes: string | null
+          profile_id: string | null
           status: Database["public"]["Enums"]["person_status"]
           updated_at: string
         }
@@ -439,6 +440,7 @@ export type Database = {
           month_id: string
           name: string
           notes?: string | null
+          profile_id?: string | null
           status?: Database["public"]["Enums"]["person_status"]
           updated_at?: string
         }
@@ -452,6 +454,7 @@ export type Database = {
           month_id?: string
           name?: string
           notes?: string | null
+          profile_id?: string | null
           status?: Database["public"]["Enums"]["person_status"]
           updated_at?: string
         }
@@ -482,6 +485,13 @@ export type Database = {
             columns: ["month_id"]
             isOneToOne: false
             referencedRelation: "months"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -710,6 +720,7 @@ export type Database = {
           parent_task_id: string | null
           priority: number
           project_id: string
+          start_date: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["task_status"]
           tags: string[]
@@ -732,6 +743,7 @@ export type Database = {
           parent_task_id?: string | null
           priority?: number
           project_id: string
+          start_date?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           tags?: string[]
@@ -754,6 +766,7 @@ export type Database = {
           parent_task_id?: string | null
           priority?: number
           project_id?: string
+          start_date?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           tags?: string[]
@@ -919,7 +932,11 @@ export type Database = {
         | "desarrollar"
         | "producto"
         | "entregar"
-      app_role: "administrador" | "gestor" | "analista"
+      app_role:
+        | "administrador"
+        | "gestor"
+        | "analista"
+        | "analista_tecnologia"
       audit_action: "insert" | "update" | "delete"
       invitation_status: "pendiente" | "aceptada" | "revocada"
       month_status: "abierto" | "cerrado" | "archivado"
@@ -1070,7 +1087,12 @@ export const Constants = {
         "producto",
         "entregar",
       ],
-      app_role: ["administrador", "gestor", "analista"],
+      app_role: [
+        "administrador",
+        "gestor",
+        "analista",
+        "analista_tecnologia",
+      ],
       audit_action: ["insert", "update", "delete"],
       invitation_status: ["pendiente", "aceptada", "revocada"],
       month_status: ["abierto", "cerrado", "archivado"],
