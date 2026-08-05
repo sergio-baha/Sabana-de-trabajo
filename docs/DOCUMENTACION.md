@@ -257,6 +257,14 @@ o etiqueta), proyecto, persona y tipo de work item.
   detalle.
 - **Realtime** sobre `tasks`: el tablero es colaborativo, varias personas
   mueven tarjetas del mismo mes a la vez.
+- **Crear un proyecto sin salir del diálogo.** El desplegable de proyecto
+  termina siempre con "+ Crear proyecto nuevo": si el trabajo pertenece a un
+  proyecto que aún no existe en el mes, no tiene sentido bloquear la tarea
+  hasta que un gestor lo cree. Va **al final**, después de los proyectos
+  reales, para que la acción no compita con la selección normal. Se crea solo
+  con nombre y el azul de marca; color, gerente y estado se ajustan luego
+  desde Proyectos. Los analistas pueden crear proyectos pero no editarlos ni
+  eliminarlos.
 - **Borrar un padre no borra los hijos** (`on delete set null`): quedan sin
   padre en el backlog en vez de desaparecer sin aviso.
 
@@ -352,11 +360,24 @@ auditoría como cualquier otro cambio.
   escritura sobre meses cerrados o archivados.
 - **Gestor** — edita horas, tareas, proyectos, personas y meses **mientras
   el mes esté abierto**; no administra usuarios.
-- **Analista** — consulta, filtra, busca y comenta; no edita horas.
+- **Analista** — consulta, filtra, busca y comenta; no edita horas. **Sí**
+  gestiona sus propias tareas (ver abajo).
 - **Analista de Tecnología** — ver abajo.
 
 Los tres primeros se distinguen por **cuánto** pueden hacer sobre todo el
 mes. El cuarto se distingue por **sobre qué**: solo su propio trabajo.
+
+#### Dos ejes independientes
+
+Los dos roles de analista son **equivalentes en Tareas** y se diferencian en
+todo lo demás. Conviene no confundir los dos ejes que los separan:
+
+| Eje | Función | A quién alcanza |
+|---|---|---|
+| Qué **ve** | `is_analista_tecnologia()` | Solo el Analista de Tecnología tiene la vista recortada a lo suyo. El Analista ve el trabajo de todo el equipo. |
+| Qué **escribe** | `is_analista_role()` → `can_write_own_work()` | Ambos: crean y gestionan tareas, pero solo las asignadas a sí mismos. |
+
+En el frontend son `isAnalistaTecnologia()` y `writesOwnWorkOnly()`.
 
 #### Analista de Tecnología
 
@@ -364,8 +385,8 @@ mes. El cuarto se distingue por **sobre qué**: solo su propio trabajo.
 |---|---|
 | **Módulos** | Tareas y Cronograma, nada más. El resto ni aparece en el menú ni es alcanzable por URL (`RoleRoute`). |
 | **Ve** | Solo work items asignados a él, sus celdas de horas, sus actividades y su propia fila del roster. Una tarea sin asignar tampoco le aparece. |
-| **Escribe** | Sus tareas (crear, editar, mover, borrar) y su registro de tiempo, **mientras el mes esté abierto**. |
-| **No puede** | Asignar una tarea a otra persona, ni "regalar" una suya: el `with check` de la política lo exige asignado a sí mismo. |
+| **Escribe** | Sus tareas (crear, editar, mover, borrar), proyectos nuevos y su registro de tiempo, **mientras el mes esté abierto**. |
+| **No puede** | Asignar una tarea a otra persona, ni "regalar" una suya: el `with check` de la política lo exige asignado a sí mismo. Tampoco editar ni eliminar proyectos, solo crearlos. |
 | **Requisito** | Su cuenta debe estar vinculada a una persona del roster del mes (ver [4.2](#42-cuentas-y-personas-son-cosas-distintas)). Sin vínculo no ve nada, y la app se lo explica. |
 
 El aislamiento es de **base de datos, no de interfaz**: aunque consulte la
@@ -385,17 +406,19 @@ Funciones `security definer` que usan las políticas:
 | `is_gestor_or_admin()` | rol `administrador` o `gestor` |
 | `is_month_locked(month_id)` | el mes no está `abierto` |
 | `can_write_month(month_id)` | admin siempre; gestor solo si el mes sigue abierto |
-| `is_analista_tecnologia()` | rol `analista_tecnologia` del usuario actual |
+| `is_analista_tecnologia()` | rol `analista_tecnologia` (eje de **lectura**) |
+| `is_analista_role()` | rol `analista` o `analista_tecnologia` (eje de **escritura**) |
 | `is_own_person(person_id)` | esa fila del roster tiene `profile_id = auth.uid()`; false si es null |
 | `is_own_allocation(allocation_id)` | esa celda es de la persona vinculada al usuario actual |
-| `can_write_own_work(month_id, person_id)` | analista de tecnología + mes abierto + es suyo |
+| `can_write_own_work(month_id, person_id)` | analista (cualquiera de los dos) + mes abierto + es suyo |
 
 Resumen de permisos por tabla (el detalle completo está en
 [`ARQUITECTURA.md`](ARQUITECTURA.md#roles-y-rls)):
 
 | Tabla | Lectura | Escritura |
 |---|---|---|
-| `projects`, `project_managers` | autenticado | `can_write_month()` |
+| `project_managers` | autenticado | `can_write_month()` |
+| `projects` | autenticado | crear: `can_write_month()` o cualquier analista con el mes abierto; editar/eliminar: solo `can_write_month()` |
 | `tasks` | autenticado, salvo analista de tecnología → solo las asignadas a él | `can_write_month()` o `can_write_own_work()` |
 | `allocations`, `activities` | autenticado, salvo analista de tecnología → solo las suyas | `can_write_month()`; `activities` además el analista sobre sus celdas con el mes abierto |
 | `people` | autenticado, salvo analista de tecnología → solo su propia fila | `can_write_month()` |

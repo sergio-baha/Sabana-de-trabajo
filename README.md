@@ -36,7 +36,8 @@ rol, auditoría completa, reportes exportables y duplicación de meses.
 
 - **Administrador**: todo, incluida gestión de usuarios y auditoría.
 - **Gestor**: edita horas, proyectos, personas, meses; no administra usuarios.
-- **Analista**: consulta, filtra, busca y comenta; no edita horas.
+- **Analista**: consulta, filtra, busca y comenta; no edita horas. Gestiona
+  sus propias tareas y puede crear proyectos.
 - **Analista de Tecnología**: solo Tareas y Cronograma, y solo lo asignado a
   él — no ve el trabajo del resto del equipo. Requiere que su cuenta esté
   vinculada a una persona del roster (Personas → Cuenta vinculada).

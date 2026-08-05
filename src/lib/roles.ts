@@ -19,10 +19,24 @@ export const canManageUsers = (role: AppRole | undefined | null) => isAdmin(role
 export const isAnalistaTecnologia = (role: AppRole | undefined | null) =>
   role === "analista_tecnologia"
 
-// Quién puede crear y mover tarjetas en el tablero. El analista de
-// tecnología solo mueve las suyas; eso lo garantiza RLS, no este chequeo.
+// Los dos roles de analista gestionan tareas, pero solo las propias: no
+// pueden asignarle trabajo a nadie más. Se separa de isAnalistaTecnologia
+// a propósito — esa función decide qué *ve* cada quien (solo el Analista de
+// Tecnología tiene la vista recortada), esta decide qué *escribe*. Espejo de
+// `is_analista_role()` en la base.
+export const writesOwnWorkOnly = (role: AppRole | undefined | null) =>
+  role === "analista" || role === "analista_tecnologia"
+
+// Quién puede crear y mover tarjetas en el tablero. Que un analista solo
+// toque las suyas lo garantiza RLS, no este chequeo.
 export const canManageTasks = (role: AppRole | undefined | null) =>
-  isGestorOrAdmin(role) || isAnalistaTecnologia(role)
+  isGestorOrAdmin(role) || writesOwnWorkOnly(role)
+
+// Crear un proyecto desde el diálogo de tarea, cuando el proyecto al que
+// pertenece el trabajo todavía no existe en el mes. Solo crear: editarlos y
+// eliminarlos sigue siendo de Gestor/Administrador.
+export const canCreateProjects = (role: AppRole | undefined | null) =>
+  isGestorOrAdmin(role) || writesOwnWorkOnly(role)
 
 // Quién puede registrar tiempo en el calendario del cronograma. Un Analista
 // (a secas) sigue siendo de solo lectura.

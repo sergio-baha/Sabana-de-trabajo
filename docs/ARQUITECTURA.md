@@ -142,10 +142,11 @@ Funciones `security definer` usadas por las políticas:
 | `is_gestor_or_admin()` | rol `administrador` o `gestor` |
 | `is_month_locked(month_id)` | el mes no está `abierto` |
 | `can_write_month(month_id)` | admin siempre; gestor solo si el mes sigue abierto |
-| `is_analista_tecnologia()` | rol `analista_tecnologia` del usuario actual |
+| `is_analista_tecnologia()` | rol `analista_tecnologia` — eje de **lectura** (quién tiene la vista recortada) |
+| `is_analista_role()` | rol `analista` o `analista_tecnologia` — eje de **escritura** (quién trabaja solo sobre lo suyo) |
 | `is_own_person(person_id)` | la fila del roster tiene `profile_id = auth.uid()` (false si es null) |
 | `is_own_allocation(allocation_id)` | la celda es de la persona vinculada al usuario actual |
-| `can_write_own_work(month_id, person_id)` | analista de tecnología + mes abierto + la fila es suya |
+| `can_write_own_work(month_id, person_id)` | cualquiera de los dos analistas + mes abierto + la fila es suya |
 
 El rol **Analista de Tecnología** introduce un segundo eje en RLS: los tres
 roles originales se distinguen por *cuánto* pueden escribir sobre todo el
@@ -158,7 +159,8 @@ de relacionar una cuenta (`profiles`) con las filas del roster de un mes
 |---|---|---|
 | `profiles` | cualquier autenticado | propio perfil (columnas no privilegiadas) o admin; `role`/`is_active` solo admin (trigger `guard_profile_privileged_columns`) |
 | `months` | cualquier autenticado | crear/cerrar: gestor+admin; archivar/eliminar: solo admin (trigger `guard_month_status_transition`) |
-| `projects`, `project_managers` | cualquier autenticado | `can_write_month()` — admin siempre, gestor solo si el mes está abierto |
+| `project_managers` | cualquier autenticado | `can_write_month()` — admin siempre, gestor solo si el mes está abierto |
+| `projects` | cualquier autenticado | crear: `can_write_month()` o cualquier analista con el mes abierto (válvula de escape del diálogo de tarea); editar/eliminar: solo `can_write_month()` |
 | `people` | cualquier autenticado; analista de tecnología solo su propia fila | `can_write_month()` |
 | `tasks` | cualquier autenticado; analista de tecnología solo las asignadas a él (una tarea sin asignar tampoco le aparece) | `can_write_month()` o `can_write_own_work()`; el `with check` le impide asignarle la tarea a otra persona |
 | `allocations` | cualquier autenticado; analista de tecnología solo las suyas | `can_write_month()` |

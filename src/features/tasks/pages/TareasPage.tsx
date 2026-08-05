@@ -26,7 +26,7 @@ import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canManageTasks, isAnalistaTecnologia } from "@/lib/roles"
+import { canManageTasks, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
 import type { TaskStatus } from "@/types/database.types"
 
 const ALL = "all"
@@ -37,11 +37,15 @@ export default function TareasPage() {
   // Igual que la grilla: el gating por rol es solo de UX, y RLS es lo que
   // además bloquea escribir en un mes cerrado y, para el Analista de
   // Tecnología, acota todo a sus propias tarjetas.
+  // Dos ejes distintos: `restrictedToSelf` acota lo que se *ve* (solo el
+  // Analista de Tecnología), `writesOwn` acota lo que se *escribe* (ambos
+  // roles de analista, que solo gestionan sus propias tarjetas).
   const restrictedToSelf = isAnalistaTecnologia(profile?.role)
+  const writesOwn = writesOwnWorkOnly(profile?.role)
   const { myPerson } = useMyPerson(activeMonthId)
   // Sin vínculo cuenta ↔ roster, RLS rechazaría cualquier tarea que creara
   // (no podría asignársela a sí mismo), así que no se ofrece la acción.
-  const canWrite = canManageTasks(profile?.role) && (!restrictedToSelf || Boolean(myPerson))
+  const canWrite = canManageTasks(profile?.role) && (!writesOwn || Boolean(myPerson))
 
   const { data: tasks, isLoading } = useTasks(activeMonthId)
   const { data: projects } = useProjects(activeMonthId)
@@ -114,11 +118,12 @@ export default function TareasPage() {
         )}
       </div>
 
-      {restrictedToSelf && !myPerson && (
+      {writesOwn && !myPerson && (
         <div className="rounded-lg border border-warning/40 bg-warning-muted/40 p-3 text-sm">
-          Tu cuenta todavía no está vinculada a una persona del mes activo, así que aquí no
-          aparecerá ninguna tarea. Pide a un administrador o gestor que la vincule desde
-          Personas → editar → Cuenta vinculada.
+          Tu cuenta todavía no está vinculada a una persona del mes activo, así que no puedes
+          crear tareas
+          {restrictedToSelf ? " y aquí no aparecerá ninguna" : ""}. Pide a un administrador o
+          gestor que la vincule desde Personas → editar → Cuenta vinculada.
         </div>
       )}
 
@@ -229,7 +234,7 @@ export default function TareasPage() {
         projects={projects ?? []}
         people={people ?? []}
         readOnly={!canWrite}
-        lockedPersonId={restrictedToSelf ? myPerson?.id : null}
+        lockedPersonId={writesOwn ? myPerson?.id : null}
       />
       <ConfirmDialog
         open={Boolean(taskToDelete)}

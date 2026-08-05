@@ -26,7 +26,12 @@ import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canLogOwnTime, canManageTasks, isAnalistaTecnologia } from "@/lib/roles"
+import {
+  canLogOwnTime,
+  canManageTasks,
+  isAnalistaTecnologia,
+  writesOwnWorkOnly,
+} from "@/lib/roles"
 
 export default function CronogramaPage() {
   const { activeMonthId } = useActiveMonthStore()
@@ -167,7 +172,7 @@ export default function CronogramaPage() {
         projects={projects ?? []}
         people={people ?? []}
         readOnly={!canManageTasks(profile?.role)}
-        lockedPersonId={restrictedToSelf ? myPerson?.id : null}
+        lockedPersonId={writesOwnWorkOnly(profile?.role) ? myPerson?.id : null}
       />
     </div>
   )

@@ -1,4 +1,5 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { Plus, X } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -36,9 +37,21 @@ import {
 } from "@/features/tasks/lib/taskLabels"
 import { nextBoardOrder, type Task } from "@/features/tasks/api/tasksApi"
 import { useCreateTask, useUpdateTask } from "@/features/tasks/hooks/useTasksQueries"
+import { useCreateProject } from "@/features/projects/hooks/useProjectsQueries"
+import { useSessionStore } from "@/stores/sessionStore"
+import { canCreateProjects } from "@/lib/roles"
 import type { Project } from "@/features/projects/api/projectsApi"
 import type { Person } from "@/features/people/api/peopleApi"
 import type { TaskStatus } from "@/types/database.types"
+
+// Valor centinela del <Select>: no es un proyecto, es la acción "crear uno".
+// Va siempre al final de la lista, después de los proyectos reales.
+const NEW_PROJECT = "__new__"
+
+// Color por defecto de un proyecto creado al vuelo desde aquí. El diálogo de
+// tarea no es el lugar para elegir paleta: se crea con el azul de marca y se
+// ajusta luego desde Proyectos (donde además está el gerente y el estado).
+const QUICK_PROJECT_COLOR = "#3A5BA7"
 
 const schema = z.object({
   title: z.string().min(1, "El título es obligatorio"),
@@ -112,6 +125,17 @@ export default function TaskFormDialog({
   const isEdit = Boolean(task)
   const createTask = useCreateTask(monthId)
   const updateTask = useUpdateTask(monthId)
+  const createProject = useCreateProject(monthId)
+  const profile = useSessionStore((s) => s.profile)
+  const canAddProject = !readOnly && canCreateProjects(profile?.role)
+
+  // Proyecto recién creado desde este diálogo. Se guarda aparte porque la
+  // lista `projects` la refresca el padre de forma asíncrona: sin esto, el
+  // <Select> se quedaría un instante en blanco con un id que todavía no
+  // está entre sus opciones.
+  const [justCreated, setJustCreated] = useState<Project | null>(null)
+  const [newProjectName, setNewProjectName] = useState("")
+  const [addingProject, setAddingProject] = useState(false)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -149,7 +173,33 @@ export default function TaskFormDialog({
       completedHours: task?.completed_hours?.toString() ?? "",
       tags: task?.tags.join(", ") ?? "",
     })
+    setJustCreated(null)
+    setNewProjectName("")
+    setAddingProject(false)
   }, [open, task, defaultStatus, lockedPersonId, form])
+
+  // Proyectos reales + el creado en esta sesión del diálogo, sin duplicarlo
+  // cuando el refetch del padre ya lo trajo.
+  const projectOptions =
+    justCreated && !projects.some((p) => p.id === justCreated.id)
+      ? [...projects, justCreated]
+      : projects
+
+  const submitNewProject = async () => {
+    const name = newProjectName.trim()
+    if (!name) return
+    const created = await createProject.mutateAsync({
+      month_id: monthId,
+      name,
+      color: QUICK_PROJECT_COLOR,
+      status: "activo",
+      category: "proyecto",
+    })
+    setJustCreated(created)
+    form.setValue("projectId", created.id, { shouldValidate: true })
+    setNewProjectName("")
+    setAddingProject(false)
+  }
 
   const submitting = createTask.isPending || updateTask.isPending
 
@@ -310,7 +360,15 @@ export default function TaskFormDialog({
                     <FormLabel>Proyecto</FormLabel>
                     <Select
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(v) => {
+                        // El centinela no es un proyecto: abre el campo de
+                        // alta y deja la selección como estaba.
+                        if (v === NEW_PROJECT) {
+                          setAddingProject(true)
+                          return
+                        }
+                        field.onChange(v)
+                      }}
                       disabled={readOnly}
                     >
                       <FormControl>
@@ -319,13 +377,59 @@ export default function TaskFormDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {projects.map((project) => (
+                        {projectOptions.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
                           </SelectItem>
                         ))}
+                        {canAddProject && (
+                          <SelectItem value={NEW_PROJECT} className="text-primary">
+                            + Crear proyecto nuevo
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
+                    {addingProject && (
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          autoFocus
+                          placeholder="Nombre del proyecto"
+                          value={newProjectName}
+                          onChange={(e) => setNewProjectName(e.target.value)}
+                          onKeyDown={(e) => {
+                            // Enter aquí crea el proyecto; sin esto enviaría
+                            // el formulario de la tarea a medio llenar.
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              void submitNewProject()
+                            }
+                            if (e.key === "Escape") {
+                              e.preventDefault()
+                              setAddingProject(false)
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="secondary"
+                          disabled={!newProjectName.trim() || createProject.isPending}
+                          onClick={() => void submitNewProject()}
+                          aria-label="Crear proyecto"
+                        >
+                          <Plus />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setAddingProject(false)}
+                          aria-label="Cancelar"
+                        >
+                          <X />
+                        </Button>
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
