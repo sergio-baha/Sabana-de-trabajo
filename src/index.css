@@ -462,6 +462,324 @@
     animation: sabana-shimmer 1.6s var(--ease) infinite;
 }
 
+/* =====================================================================
+   CAPA DE ESTILO — movimiento y superficies
+   Segundo set de animaciones, pensado para las piezas "de vitrina" (landing,
+   hero, menús) donde sí se busca llamar la atención. Las de arriba son las
+   de trabajo diario (entradas de página y tarjetas) y se dejan cortas a
+   propósito para que la app siga sintiéndose rápida.
+   ===================================================================== */
+
+/* Deriva lenta de los halos de color del fondo. El recorrido es amplio pero
+   la duración larga: se percibe como "el fondo está vivo", no como algo que
+   se mueve. */
+@keyframes sabana-aurora {
+    0%,
+    100% { transform: translate3d(0, 0, 0) scale(1); }
+    33%  { transform: translate3d(7%, -9%, 0) scale(1.14); }
+    66%  { transform: translate3d(-6%, 7%, 0) scale(0.92); }
+}
+/* Destello diagonal que cruza una superficie (botones primarios, chips) */
+@keyframes sabana-shine {
+    from { transform: translateX(-140%) skewX(-18deg); }
+    to   { transform: translateX(260%) skewX(-18deg); }
+}
+@keyframes sabana-glow {
+    0%, 100% { opacity: 0.4; }
+    50%      { opacity: 0.85; }
+}
+/* Entrada editorial: además del desplazamiento, el texto entra desenfocado.
+   Es el detalle que más "moderniza" un titular sin sumar movimiento. */
+@keyframes sabana-reveal {
+    from { opacity: 0; transform: translateY(24px); filter: blur(10px); }
+    to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes sabana-marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+/* Fondo ambiental: mancha de color muy difuminada que deriva sola. Se usa en
+   la landing y en los heroes; siempre con aria-hidden y pointer-events-none
+   desde el marcado. */
+.aurora-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(72px);
+    animation: sabana-aurora 22s var(--ease) infinite;
+    will-change: transform;
+}
+.aurora-blob-slow {
+    animation-duration: 34s;
+    animation-direction: reverse;
+}
+
+/* Malla de puntos: da textura al fondo sin competir con el contenido.
+   La máscara radial la desvanece hacia los bordes para que no se vea como
+   un patrón pegado encima. */
+.bg-dots {
+    background-image: radial-gradient(
+        color-mix(in oklch, var(--foreground) 16%, transparent) 1px,
+        transparent 1px
+    );
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 20%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 20%, transparent 75%);
+}
+/* Rejilla fina, para superficies oscuras/con gradiente (hero de la landing) */
+.bg-grid {
+    background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 70% 70% at 50% 30%, #000 10%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 30%, #000 10%, transparent 70%);
+}
+
+/* Entrada escalonada con desenfoque — misma convención que .stagger-item:
+   el índice lo pone el componente con style={{ '--i': n }}. */
+.reveal {
+    animation: sabana-reveal 0.75s var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+}
+/* Respiración del resplandor detrás del logo */
+.animate-glow {
+    animation: sabana-glow 4.5s var(--ease) infinite;
+}
+
+/* Cinta que se desplaza en bucle. El contenido debe estar duplicado en el
+   marcado (dos veces la misma lista) para que el salto sea invisible. */
+.marquee-track {
+    display: flex;
+    width: max-content;
+    animation: sabana-marquee 32s linear infinite;
+}
+.marquee-mask {
+    mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+.marquee-track:hover {
+    animation-play-state: paused;
+}
+
+/* Destello al pasar el mouse. Requiere position:relative y overflow:hidden
+   en el elemento (los botones ya los traen). */
+.shine-hover {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+.shine-hover::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 45%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.38),
+        transparent
+    );
+    transform: translateX(-140%) skewX(-18deg);
+    pointer-events: none;
+}
+.shine-hover:hover::after {
+    animation: sabana-shine 0.85s var(--ease-out);
+}
+
+/* Borde con gradiente de marca: se pinta con dos capas de background y
+   `padding-box`/`border-box`, así el interior conserva el color de la
+   superficie y solo el contorno lleva el gradiente. */
+.border-gradient {
+    border: 1px solid transparent;
+    background:
+        linear-gradient(var(--card), var(--card)) padding-box,
+        var(--gradient-brand) border-box;
+}
+
+/* ── Menús y superficies flotantes ──────────────────────────────────────
+   Se estilan por `data-slot` en vez de tocar los componentes de shadcn: el
+   día que se regenere alguno desde el CLI, el estilo sigue aplicando. */
+[data-slot="dropdown-menu-content"],
+[data-slot="popover-content"],
+[data-slot="select-content"],
+[data-slot="tooltip-content"] {
+    border-radius: var(--radius-xl);
+    box-shadow: var(--sh-lg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+}
+[data-slot="dropdown-menu-content"],
+[data-slot="popover-content"],
+[data-slot="select-content"] {
+    background: var(--glass-bg);
+}
+/* El ítem se desplaza levemente hacia la derecha al enfocarse: hace que el
+   menú se sienta reactivo sin cambiar su lectura. */
+[data-slot="dropdown-menu-item"],
+[data-slot="select-item"] {
+    border-radius: var(--radius-md);
+    transition:
+        background-color 0.18s var(--ease),
+        color 0.18s var(--ease),
+        transform 0.18s var(--ease-out);
+}
+[data-slot="dropdown-menu-item"]:hover,
+[data-slot="dropdown-menu-item"][data-highlighted],
+[data-slot="select-item"][data-highlighted] {
+    transform: translateX(2px);
+}
+
+/* Diálogos: entran con la curva de resorte, igual que las tarjetas */
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"] {
+    box-shadow: var(--sh-xl);
+}
+
+/* ── Navegación lateral ────────────────────────────────────────────────
+   El elemento activo se marca con una barra de gradiente pegada al borde
+   izquierdo, además del fondo. Con solo el fondo (naranja muy claro) el
+   activo se perdía cuando había hover en otro ítem. */
+[data-sidebar="menu-button"] {
+    position: relative;
+    border-radius: var(--radius-md);
+    transition:
+        background-color 0.2s var(--ease),
+        color 0.2s var(--ease),
+        transform 0.2s var(--ease-out);
+}
+[data-sidebar="menu-button"]::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    height: 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--gradient-orange);
+    transform: translateY(-50%);
+    transition: height 0.25s var(--ease-spring);
+}
+[data-sidebar="menu-button"][data-active="true"]::before {
+    height: 60%;
+}
+[data-sidebar="menu-button"][data-active="true"] {
+    font-weight: 600;
+}
+[data-sidebar="menu-button"]:hover:not([data-active="true"]) {
+    transform: translateX(2px);
+}
+/* El ícono acompaña el estado: crece un poco y toma el color de marca */
+[data-sidebar="menu-button"] svg {
+    transition:
+        transform 0.25s var(--ease-spring),
+        color 0.2s var(--ease);
+}
+[data-sidebar="menu-button"]:hover svg,
+[data-sidebar="menu-button"][data-active="true"] svg {
+    transform: scale(1.12);
+}
+[data-sidebar="menu-button"][data-active="true"] svg {
+    color: var(--sidebar-primary);
+}
+/* Lavado de color en la parte alta del panel: da profundidad detrás del logo
+   sin teñir toda la superficie (el sidebar es claro a propósito y el naranja
+   es acento, no fondo). */
+[data-slot="sidebar-inner"] {
+    background-image: radial-gradient(
+        120% 45% at 0% 0%,
+        color-mix(in oklch, var(--primary) 14%, transparent) 0%,
+        transparent 60%
+    );
+}
+
+/* Etiqueta de grupo con el tratamiento editorial del resto de la app */
+[data-sidebar="group-label"] {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.65;
+}
+
+/* ── Botones ───────────────────────────────────────────────────────────
+   El primario pasa de plano a gradiente cálido con sombra teñida: es el
+   único elemento de la interfaz con ese tratamiento, así que la acción
+   principal de cada pantalla se identifica de inmediato. */
+[data-slot="button"][data-variant="default"] {
+    background-image: var(--gradient-orange);
+    background-size: 160% 160%;
+    background-position: 0% 50%;
+    box-shadow: var(--sh-orange);
+    transition:
+        background-position 0.45s var(--ease-out),
+        box-shadow 0.3s var(--ease),
+        transform 0.2s var(--ease-out);
+}
+[data-slot="button"][data-variant="default"]:hover {
+    background-position: 100% 50%;
+    box-shadow:
+        var(--sh-orange),
+        0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
+}
+[data-slot="button"][data-variant="default"]:disabled {
+    box-shadow: none;
+}
+/* Escape para los botones primarios que van encima de una superficie de
+   marca (el hero del dashboard): ahí el gradiente naranja sobre naranja
+   desaparece, y el botón necesita su propio fondo translúcido. No se puede
+   resolver con un :not() sobre las clases porque la variante default ya
+   trae `bg-primary` en su propia lista. */
+[data-slot="button"].btn-plain {
+    background-image: none;
+    box-shadow: none;
+}
+[data-slot="button"][data-variant="outline"],
+[data-slot="button"][data-variant="ghost"] {
+    transition:
+        background-color 0.2s var(--ease),
+        color 0.2s var(--ease),
+        border-color 0.2s var(--ease);
+}
+
+/* ── Tarjetas y tablas ────────────────────────────────────────────────── */
+[data-slot="card"] {
+    transition:
+        box-shadow 0.3s var(--ease-out),
+        border-color 0.3s var(--ease);
+}
+[data-slot="table"] thead th {
+    letter-spacing: 0.04em;
+}
+
+/* ── Barras de desplazamiento ──────────────────────────────────────────
+   Las nativas de Windows son anchas y grises; con el resto de la interfaz
+   redondeada quedaban fuera de tono. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--foreground) 22%, transparent) transparent;
+}
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+    background-color: color-mix(in oklch, var(--foreground) 20%, transparent);
+}
+::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklch, var(--primary) 55%, transparent);
+}
+
+/* Selección de texto con el color de marca */
+::selection {
+    background: color-mix(in oklch, var(--primary) 28%, transparent);
+}
+
 /* Respeta la preferencia del sistema: sin movimiento, sin animaciones. */
 @media (prefers-reduced-motion: reduce) {
     *,
@@ -471,7 +789,23 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
-    .card-lift:hover {
+    .card-lift:hover,
+    .hover-glow:hover,
+    [data-sidebar="menu-button"]:hover:not([data-active="true"]) {
+        transform: none;
+    }
+    /* El desenfoque de entrada de .reveal quedaría congelado si solo se
+       acorta la duración: el texto debe verse nítido desde el primer frame. */
+    .reveal {
+        filter: none;
+    }
+    .shine-hover::after {
+        display: none;
+    }
+    /* Sin la animación, la cinta se quedaría desplazada a -50%: se anula el
+       recorrido y queda como una fila estática que empieza en su inicio. */
+    .marquee-track {
+        animation: none;
         transform: none;
     }
 }

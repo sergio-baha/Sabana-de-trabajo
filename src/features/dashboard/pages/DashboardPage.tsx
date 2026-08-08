@@ -117,7 +117,7 @@ export default function DashboardPage() {
           </div>
           <Button
             asChild
-            className="bg-white/15 text-white backdrop-blur-sm hover:bg-white/25"
+            className="btn-plain bg-white/15 text-white backdrop-blur-sm hover:bg-white/25"
           >
             <Link to="/distribucion">
               Ir a la distribución <ArrowRight />
