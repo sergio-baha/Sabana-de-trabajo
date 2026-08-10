@@ -80,7 +80,7 @@ export function useAddActivity(monthId: string) {
         allocationId,
         monthId,
         description: vars.description,
-        phase: vars.phase,
+        phaseId: vars.phaseId,
         activityDate: vars.activityDate,
         hours: vars.hours,
       })

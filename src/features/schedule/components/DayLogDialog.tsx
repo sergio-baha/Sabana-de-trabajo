@@ -20,9 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAddActivity, useDeleteActivity } from "@/features/activities/hooks/useActivitiesQueries"
-import { PHASE_LABELS, PHASE_OPTIONS } from "@/features/activities/lib/phaseLabels"
+import { usePhasesForMonthlyProject } from "@/features/portfolio/hooks/usePortfolioQueries"
 import type { ActivityWithCell } from "@/features/activities/api/activitiesApi"
-import type { ActivityPhase } from "@/types/database.types"
 
 interface DayLogDialogProps {
   open: boolean
@@ -58,7 +57,11 @@ export default function DayLogDialog({
 
   const [description, setDescription] = useState("")
   const [hours, setHours] = useState("")
-  const [phase, setPhase] = useState<ActivityPhase | "none">("none")
+  const [phaseId, setPhaseId] = useState<string>("none")
+
+  // Las fases viven en el proyecto del portafolio; el hook hace el salto
+  // desde la fila mensual, que es lo único que conoce el calendario.
+  const { data: phases } = usePhasesForMonthlyProject(open ? projectId : null)
 
   const total = activities.reduce((sum, a) => sum + a.hours, 0)
   const parsedHours = Number(hours)
@@ -71,13 +74,13 @@ export default function DayLogDialog({
       personId,
       projectId,
       description: description.trim(),
-      phase: phase === "none" ? null : phase,
+      phaseId: phaseId === "none" ? null : phaseId,
       activityDate: dateIso,
       hours: parsedHours,
     })
     setDescription("")
     setHours("")
-    setPhase("none")
+    setPhaseId("none")
   }
 
   return (
@@ -106,7 +109,9 @@ export default function DayLogDialog({
                 <p className="text-sm">{activity.description}</p>
                 <p className="text-xs text-muted-foreground">
                   {activity.hours} h
-                  {activity.phase ? ` · ${PHASE_LABELS[activity.phase]}` : ""}
+                  {activity.phase_id
+                    ? ` · ${phases?.find((p) => p.id === activity.phase_id)?.name ?? "Fase"}`
+                    : ""}
                 </p>
               </div>
               {canLog && (
@@ -149,15 +154,15 @@ export default function DayLogDialog({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>Fase</Label>
-                <Select value={phase} onValueChange={(v) => setPhase(v as ActivityPhase | "none")}>
+                <Select value={phaseId} onValueChange={setPhaseId}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sin fase</SelectItem>
-                    {PHASE_OPTIONS.map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
+                    {(phases ?? []).map((phase) => (
+                      <SelectItem key={phase.id} value={phase.id}>
+                        {phase.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

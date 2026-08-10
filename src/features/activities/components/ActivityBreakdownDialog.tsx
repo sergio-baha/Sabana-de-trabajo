@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Pencil, Plus, Trash2, X } from "lucide-react"
 import {
   Dialog,
@@ -25,9 +25,8 @@ import {
   useDeleteActivity,
   useUpdateActivity,
 } from "@/features/activities/hooks/useActivitiesQueries"
-import { PHASE_OPTIONS, PHASE_LABELS } from "@/features/activities/lib/phaseLabels"
+import { usePhasesForMonthlyProject } from "@/features/portfolio/hooks/usePortfolioQueries"
 import type { ActivityWithCell } from "@/features/activities/api/activitiesApi"
-import type { ActivityPhase } from "@/types/database.types"
 
 interface ActivityBreakdownDialogProps {
   open: boolean
@@ -44,12 +43,18 @@ interface ActivityBreakdownDialogProps {
 interface DraftState {
   id: string | null // null = creando una nueva
   description: string
-  phase: ActivityPhase | "none"
+  phaseId: string | "none"
   activityDate: string
   hours: string
 }
 
-const EMPTY_DRAFT: DraftState = { id: null, description: "", phase: "none", activityDate: "", hours: "" }
+const EMPTY_DRAFT: DraftState = {
+  id: null,
+  description: "",
+  phaseId: "none",
+  activityDate: "",
+  hours: "",
+}
 
 export default function ActivityBreakdownDialog({
   open,
@@ -66,6 +71,16 @@ export default function ActivityBreakdownDialog({
   const updateActivity = useUpdateActivity(monthId)
   const deleteActivity = useDeleteActivity(monthId)
 
+  // Las fases son del proyecto del portafolio, no de su fila mensual: el
+  // hook hace ese salto. Un proyecto sin portafolio (dato viejo sin
+  // enlazar) devuelve lista vacía y el selector queda solo con "Sin fase".
+  const { data: phases } = usePhasesForMonthlyProject(open ? projectId : null)
+  const phaseNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const phase of phases ?? []) map.set(phase.id, phase.name)
+    return map
+  }, [phases])
+
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT)
   const [toDelete, setToDelete] = useState<ActivityWithCell | null>(null)
 
@@ -79,7 +94,7 @@ export default function ActivityBreakdownDialog({
     setDraft({
       id: activity.id,
       description: activity.description,
-      phase: activity.phase ?? "none",
+      phaseId: activity.phase_id ?? "none",
       activityDate: activity.activity_date ?? "",
       hours: String(activity.hours),
     })
@@ -90,20 +105,25 @@ export default function ActivityBreakdownDialog({
     const hours = Number(draft.hours)
     if (!draft.description.trim() || !Number.isFinite(hours) || hours < 0) return
 
-    const phase = draft.phase === "none" ? null : draft.phase
+    const phaseId = draft.phaseId === "none" ? null : draft.phaseId
     const activityDate = draft.activityDate || null
 
     if (draft.id) {
       await updateActivity.mutateAsync({
         id: draft.id,
-        patch: { description: draft.description.trim(), phase, activity_date: activityDate, hours },
+        patch: {
+          description: draft.description.trim(),
+          phase_id: phaseId,
+          activity_date: activityDate,
+          hours,
+        },
       })
     } else {
       await addActivity.mutateAsync({
         personId,
         projectId,
         description: draft.description.trim(),
-        phase,
+        phaseId,
         activityDate,
         hours,
       })
@@ -140,10 +160,10 @@ export default function ActivityBreakdownDialog({
                 <div className="flex flex-col gap-0.5">
                   <p className="text-sm">{activity.description}</p>
                   <p className="text-xs text-muted-foreground">
-                    {activity.phase && PHASE_LABELS[activity.phase]}
-                    {activity.phase && activity.activity_date && " · "}
+                    {phaseNameById.get(activity.phase_id ?? "")}
+                    {activity.phase_id && activity.activity_date && " · "}
                     {activity.activity_date}
-                    {(activity.phase || activity.activity_date) && " · "}
+                    {(activity.phase_id || activity.activity_date) && " · "}
                     {activity.hours} h
                   </p>
                 </div>
@@ -195,17 +215,17 @@ export default function ActivityBreakdownDialog({
             />
             <div className="grid grid-cols-3 gap-2">
               <Select
-                value={draft.phase}
-                onValueChange={(v) => setDraft((d) => ({ ...d, phase: v as ActivityPhase | "none" }))}
+                value={draft.phaseId}
+                onValueChange={(v) => setDraft((d) => ({ ...d, phaseId: v }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Fase" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sin fase</SelectItem>
-                  {PHASE_OPTIONS.map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
+                  {(phases ?? []).map((phase) => (
+                    <SelectItem key={phase.id} value={phase.id}>
+                      {phase.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

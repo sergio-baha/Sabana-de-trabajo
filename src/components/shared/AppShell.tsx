@@ -15,6 +15,7 @@ import {
   Sun,
   UserRound,
   Users,
+  Wallet,
 } from "lucide-react"
 import {
   Sidebar,
@@ -91,7 +92,8 @@ const NAV_SECTIONS: NavSection[] = [
         allow: TEAM_WIDE_ROLES,
       },
       { to: "/meses", label: "Meses", icon: CalendarRange, allow: TEAM_WIDE_ROLES },
-      { to: "/proyectos", label: "Proyectos", icon: FolderKanban, allow: TEAM_WIDE_ROLES },
+      { to: "/proyectos", label: "Proyectos del mes", icon: FolderKanban, allow: TEAM_WIDE_ROLES },
+      { to: "/portafolio", label: "Portafolio", icon: Wallet, allow: TEAM_WIDE_ROLES },
       { to: "/personas", label: "Personas", icon: Users, allow: TEAM_WIDE_ROLES },
       { to: "/reportes", label: "Reportes", icon: BarChart3, allow: TEAM_WIDE_ROLES },
     ],
@@ -143,7 +145,15 @@ export default function AppShell() {
     items: section.items.filter((item) => profile && item.allow.includes(profile.role)),
   })).filter((section) => section.items.length > 0)
 
-  const currentTitle = PAGE_TITLES[location.pathname] ?? "Distribución de Trabajo"
+  // Coincidencia por prefijo y no exacta: las rutas de detalle
+  // (/portafolio/:projectId) deben mostrar el título de su módulo. Se toma
+  // el prefijo más largo para que /portafolio/algo no gane por /por…
+  const currentTitle =
+    PAGE_TITLES[location.pathname] ??
+    Object.entries(PAGE_TITLES)
+      .filter(([path]) => location.pathname.startsWith(`${path}/`))
+      .sort((a, b) => b[0].length - a[0].length)[0]?.[1] ??
+    "Distribución de Trabajo"
 
   return (
     // `overflow-x-clip` como red de seguridad: el documento no debe poder

@@ -26,7 +26,8 @@ import { useDeletePerson, usePeople } from "@/features/people/hooks/usePeopleQue
 import type { Person } from "@/features/people/api/peopleApi"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { isGestorOrAdmin } from "@/lib/roles"
+import { isAdmin, isGestorOrAdmin } from "@/lib/roles"
+import RatesCard from "@/features/portfolio/components/RatesCard"
 
 export default function PersonasPage() {
   const { activeMonthId } = useActiveMonthStore()
@@ -157,6 +158,13 @@ export default function PersonasPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Las tarifas son dato de nómina: la tarjeta solo se monta para
+          Administrador. Para cualquier otro rol RLS devolvería cero filas
+          igual, así que esto evita mostrar una tabla vacía y confusa. */}
+      {activeMonthId && isAdmin(profile?.role) && (
+        <RatesCard monthId={activeMonthId} people={people ?? []} />
+      )}
 
       {activeMonthId && (
         <PersonFormDialog

@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient"
-import type { ActivityPhase, Database } from "@/types/database.types"
+import type { Database } from "@/types/database.types"
 
 export type Activity = Database["public"]["Tables"]["activities"]["Row"]
 
@@ -23,7 +23,7 @@ export async function listActivitiesForMonth(monthId: string): Promise<ActivityW
 export interface CreateActivityInput {
   allocationId: string
   description: string
-  phase: ActivityPhase | null
+  phaseId: string | null
   activityDate: string | null
   hours: number
   monthId: string
@@ -36,7 +36,7 @@ export async function createActivity(input: CreateActivityInput): Promise<Activi
       allocation_id: input.allocationId,
       month_id: input.monthId,
       description: input.description,
-      phase: input.phase,
+      phase_id: input.phaseId,
       activity_date: input.activityDate,
       hours: input.hours,
     })

@@ -49,7 +49,7 @@ export type Database = {
           hours: number
           id: string
           month_id: string
-          phase: Database["public"]["Enums"]["activity_phase"] | null
+          phase_id: string | null
           updated_at: string
         }
         Insert: {
@@ -61,7 +61,7 @@ export type Database = {
           hours?: number
           id?: string
           month_id: string
-          phase?: Database["public"]["Enums"]["activity_phase"] | null
+          phase_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -73,7 +73,7 @@ export type Database = {
           hours?: number
           id?: string
           month_id?: string
-          phase?: Database["public"]["Enums"]["activity_phase"] | null
+          phase_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -592,6 +592,220 @@ export type Database = {
           },
         ]
       }
+      person_rates: {
+        Row: {
+          created_at: string
+          hourly_rate: number
+          month_id: string
+          person_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          hourly_rate: number
+          month_id: string
+          person_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          hourly_rate?: number
+          month_id?: string
+          person_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_rates_month_id_fkey"
+            columns: ["month_id"]
+            isOneToOne: false
+            referencedRelation: "months"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_rates_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolio_projects: {
+        Row: {
+          budget_amount: number | null
+          budget_hours: number | null
+          category: Database["public"]["Enums"]["project_category"]
+          color: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          start_date: string | null
+          status: Database["public"]["Enums"]["project_status"]
+          updated_at: string
+        }
+        Insert: {
+          budget_amount?: number | null
+          budget_hours?: number | null
+          category?: Database["public"]["Enums"]["project_category"]
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+        }
+        Update: {
+          budget_amount?: number | null
+          budget_hours?: number | null
+          category?: Database["public"]["Enums"]["project_category"]
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_expenses: {
+        Row: {
+          amount: number
+          concept: string
+          created_at: string
+          created_by: string | null
+          id: string
+          incurred_on: string
+          month_id: string | null
+          notes: string | null
+          phase_id: string | null
+          portfolio_project_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          concept: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          incurred_on?: string
+          month_id?: string | null
+          notes?: string | null
+          phase_id?: string | null
+          portfolio_project_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          concept?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          incurred_on?: string
+          month_id?: string | null
+          notes?: string | null
+          phase_id?: string | null
+          portfolio_project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_expenses_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "project_phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_expenses_portfolio_project_id_fkey"
+            columns: ["portfolio_project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_phases: {
+        Row: {
+          budget_amount: number | null
+          budget_hours: number | null
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          name: string
+          phase_key: Database["public"]["Enums"]["activity_phase"] | null
+          portfolio_project_id: string
+          position: number
+          start_date: string | null
+          status: Database["public"]["Enums"]["phase_status"]
+          updated_at: string
+        }
+        Insert: {
+          budget_amount?: number | null
+          budget_hours?: number | null
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          phase_key?: Database["public"]["Enums"]["activity_phase"] | null
+          portfolio_project_id: string
+          position?: number
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["phase_status"]
+          updated_at?: string
+        }
+        Update: {
+          budget_amount?: number | null
+          budget_hours?: number | null
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          phase_key?: Database["public"]["Enums"]["activity_phase"] | null
+          portfolio_project_id?: string
+          position?: number
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["phase_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_phases_portfolio_project_id_fkey"
+            columns: ["portfolio_project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           category: Database["public"]["Enums"]["project_category"]
@@ -603,6 +817,7 @@ export type Database = {
           id: string
           month_id: string
           name: string
+          portfolio_project_id: string | null
           status: Database["public"]["Enums"]["project_status"]
           updated_at: string
         }
@@ -616,6 +831,7 @@ export type Database = {
           id?: string
           month_id: string
           name: string
+          portfolio_project_id?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           updated_at?: string
         }
@@ -629,6 +845,7 @@ export type Database = {
           id?: string
           month_id?: string
           name?: string
+          portfolio_project_id?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           updated_at?: string
         }
@@ -718,6 +935,7 @@ export type Database = {
           id: string
           month_id: string
           parent_task_id: string | null
+          phase_id: string | null
           priority: number
           project_id: string
           start_date: string | null
@@ -741,6 +959,7 @@ export type Database = {
           id?: string
           month_id: string
           parent_task_id?: string | null
+          phase_id?: string | null
           priority?: number
           project_id: string
           start_date?: string | null
@@ -764,6 +983,7 @@ export type Database = {
           id?: string
           month_id?: string
           parent_task_id?: string | null
+          phase_id?: string | null
           priority?: number
           project_id?: string
           start_date?: string | null
@@ -885,6 +1105,88 @@ export type Database = {
           },
         ]
       }
+      // Las vistas *_cost son SECURITY DEFINER y filtran a Gestor/
+      // Administrador dentro del propio SQL: para el resto de roles no
+      // devuelven filas, no devuelven ceros (ver
+      // *_portfolio_reporting_views.sql).
+      v_portfolio_project_cost: {
+        Row: {
+          labor_cost: number
+          portfolio_project_id: string
+          unrated_hours: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_portfolio_project_id_fkey"
+            columns: ["portfolio_project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_portfolio_project_totals: {
+        Row: {
+          allocated_hours: number
+          budget_amount: number | null
+          budget_hours: number | null
+          category: Database["public"]["Enums"]["project_category"]
+          color: string
+          currency: string
+          end_date: string | null
+          expense_total: number
+          months_count: number
+          name: string
+          people_count: number
+          portfolio_project_id: string
+          remaining_hours: number | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["project_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_projects_id_fkey"
+            columns: ["portfolio_project_id"]
+            isOneToOne: true
+            referencedRelation: "portfolio_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_project_phase_cost: {
+        Row: {
+          labor_cost: number
+          phase_id: string
+          unrated_hours: number
+        }
+        Relationships: []
+      }
+      v_project_phase_totals: {
+        Row: {
+          allocated_hours: number
+          budget_amount: number | null
+          budget_hours: number | null
+          end_date: string | null
+          expense_total: number
+          name: string
+          phase_id: string
+          phase_key: Database["public"]["Enums"]["activity_phase"] | null
+          portfolio_project_id: string
+          position: number
+          remaining_hours: number | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["phase_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_phases_portfolio_project_id_fkey"
+            columns: ["portfolio_project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_project_month_totals: {
         Row: {
           allocated_hours: number
@@ -941,6 +1243,7 @@ export type Database = {
       invitation_status: "pendiente" | "aceptada" | "revocada"
       month_status: "abierto" | "cerrado" | "archivado"
       person_status: "activo" | "inactivo"
+      phase_status: "pendiente" | "en_curso" | "completada"
       project_category: "proyecto" | "institucional"
       project_status: "activo" | "pausado" | "finalizado" | "archivado"
       task_status:
@@ -1097,6 +1400,7 @@ export const Constants = {
       invitation_status: ["pendiente", "aceptada", "revocada"],
       month_status: ["abierto", "cerrado", "archivado"],
       person_status: ["activo", "inactivo"],
+      phase_status: ["pendiente", "en_curso", "completada"],
       project_category: ["proyecto", "institucional"],
       project_status: ["activo", "pausado", "finalizado", "archivado"],
       task_status: [
@@ -1124,6 +1428,7 @@ export type WorkItemType = Database["public"]["Enums"]["work_item_type"]
 export type InvitationStatus = Database["public"]["Enums"]["invitation_status"]
 export type AuditAction = Database["public"]["Enums"]["audit_action"]
 export type ActivityPhase = Database["public"]["Enums"]["activity_phase"]
+export type PhaseStatus = Database["public"]["Enums"]["phase_status"]
 // No es un enum real de Postgres (viene de un CASE WHEN en la vista de
 // reporte), así que no existe en Database["public"]["Enums"] — se define
 // a mano, igual que antes.
