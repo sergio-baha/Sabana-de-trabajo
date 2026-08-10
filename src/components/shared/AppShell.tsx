@@ -146,7 +146,11 @@ export default function AppShell() {
   const currentTitle = PAGE_TITLES[location.pathname] ?? "Distribución de Trabajo"
 
   return (
-    <SidebarProvider>
+    // `overflow-x-clip` como red de seguridad: el documento no debe poder
+    // desplazarse en horizontal nunca. Se usa `clip` y no `hidden` a
+    // propósito — `hidden` en un eje obliga al otro a `auto`, lo que
+    // convertiría el contenedor en un scroller y rompería el header sticky.
+    <SidebarProvider className="overflow-x-clip">
       <Sidebar collapsible="icon">
         <SidebarHeader className="relative">
           {/* En modo ícono el rail mide 48px: se quita el padding lateral y
@@ -265,7 +269,13 @@ export default function AppShell() {
           )}
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
+      {/* `min-w-0` es obligatorio aquí: SidebarInset es un ítem flex y, sin
+          esto, su `min-width: auto` lo deja crecer hasta el ancho mínimo de
+          su contenido. Cuando una pantalla trae algo ancho, el que termina
+          desbordando es el documento entero — y como el panel lateral está
+          en `position: fixed`, no acompaña ese desplazamiento: el contenido
+          se corre por debajo y el menú queda encima. */}
+      <SidebarInset className="min-w-0">
         <header className="surface-glass sticky top-0 z-30 flex h-15 shrink-0 items-center gap-3 border-x-0 border-t-0 border-b border-border px-4">
           {/* Filo de gradiente sobre el borde inferior: separa el header del
               contenido con color de marca en vez de una línea gris más. */}
