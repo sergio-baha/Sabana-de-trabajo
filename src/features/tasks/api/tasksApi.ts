@@ -43,14 +43,28 @@ export async function bulkCreateTasks(inputs: TaskInsert[]): Promise<Task[]> {
   return data
 }
 
+// Cuando RLS rechaza la escritura, el UPDATE no falla: simplemente no toca
+// ninguna fila. Con `.single()` eso llegaba al usuario como "Cannot coerce
+// the result to a single JSON object" — un mensaje de PostgREST que no dice
+// nada. Con `.maybeSingle()` se distingue el caso y se explica en castellano.
+//
+// El motivo casi siempre es el mismo: el mes está cerrado. Un Analista o un
+// Gestor pueden VER las tareas de un mes cerrado pero no modificarlas (solo
+// el Administrador), así que el tablero se puede abrir y la tarjeta no se
+// puede mover.
 export async function updateTask(id: string, patch: TaskUpdate): Promise<Task> {
   const { data, error } = await supabase
     .from("tasks")
     .update(patch)
     .eq("id", id)
     .select("*")
-    .single()
+    .maybeSingle()
   if (error) throw error
+  if (!data) {
+    throw new Error(
+      "No se guardó el cambio. Puede que el mes esté cerrado o que no tengas permiso sobre esta tarea."
+    )
+  }
   return data
 }
 
