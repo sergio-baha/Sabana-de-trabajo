@@ -66,7 +66,13 @@ export default function TaskCard({
         "group relative flex flex-col gap-2 rounded-lg border border-border bg-card p-3 text-left shadow-xs transition",
         "hover:border-primary/40 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         draggable && "cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-40"
+        isDragging && "opacity-40",
+        // Una tarjeta terminada se reconoce sin leerla: filo verde y fondo
+        // teñido. Una bloqueada grita en rojo. El resto queda neutro para
+        // que estos dos destaquen de verdad.
+        task.status === "completada" &&
+          "border-l-4 border-l-success bg-success-muted/25",
+        task.status === "bloqueada" && "border-l-4 border-l-danger bg-danger-muted/25"
       )}
     >
       <div className="flex items-start gap-2">

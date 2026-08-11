@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import PageHeader from "@/components/shared/PageHeader"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
+import { usePlanningExclusions } from "@/features/people/hooks/usePlanningExclusions"
 import {
   useDeleteProject,
   useProjectManagers,
@@ -114,7 +115,17 @@ export default function DistribucionPage() {
 
   const activePosition = useRef<{ rowIdx: number; columnKey: string } | null>(null)
 
-  const visiblePeople = useMemo(() => [...(people ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [people])
+  // El Analista de Tecnología no entra en el reparto de horas del mes, así
+  // que tampoco ocupa columna en la grilla — mismo criterio que el Dashboard.
+  const excludedPersonIds = usePlanningExclusions(activeMonthId)
+
+  const visiblePeople = useMemo(
+    () =>
+      [...(people ?? [])]
+        .filter((person) => !excludedPersonIds.has(person.id))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [people, excludedPersonIds]
+  )
 
   const visibleProjects = useMemo(
     () => sortActiveProjectsFirst((projects ?? []).filter((p) => p.status !== "archivado")),

@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils"
 import {
   PRIORITY_LABELS,
+  STATUS_BADGE,
   STATUS_LABELS,
   STATUS_OPTIONS,
   WORK_ITEM_DOT,
@@ -140,9 +141,23 @@ export default function TaskBacklogTable({
                     value={task.status}
                     onValueChange={(v) => changeStatus(task, v as TaskStatus)}
                   >
-                    <SelectTrigger className="h-8 w-full">
+                    {/* El propio disparador lleva el color del estado: es la
+                        forma de que la columna se lea de un vistazo sin
+                        renunciar a poder cambiarlo desde la misma fila. */}
+                    <SelectTrigger
+                      className={cn(
+                        "h-8 w-full font-medium",
+                        STATUS_BADGE[task.status],
+                        "[&_svg]:opacity-70"
+                      )}
+                    >
                       <SelectValue />
                     </SelectTrigger>
+                    {/* Sin punto de color en las opciones: SelectItem mete
+                        todos sus hijos dentro de ItemText, que es lo que
+                        Radix refleja en el disparador — el punto acabaría
+                        sobre el fondo ya coloreado del estado, invisible y
+                        dejando un hueco. */}
                     <SelectContent>
                       {STATUS_OPTIONS.map(([value, label]) => (
                         <SelectItem key={value} value={value}>
@@ -152,7 +167,7 @@ export default function TaskBacklogTable({
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Badge variant="outline">{STATUS_LABELS[task.status]}</Badge>
+                  <Badge className={STATUS_BADGE[task.status]}>{STATUS_LABELS[task.status]}</Badge>
                 )}
               </TableCell>
               <TableCell className="text-sm">{PRIORITY_LABELS[task.priority]}</TableCell>

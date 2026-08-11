@@ -102,10 +102,17 @@ export default function TaskBoard({
               isTargetColumn && "border-primary/50 bg-primary/5"
             )}
           >
-            <div className="flex items-center gap-2 px-1 pt-1">
-              <span className={cn("size-2 rounded-full", STATUS_ACCENT[status])} />
+            {/* Franja de color arriba de la columna: identifica el estado
+                desde lejos, sin depender de leer el título. */}
+            <div
+              aria-hidden
+              className={cn("h-1 w-full shrink-0 rounded-full", STATUS_ACCENT[status])}
+            />
+            <div className="flex items-center gap-2 px-1">
               <h2 className="text-sm font-semibold">{STATUS_LABELS[status]}</h2>
-              <span className="text-xs text-muted-foreground">{columnTasks.length}</span>
+              <span className="rounded-full bg-muted px-1.5 text-xs font-medium text-muted-foreground">
+                {columnTasks.length}
+              </span>
               {canWrite && (
                 <Button
                   variant="ghost"

@@ -30,6 +30,21 @@ export const STATUS_ACCENT: Record<TaskStatus, string> = {
   completada: "bg-success",
 }
 
+// Color del estado allí donde se muestra como pastilla (backlog, listas de
+// fase). Escanear una tabla larga buscando qué está hecho era imposible con
+// todos los estados en gris.
+//
+// Los dos estados que cierran una conversación van SÓLIDOS —"completada" es
+// la buena noticia y "bloqueada" la mala— y los intermedios en tinte suave.
+// Si todos gritaran, ninguno destacaría.
+export const STATUS_BADGE: Record<TaskStatus, string> = {
+  pendiente: "border-transparent bg-muted text-muted-foreground",
+  en_progreso: "border-transparent bg-warning-muted text-warning",
+  en_revision: "border-transparent bg-accent text-accent-foreground",
+  bloqueada: "border-transparent bg-danger text-danger-foreground",
+  completada: "border-transparent bg-success text-success-foreground",
+}
+
 export const WORK_ITEM_LABELS: Record<WorkItemType, string> = {
   epica: "Épica",
   historia: "Historia",
