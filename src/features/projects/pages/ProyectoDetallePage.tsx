@@ -196,6 +196,25 @@ export default function ProyectoDetallePage() {
     )
   }
 
+  // Gestionable = gestor/admin, quien creó el proyecto, o quien figura como
+  // gerente/miembro de su equipo del mes activo — mismo criterio que la RLS
+  // de fases (can_manage_portfolio_project). Sin esto, cualquiera vería los
+  // botones de gestión aunque la base los fuera a rechazar.
+  const canManageProject =
+    canWrite ||
+    project.created_by === profile?.id ||
+    Boolean(
+      monthlyProject &&
+        myPerson &&
+        ((managers ?? []).some(
+          (m) => m.project_id === monthlyProject.id && m.person_id === myPerson.id
+        ) ||
+          (members ?? []).some(
+            (m) => m.project_id === monthlyProject.id && m.person_id === myPerson.id
+          ))
+    )
+  const canManageTeamAndTasks = canManageProject && canWriteTasks
+
   return (
     <div className="flex flex-col gap-5">
       <Button variant="ghost" size="sm" asChild className="self-start">
@@ -296,7 +315,7 @@ export default function ProyectoDetallePage() {
               fases de arriba son del proyecto completo; el equipo es por mes.
             </CardDescription>
           </div>
-          {monthlyProject && canWriteTasks && (
+          {monthlyProject && canManageTeamAndTasks && (
             <Button variant="outline" size="sm" onClick={() => setTeamOpen(true)}>
               <Pencil /> Gestionar equipo
             </Button>
@@ -360,7 +379,7 @@ export default function ProyectoDetallePage() {
               desglose en actividades, no de la tarea completa.
             </CardDescription>
           </div>
-          {canWrite && (
+          {canManageProject && (
             <Button
               variant="outline"
               size="sm"
@@ -405,7 +424,7 @@ export default function ProyectoDetallePage() {
                       )}
                     </div>
                     <div className="flex items-center gap-1">
-                      {monthlyProject && canWriteTasks && (
+                      {monthlyProject && canManageTeamAndTasks && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -414,7 +433,7 @@ export default function ProyectoDetallePage() {
                           <Plus /> Tarea
                         </Button>
                       )}
-                      {canWrite && (
+                      {canManageProject && (
                         <>
                           <Button
                             variant="ghost"
@@ -484,7 +503,7 @@ export default function ProyectoDetallePage() {
                           allTasks={tasks ?? []}
                           projects={monthlyProjects ?? []}
                           people={people ?? []}
-                          canWrite={canWriteTasks}
+                          canWrite={canManageTeamAndTasks}
                           onOpenTask={openTask}
                           onDeleteTask={setTaskToDelete}
                         />
@@ -516,7 +535,7 @@ export default function ProyectoDetallePage() {
             <div className="flex flex-col gap-3 rounded-xl border border-dashed border-border p-4">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-muted-foreground">Sin fase asignada</span>
-                {canWriteTasks && (
+                {canManageTeamAndTasks && (
                   <Button variant="ghost" size="sm" onClick={() => openNewTask(null)}>
                     <Plus /> Tarea
                   </Button>
@@ -530,7 +549,7 @@ export default function ProyectoDetallePage() {
                     allTasks={tasks ?? []}
                     projects={monthlyProjects ?? []}
                     people={people ?? []}
-                    canWrite={canWriteTasks}
+                    canWrite={canManageTeamAndTasks}
                     onOpenTask={openTask}
                     onDeleteTask={setTaskToDelete}
                   />
@@ -647,7 +666,7 @@ export default function ProyectoDetallePage() {
             tasks={tasks ?? []}
             projects={monthlyProjects ?? []}
             people={people ?? []}
-            readOnly={!canWriteTasks}
+            readOnly={!canManageTeamAndTasks}
             lockedPersonId={writesOwn ? myPerson?.id : null}
             lockedProjectId={monthlyProject.id}
           />
