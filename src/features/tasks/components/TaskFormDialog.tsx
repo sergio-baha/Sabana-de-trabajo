@@ -96,6 +96,10 @@ interface TaskFormDialogProps {
   // otro responsable, así que dejar el campo libre solo produciría un error
   // al guardar.
   lockedPersonId?: string | null
+  // Al crear una tarea desde la página de detalle de un proyecto, el
+  // proyecto ya está decidido por el contexto — no tiene sentido pedirlo de
+  // nuevo ni permitir cambiarlo a mitad de la edición.
+  lockedProjectId?: string | null
 }
 
 const toNumberOrNull = (value: string) => {
@@ -122,6 +126,7 @@ export default function TaskFormDialog({
   people,
   readOnly,
   lockedPersonId = null,
+  lockedProjectId = null,
 }: TaskFormDialogProps) {
   const isEdit = Boolean(task)
   const createTask = useCreateTask(monthId)
@@ -163,7 +168,7 @@ export default function TaskFormDialog({
     form.reset({
       title: task?.title ?? "",
       description: task?.description ?? "",
-      projectId: task?.project_id ?? "",
+      projectId: task?.project_id ?? lockedProjectId ?? "",
       workItemType: task?.work_item_type ?? "tarea",
       status: task?.status ?? defaultStatus,
       priority: task?.priority ?? 3,
@@ -178,7 +183,7 @@ export default function TaskFormDialog({
     setJustCreated(null)
     setNewProjectName("")
     setAddingProject(false)
-  }, [open, task, defaultStatus, lockedPersonId, form])
+  }, [open, task, defaultStatus, lockedPersonId, lockedProjectId, form])
 
   // Proyectos reales + el creado en esta sesión del diálogo, sin duplicarlo
   // cuando el refetch del padre ya lo trajo.
@@ -387,7 +392,7 @@ export default function TaskFormDialog({
                         }
                         field.onChange(v)
                       }}
-                      disabled={readOnly}
+                      disabled={readOnly || Boolean(lockedProjectId)}
                     >
                       <FormControl>
                         <SelectTrigger className="w-full">

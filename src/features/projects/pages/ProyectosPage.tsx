@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { Link } from "react-router"
 import { Copy, MoreHorizontal, Pencil, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -100,7 +101,7 @@ export default function ProyectosPage() {
         <div>
           <h1 className="text-xl font-semibold">Gestión de proyectos</h1>
           <p className="text-sm text-muted-foreground">
-            Proyectos del mes activo: color, gerente responsable y estado.
+            Proyectos del mes activo. Haz clic en uno para gestionar su tablero de tareas.
           </p>
         </div>
         {canCreate && (
@@ -152,13 +153,16 @@ export default function ProyectosPage() {
                 {filtered.map((project) => (
                   <TableRow key={project.id}>
                     <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
+                      <Link
+                        to={`/proyectos/${project.id}`}
+                        className="flex items-center gap-2 hover:underline"
+                      >
                         <span
                           className="size-3 shrink-0 rounded-full"
                           style={{ backgroundColor: project.color }}
                         />
                         {project.name}
-                      </div>
+                      </Link>
                     </TableCell>
                     <TableCell>{managerNameByProject.get(project.id) ?? "—"}</TableCell>
                     <TableCell className="max-w-48 text-muted-foreground">
