@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Plus, X } from "lucide-react"
+import { CheckCheck, CornerUpLeft, Plus, ShieldCheck, X } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -44,10 +44,16 @@ import {
   useTaskAssignees,
   useUpdateTask,
 } from "@/features/tasks/hooks/useTasksQueries"
-import { useCreateProject, useProjectMembers } from "@/features/projects/hooks/useProjectsQueries"
+import {
+  useCreateProject,
+  useProjectManagers,
+  useProjectMembers,
+} from "@/features/projects/hooks/useProjectsQueries"
 import { usePhasesForMonthlyProject } from "@/features/portfolio/hooks/usePortfolioQueries"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canCreateProjects } from "@/lib/roles"
+import { canCreateProjects, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
+import { Separator } from "@/components/ui/separator"
+import TaskCommentThread from "@/features/tasks/components/TaskCommentThread"
 import type { Project } from "@/features/projects/api/projectsApi"
 import type { Person } from "@/features/people/api/peopleApi"
 import type { TaskStatus } from "@/types/database.types"
@@ -150,6 +156,7 @@ export default function TaskFormDialog({
   const { data: projectMembers } = useProjectMembers(monthId)
   const profile = useSessionStore((s) => s.profile)
   const canAddProject = !readOnly && canCreateProjects(profile?.role)
+  const { data: projectManagers } = useProjectManagers(monthId)
 
   // Proyecto recién creado desde este diálogo. Se guarda aparte porque la
   // lista `projects` la refresca el padre de forma asíncrona: sin esto, el
@@ -252,6 +259,37 @@ export default function TaskFormDialog({
   }
 
   const submitting = createTask.isPending || updateTask.isPending || setAssignees.isPending
+
+  // ── Circuito de revisión ────────────────────────────────────────────
+  // Espejo en la interfaz de task_requires_review() en la base. La regla de
+  // verdad vive allá; esto solo evita ofrecer una acción que sería
+  // rechazada. Quedan fuera del circuito el Analista de Tecnología y quien
+  // trabaja en un proyecto que él mismo creó.
+  const selectedProject = projectOptions.find((p) => p.id === selectedProjectId)
+  const ownsProject = Boolean(selectedProject && selectedProject.created_by === profile?.id)
+  const requiresReview =
+    writesOwnWorkOnly(profile?.role) && !isAnalistaTecnologia(profile?.role) && !ownsProject
+
+  const statusOptions = requiresReview
+    ? STATUS_OPTIONS.filter(([value]) => value !== "completada")
+    : STATUS_OPTIONS
+
+  // Quien revisa: gestor/admin, o el analista dueño del proyecto.
+  const canReview = !readOnly && (!writesOwnWorkOnly(profile?.role) || ownsProject)
+  const inReview = task?.status === "en_revision"
+
+  // Si el proyecto no tiene gerente con cuenta, la entrega no le llega a
+  // nadie. Es la regla acordada, pero callarlo dejaría al analista creyendo
+  // que alguien fue avisado.
+  const projectHasReviewer = (projectManagers ?? []).some(
+    (m) => m.project_id === selectedProjectId
+  )
+
+  const applyReview = async (next: TaskStatus) => {
+    if (!task) return
+    await updateTask.mutateAsync({ id: task.id, patch: { status: next } })
+    onOpenChange(false)
+  }
 
   // Candidatas a padre: cualquier work item del mes que no sea la propia
   // tarjeta (evita el ciclo trivial A → A). Una jerarquía más profunda
@@ -366,7 +404,7 @@ export default function TaskFormDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {STATUS_OPTIONS.map(([value, label]) => (
+                        {statusOptions.map(([value, label]) => (
                           <SelectItem key={value} value={value}>
                             {label}
                           </SelectItem>
@@ -668,8 +706,58 @@ export default function TaskFormDialog({
               )}
             />
 
+            {isEdit && requiresReview && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/60 p-3 text-sm">
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  Esta tarea la cierra el gestor del proyecto. Cuando termines, ponla{" "}
+                  <strong>En revisión</strong> y le llegará el aviso.
+                  {!projectHasReviewer && (
+                    <>
+                      {" "}
+                      <span className="text-warning">
+                        Ojo: este proyecto no tiene gerente asignado, así que la entrega no le
+                        llegará a nadie hasta que se le asigne uno.
+                      </span>
+                    </>
+                  )}
+                </span>
+              </div>
+            )}
+
+            {isEdit && task && (
+              <>
+                <Separator />
+                <TaskCommentThread taskId={task.id} readOnly={readOnly} />
+              </>
+            )}
+
             {!readOnly && (
-              <DialogFooter>
+              <DialogFooter className="gap-2 sm:justify-between">
+                {/* Las acciones de revisión van aparte del guardado: son
+                    decisiones sobre la entrega, no una edición más del
+                    formulario. */}
+                {inReview && canReview ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={submitting}
+                      onClick={() => void applyReview("en_progreso")}
+                    >
+                      <CornerUpLeft /> Devolver
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => void applyReview("completada")}
+                    >
+                      <CheckCheck /> Aprobar
+                    </Button>
+                  </div>
+                ) : (
+                  <span />
+                )}
                 <Button type="submit" disabled={submitting}>
                   {submitting ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear tarea"}
                 </Button>

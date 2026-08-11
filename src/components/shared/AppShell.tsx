@@ -29,6 +29,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useSessionStore } from "@/stores/sessionStore"
 import { ACCOUNT_TARGET, useOnboardingStore } from "@/stores/onboardingStore"
 import MonthSwitcher from "@/components/shared/MonthSwitcher"
+import NotificationBell from "@/features/notifications/components/NotificationBell"
 import OnboardingTour from "@/features/onboarding/components/OnboardingTour"
 import { useOnboarding } from "@/features/onboarding/hooks/useOnboarding"
 import { applyTheme, getSavedTheme, type Theme } from "@/lib/theme"
@@ -268,10 +269,12 @@ export default function AppShell() {
               <MonthSwitcher />
             </>
           )}
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
           <Button
             variant="ghost"
             size="icon"
-            className="ml-auto"
             onClick={toggleTheme}
             aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
           >

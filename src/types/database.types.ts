@@ -595,6 +595,93 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          read_at: string | null
+          recipient_id: string
+          task_id: string | null
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          recipient_id: string
+          task_id?: string | null
+          title: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          recipient_id?: string
+          task_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_assignees: {
         Row: {
           created_at: string
@@ -1049,6 +1136,11 @@ export type Database = {
       }
       tasks: {
         Row: {
+          returned_count: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          submitted_at: string | null
+          submitted_by: string | null
           board_order: number
           completed_at: string | null
           completed_hours: number | null
@@ -1072,6 +1164,11 @@ export type Database = {
           work_item_type: Database["public"]["Enums"]["work_item_type"]
         }
         Insert: {
+          returned_count?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           board_order?: number
           completed_at?: string | null
           completed_hours?: number | null
@@ -1095,6 +1192,11 @@ export type Database = {
           work_item_type?: Database["public"]["Enums"]["work_item_type"]
         }
         Update: {
+          returned_count?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           board_order?: number
           completed_at?: string | null
           completed_hours?: number | null
