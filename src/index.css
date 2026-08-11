@@ -839,3 +839,32 @@
   background-color: var(--muted);
   font-weight: 600;
 }
+
+/* Contenido del editor rich-text de la descripción de tarjetas (Tiptap).
+   No usamos el plugin de tipografía de Tailwind: el proyecto no lo trae, así
+   que el espaciado de párrafos/listas/imágenes se define a mano aquí. */
+.tiptap-content p {
+  margin: 0.4em 0;
+}
+.tiptap-content ul,
+.tiptap-content ol {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+}
+.tiptap-content ul {
+  list-style: disc;
+}
+.tiptap-content ol {
+  list-style: decimal;
+}
+.tiptap-content img {
+  display: block;
+  margin: 0.5em 0;
+}
+.tiptap-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}

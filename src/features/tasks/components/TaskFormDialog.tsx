@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import {
   Select,
   SelectContent,
@@ -36,6 +36,7 @@ import {
   WORK_ITEM_OPTIONS,
 } from "@/features/tasks/lib/taskLabels"
 import { nextBoardOrder, type Task } from "@/features/tasks/api/tasksApi"
+import { uploadTaskImage } from "@/features/tasks/lib/uploadTaskImage"
 import { useCreateTask, useUpdateTask } from "@/features/tasks/hooks/useTasksQueries"
 import { useCreateProject } from "@/features/projects/hooks/useProjectsQueries"
 import { useSessionStore } from "@/stores/sessionStore"
@@ -575,7 +576,13 @@ export default function TaskFormDialog({
                 <FormItem>
                   <FormLabel>Descripción</FormLabel>
                   <FormControl>
-                    <Textarea rows={4} disabled={readOnly} {...field} />
+                    <RichTextEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                      onUploadImage={uploadTaskImage}
+                      disabled={readOnly}
+                      placeholder="Explica la tarea… puedes pegar o arrastrar imágenes"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
