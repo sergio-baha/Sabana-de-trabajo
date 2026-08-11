@@ -10,12 +10,13 @@ import type { Project } from "@/features/projects/api/projectsApi"
 import type { TaskStatus } from "@/types/database.types"
 
 interface TaskBoardProps {
-  monthId: string
   tasks: Task[]
   projects: Project[]
   // Nombres de los asignados de cada tarea, ya resueltos por el caller
   // (task_assignees + people) — una tarea puede tener varias personas.
   assigneesByTask: Map<string, string[]>
+  /** Nombres de mes por id. Presente solo en la vista sin filtro de mes. */
+  monthNameById?: Map<string, string>
   canWrite: boolean
   onOpenTask: (task: Task) => void
   onNewTask: (status: TaskStatus) => void
@@ -31,15 +32,15 @@ interface DropTarget {
 // columnas, y así el módulo no agrega dependencias al bundle. El indicador
 // de inserción es una línea entre tarjetas, como en Azure DevOps Boards.
 export default function TaskBoard({
-  monthId,
   tasks,
   projects,
   assigneesByTask,
+  monthNameById,
   canWrite,
   onOpenTask,
   onNewTask,
 }: TaskBoardProps) {
-  const moveTask = useMoveTask(monthId)
+  const moveTask = useMoveTask()
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
 
@@ -140,6 +141,7 @@ export default function TaskBoard({
                       projectName={project?.name ?? "—"}
                       projectColor={project?.color ?? "var(--muted-foreground)"}
                       assigneeNames={assigneesByTask.get(task.id) ?? []}
+                      monthLabel={monthNameById?.get(task.month_id)}
                       draggable={canWrite}
                       isDragging={draggingId === task.id}
                       onOpen={() => onOpenTask(task)}

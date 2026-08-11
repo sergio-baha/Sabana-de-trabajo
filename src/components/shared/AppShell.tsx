@@ -32,7 +32,7 @@ import MonthSwitcher from "@/components/shared/MonthSwitcher"
 import OnboardingTour from "@/features/onboarding/components/OnboardingTour"
 import { useOnboarding } from "@/features/onboarding/hooks/useOnboarding"
 import { applyTheme, getSavedTheme, type Theme } from "@/lib/theme"
-import { roleLabel } from "@/lib/roles"
+import { isAnalistaTecnologia, roleLabel } from "@/lib/roles"
 import { NAV_ITEMS, SETUP_ITEMS, visibleFor } from "@/lib/navigation"
 import { signOut } from "@/features/auth/api/authApi"
 import { cn } from "@/lib/utils"
@@ -71,6 +71,9 @@ export default function AppShell() {
     await signOut()
     navigate("/login", { replace: true })
   }
+
+  const hidesMonthSwitcher =
+    isAnalistaTecnologia(profile?.role) && location.pathname.startsWith("/tareas")
 
   const visibleNav = visibleFor(NAV_ITEMS, profile?.role)
   const visibleSetup = visibleFor(SETUP_ITEMS, profile?.role)
@@ -255,8 +258,16 @@ export default function AppShell() {
           >
             {currentTitle}
           </h1>
-          <Separator orientation="vertical" className="hidden h-4 sm:block" />
-          <MonthSwitcher />
+          {/* En Tareas, el Analista de Tecnología ve TODAS sus tareas sin
+              importar el mes, así que el selector no cambiaría nada y solo
+              confundiría. En Cronograma sí se mantiene: las horas que
+              registra ahí sí son de un mes concreto. */}
+          {!hidesMonthSwitcher && (
+            <>
+              <Separator orientation="vertical" className="hidden h-4 sm:block" />
+              <MonthSwitcher />
+            </>
+          )}
           <Button
             variant="ghost"
             size="icon"

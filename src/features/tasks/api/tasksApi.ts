@@ -12,11 +12,14 @@ export type TaskAssignee = Database["public"]["Tables"]["task_assignees"]["Row"]
 // reordenamientos antes de que los decimales se agoten.
 const ORDER_GAP = 1000
 
-export async function listTasks(monthId: string): Promise<Task[]> {
-  const { data, error } = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("month_id", monthId)
+// `monthId: null` trae las tareas de TODOS los meses. Lo usa el Analista de
+// Tecnología, cuyo trabajo no se organiza por mes: RLS ya acota el resultado
+// a lo suyo, así que "sin filtro de mes" no expone nada de más.
+export async function listTasks(monthId: string | null): Promise<Task[]> {
+  let query = supabase.from("tasks").select("*")
+  if (monthId) query = query.eq("month_id", monthId)
+
+  const { data, error } = await query
     .order("board_order", { ascending: true })
     .order("created_at", { ascending: true })
   if (error) throw error
@@ -56,11 +59,12 @@ export async function deleteTask(id: string): Promise<void> {
   if (error) throw error
 }
 
-export async function listTaskAssignees(monthId: string): Promise<TaskAssignee[]> {
-  const { data, error } = await supabase
-    .from("task_assignees")
-    .select("*")
-    .eq("month_id", monthId)
+// Mismo criterio que listTasks: `null` = todos los meses.
+export async function listTaskAssignees(monthId: string | null): Promise<TaskAssignee[]> {
+  let query = supabase.from("task_assignees").select("*")
+  if (monthId) query = query.eq("month_id", monthId)
+
+  const { data, error } = await query
   if (error) throw error
   return data
 }

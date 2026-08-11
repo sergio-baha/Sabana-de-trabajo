@@ -19,7 +19,11 @@ export function useRealtimeTasks(monthId: string | null) {
         "postgres_changes",
         { event: "*", schema: "public", table: "tasks", filter: `month_id=eq.${monthId}` },
         () => {
-          queryClient.invalidateQueries({ queryKey: tasksKeys.all(monthId) })
+          // Se invalida por el prefijo `["tasks"]` y no por el mes puntual:
+          // el Analista de Tecnología consulta sus tareas de TODOS los meses
+          // bajo otra clave, y con una invalidación por mes esa vista se
+          // quedaba desactualizada.
+          queryClient.invalidateQueries({ queryKey: tasksKeys.root })
         }
       )
       .subscribe()

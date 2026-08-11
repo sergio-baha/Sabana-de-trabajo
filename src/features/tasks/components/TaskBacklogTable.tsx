@@ -38,13 +38,14 @@ import type { Project } from "@/features/projects/api/projectsApi"
 import type { TaskStatus } from "@/types/database.types"
 
 interface TaskBacklogTableProps {
-  monthId: string
   tasks: Task[]
   allTasks: Task[]
   projects: Project[]
   // Nombres de los asignados de cada tarea, ya resueltos por el caller
   // (task_assignees + people) — una tarea puede tener varias personas.
   assigneesByTask: Map<string, string[]>
+  /** Nombres de mes por id. Presente solo en la vista sin filtro de mes. */
+  monthNameById?: Map<string, string>
   canWrite: boolean
   onOpenTask: (task: Task) => void
   onDeleteTask: (task: Task) => void
@@ -54,16 +55,16 @@ interface TaskBacklogTableProps {
 // prioridad, para planificar sin arrastrar. El estado se cambia desde el
 // select de cada fila (equivalente a mover la tarjeta de columna).
 export default function TaskBacklogTable({
-  monthId,
   tasks,
   allTasks,
   projects,
   assigneesByTask,
+  monthNameById,
   canWrite,
   onOpenTask,
   onDeleteTask,
 }: TaskBacklogTableProps) {
-  const moveTask = useMoveTask(monthId)
+  const moveTask = useMoveTask()
 
   const projectById = useMemo(() => {
     const map = new Map<string, Project>()
@@ -122,6 +123,13 @@ export default function TaskBacklogTable({
                   />
                   <span className="font-medium">{task.title}</span>
                 </button>
+                {/* Solo en la vista sin filtro de mes: ahí conviven tareas
+                    de varios meses con el mismo título. */}
+                {monthNameById && (
+                  <span className="mt-0.5 ml-4 block text-xs text-muted-foreground">
+                    {monthNameById.get(task.month_id) ?? "—"}
+                  </span>
+                )}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">

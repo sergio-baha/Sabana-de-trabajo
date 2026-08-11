@@ -105,7 +105,7 @@ export default function ProyectoDetallePage() {
     () => (tasks ?? []).filter((t) => t.project_id === monthlyProject?.id),
     [tasks, monthlyProject]
   )
-  const deleteTask = useDeleteTask(activeMonthId ?? "")
+  const deleteTask = useDeleteTask()
   useRealtimeTasks(activeMonthId)
 
   const { data: people } = usePeople(activeMonthId)
@@ -543,7 +543,6 @@ export default function ProyectoDetallePage() {
                     phaseTasks.length > 0 ? (
                       <div className="overflow-hidden rounded-lg border border-border">
                         <TaskBacklogTable
-                          monthId={activeMonthId ?? ""}
                           tasks={phaseTasks}
                           allTasks={tasks ?? []}
                           projects={monthlyProjects ?? []}
@@ -589,7 +588,6 @@ export default function ProyectoDetallePage() {
               {unphasedTasks.length > 0 ? (
                 <div className="overflow-hidden rounded-lg border border-border">
                   <TaskBacklogTable
-                    monthId={activeMonthId ?? ""}
                     tasks={unphasedTasks}
                     allTasks={tasks ?? []}
                     projects={monthlyProjects ?? []}

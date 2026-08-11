@@ -52,7 +52,7 @@ export default function ImportTasksDialog({
   people,
   existingTasks,
 }: ImportTasksDialogProps) {
-  const bulkCreate = useBulkCreateTasks(monthId)
+  const bulkCreate = useBulkCreateTasks()
   const bulkSetAssignees = useBulkSetTaskAssignees(monthId)
   const [fileName, setFileName] = useState<string | null>(null)
   const [parsing, setParsing] = useState(false)

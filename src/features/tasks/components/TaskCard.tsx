@@ -10,6 +10,8 @@ interface TaskCardProps {
   projectName: string
   projectColor: string
   assigneeNames: string[]
+  /** Nombre del mes, solo en la vista que mezcla varios. */
+  monthLabel?: string | null
   draggable: boolean
   isDragging: boolean
   onOpen: () => void
@@ -35,6 +37,7 @@ export default function TaskCard({
   projectName,
   projectColor,
   assigneeNames,
+  monthLabel,
   draggable,
   isDragging,
   onOpen,
@@ -89,6 +92,14 @@ export default function TaskCard({
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: projectColor }} />
         <span className="truncate">{projectName}</span>
+        {/* Solo aparece en la vista sin filtro de mes (Analista de
+            Tecnología): ahí conviven tarjetas de varios meses y el título
+            por sí solo no las distingue. */}
+        {monthLabel && (
+          <Badge variant="outline" className="ml-auto shrink-0 px-1.5 py-0 text-[10px] font-normal">
+            {monthLabel}
+          </Badge>
+        )}
       </div>
 
       {task.tags.length > 0 && (

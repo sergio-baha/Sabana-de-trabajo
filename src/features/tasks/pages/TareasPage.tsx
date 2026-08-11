@@ -25,10 +25,11 @@ import { buildAssigneeIdsByTask, buildAssigneesByTask } from "@/features/tasks/l
 import type { Task } from "@/features/tasks/api/tasksApi"
 import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
+import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canManageTasks, writesOwnWorkOnly } from "@/lib/roles"
+import { canManageTasks, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
 import type { TaskStatus } from "@/types/database.types"
 
 const ALL = "all"
@@ -52,11 +53,24 @@ export default function TareasPage() {
   // (no podría asignársela a sí mismo), así que no se ofrece la acción.
   const canWrite = canManageTasks(profile?.role) && (!writesOwn || Boolean(myPerson))
 
-  const { data: tasks, isLoading } = useTasks(activeMonthId)
+  // El Analista de Tecnología no organiza su trabajo por mes: ve todas sus
+  // tareas de una vez, con el mes como etiqueta en cada tarjeta. RLS ya
+  // acota el resultado a lo suyo, así que quitar el filtro no expone nada.
+  const ignoresMonths = isAnalistaTecnologia(profile?.role)
+
+  const { data: tasks, isLoading } = useTasks(activeMonthId, { allMonths: ignoresMonths })
   const { data: projects } = useProjects(activeMonthId)
   const { data: people } = usePeople(activeMonthId)
-  const { data: taskAssignees } = useTaskAssignees(activeMonthId)
-  const deleteTask = useDeleteTask(activeMonthId ?? "")
+  const { data: taskAssignees } = useTaskAssignees(activeMonthId, { allMonths: ignoresMonths })
+  const { data: months } = useMonths()
+
+  // Solo se pasa en modo "todos los meses": es lo que le dice a las vistas
+  // que pinten la etiqueta, y evita ruido cuando el mes ya es el del filtro.
+  const monthNameById = useMemo(() => {
+    if (!ignoresMonths) return undefined
+    return new Map((months ?? []).map((m) => [m.id, m.name]))
+  }, [ignoresMonths, months])
+  const deleteTask = useDeleteTask()
   useRealtimeTasks(activeMonthId)
 
   const assigneesByTask = useMemo(
@@ -122,7 +136,11 @@ export default function TareasPage() {
         icon={KanbanSquare}
         eyebrow="Mi trabajo"
         title="Tareas"
-        description="Tablero y backlog de work items del mes activo."
+        description={
+          ignoresMonths
+            ? "Todas tus tareas, de todos los meses."
+            : "Tablero y backlog de work items del mes activo."
+        }
         stats={[
           { label: "En total", value: counters.total },
           { label: "En curso", value: counters.inProgress },
@@ -219,10 +237,10 @@ export default function TareasPage() {
           </TabsList>
           <TabsContent value="tablero" className="mt-4">
             <TaskBoard
-              monthId={activeMonthId}
               tasks={filtered}
               projects={projects ?? []}
               assigneesByTask={assigneesByTask}
+              monthNameById={monthNameById}
               canWrite={canWrite}
               onOpenTask={openTask}
               onNewTask={openNewTask}
@@ -232,11 +250,11 @@ export default function TareasPage() {
             <Card>
               <CardContent>
                 <TaskBacklogTable
-                  monthId={activeMonthId}
                   tasks={filtered}
                   allTasks={tasks ?? []}
                   projects={projects ?? []}
                   assigneesByTask={assigneesByTask}
+                  monthNameById={monthNameById}
                   canWrite={canWrite}
                   onOpenTask={openTask}
                   onDeleteTask={setTaskToDelete}

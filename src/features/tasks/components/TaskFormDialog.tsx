@@ -142,8 +142,8 @@ export default function TaskFormDialog({
   lockedProjectId = null,
 }: TaskFormDialogProps) {
   const isEdit = Boolean(task)
-  const createTask = useCreateTask(monthId)
-  const updateTask = useUpdateTask(monthId)
+  const createTask = useCreateTask()
+  const updateTask = useUpdateTask()
   const setAssignees = useSetTaskAssignees(monthId)
   const { data: taskAssignees } = useTaskAssignees(monthId)
   const createProject = useCreateProject(monthId)
