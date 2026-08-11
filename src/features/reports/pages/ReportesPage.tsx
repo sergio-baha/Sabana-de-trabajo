@@ -1,5 +1,13 @@
 import { useMemo, useState } from "react"
-import { Clock, FileSpreadsheet, FileText, FolderKanban, TrendingUp, Users } from "lucide-react"
+import {
+  BarChart3,
+  Clock,
+  FileSpreadsheet,
+  FileText,
+  FolderKanban,
+  TrendingUp,
+  Users,
+} from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -7,7 +15,8 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
-import KpiCard from "@/features/dashboard/components/KpiCard"
+import PageHeader from "@/components/shared/PageHeader"
+import KpiCard from "@/components/shared/KpiCard"
 import { usePersonTotals, useProjectTotals } from "@/features/dashboard/hooks/useDashboardQueries"
 import { useManagerTotals } from "@/features/reports/hooks/useReportsQueries"
 import ProjectHoursChart from "@/features/reports/components/ProjectHoursChart"
@@ -94,22 +103,31 @@ export default function ReportesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Reportes</h1>
-          <p className="text-sm text-muted-foreground">
-            Resumen ejecutivo de {activeMonth?.name ?? "este mes"}.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportExcel} disabled={isLoading || exporting !== null}>
-            <FileSpreadsheet /> {exporting === "excel" ? "Exportando…" : "Exportar Excel"}
-          </Button>
-          <Button onClick={handleExportPdf} disabled={isLoading || exporting !== null}>
-            <FileText /> {exporting === "pdf" ? "Exportando…" : "Exportar PDF"}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={BarChart3}
+        eyebrow="Planeación"
+        title="Reportes"
+        description={`Resumen ejecutivo de ${activeMonth?.name ?? "este mes"}.`}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              className="hero-action"
+              onClick={handleExportExcel}
+              disabled={isLoading || exporting !== null}
+            >
+              <FileSpreadsheet /> {exporting === "excel" ? "Exportando…" : "Excel"}
+            </Button>
+            <Button
+              className="hero-action shine-hover"
+              onClick={handleExportPdf}
+              disabled={isLoading || exporting !== null}
+            >
+              <FileText /> {exporting === "pdf" ? "Exportando…" : "PDF"}
+            </Button>
+          </>
+        }
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

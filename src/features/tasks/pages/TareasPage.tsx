@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Plus, Search } from "lucide-react"
+import { KanbanSquare, Plus, Search, UserRoundX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select"
 import ConfirmDialog from "@/components/shared/ConfirmDialog"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
+import PageHeader from "@/components/shared/PageHeader"
 import TaskBoard from "@/features/tasks/components/TaskBoard"
 import TaskBacklogTable from "@/features/tasks/components/TaskBacklogTable"
 import TaskFormDialog from "@/features/tasks/components/TaskFormDialog"
@@ -117,32 +118,39 @@ export default function TareasPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Tareas</h1>
-          <p className="text-sm text-muted-foreground">
-            Tablero y backlog de work items del mes activo: {counters.total} en total,{" "}
-            {counters.inProgress} en curso, {counters.blocked} bloqueadas, {counters.done}{" "}
-            completadas.
-          </p>
-        </div>
-        {canWrite && (
-          <Button onClick={() => openNewTask("pendiente")}>
-            <Plus /> Nueva tarea
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        icon={KanbanSquare}
+        eyebrow="Mi trabajo"
+        title="Tareas"
+        description="Tablero y backlog de work items del mes activo."
+        stats={[
+          { label: "En total", value: counters.total },
+          { label: "En curso", value: counters.inProgress },
+          { label: "Bloqueadas", value: counters.blocked },
+          { label: "Completadas", value: counters.done },
+        ]}
+        actions={
+          canWrite && (
+            <Button className="hero-action shine-hover" onClick={() => openNewTask("pendiente")}>
+              <Plus /> Nueva tarea
+            </Button>
+          )
+        }
+      />
 
       {writesOwn && !myPerson && (
-        <div className="rounded-lg border border-warning/40 bg-warning-muted/40 p-3 text-sm">
-          Tu cuenta todavía no está vinculada a una persona del mes activo, así que no puedes
-          crear tareas
-          {restrictedToSelf ? " y aquí no aparecerá ninguna" : ""}. Pide a un administrador o
-          gestor que la vincule desde Personas → editar → Cuenta vinculada.
+        <div className="animate-fade-in flex items-start gap-3 rounded-xl border border-warning/40 bg-warning-muted/40 p-3.5 text-sm">
+          <UserRoundX className="mt-0.5 size-4 shrink-0 text-warning" />
+          <span>
+            Tu cuenta todavía no está vinculada a una persona del mes activo, así que no puedes
+            crear tareas
+            {restrictedToSelf ? " y aquí no aparecerá ninguna" : ""}. Pide a un administrador o
+            gestor que la vincule desde Personas → editar → Cuenta vinculada.
+          </span>
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="filter-bar">
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input

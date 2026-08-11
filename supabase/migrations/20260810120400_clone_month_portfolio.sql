@@ -21,6 +21,7 @@
 -- `create or replace` no admite parches parciales: se reescribe completa.
 create or replace function public.create_month_from_previous(
   p_source_month_id uuid,
+
   p_new_name text
 )
 returns uuid

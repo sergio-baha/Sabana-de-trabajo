@@ -4,13 +4,13 @@ import "react-data-grid/lib/styles.css"
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
+  Grid3x3,
   ListChecks,
   MessageSquare,
   Search,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -21,6 +21,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
+import PageHeader from "@/components/shared/PageHeader"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
 import { useAllocations, useUpsertAllocation } from "@/features/grid/hooks/useAllocationsQueries"
@@ -313,25 +314,31 @@ export default function DistribucionPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Distribución de trabajo</h1>
-          <p className="text-sm text-muted-foreground">
-            {canEdit
-              ? "Edita horas directamente en la grilla. Se guardan automáticamente."
-              : "Modo de solo lectura — tu rol puede consultar y comentar, no editar horas."}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className="border-transparent bg-success-muted text-success">Verde: exacto</Badge>
-          <Badge className="border-transparent bg-warning-muted text-warning">
-            Amarillo: faltan horas
-          </Badge>
-          <Badge className="border-transparent bg-danger-muted text-danger">Rojo: de más</Badge>
-        </div>
-      </div>
+      <PageHeader
+        icon={Grid3x3}
+        eyebrow="Planeación"
+        title="Distribución"
+        description={
+          canEdit
+            ? "Edita horas directamente en la grilla. Se guardan automáticamente."
+            : "Modo de solo lectura — tu rol puede consultar y comentar, no editar horas."
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+              <span className="size-2 rounded-full bg-success" /> Exacto
+            </span>
+            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+              <span className="size-2 rounded-full bg-warning" /> Faltan horas
+            </span>
+            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+              <span className="size-2 rounded-full bg-danger" /> De más
+            </span>
+          </div>
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="filter-bar">
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input

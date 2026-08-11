@@ -840,6 +840,188 @@
   font-weight: 600;
 }
 
+/* =====================================================================
+   CAPA DE PRESENCIA — encabezados de página, superficies y tablas
+   Segunda iteración del sistema visual: antes existían los tokens y las
+   animaciones, pero solo Dashboard los usaba. Estas clases son el
+   vocabulario que aplican TODAS las páginas, para que la app se sienta
+   una sola pieza y no una colección de tablas sueltas.
+   ===================================================================== */
+
+/* Fondo ambiental de página: dos manchas de color muy difuminadas detrás
+   del contenido.
+ *
+ * Dos detalles que no son opcionales acá:
+ *   1. `isolation: isolate` — el contenedor de página vive dentro de
+ *      SidebarInset, que tiene `bg-background` opaco. Sin un contexto de
+ *      apilamiento propio, un hijo en `z-index: -1` se pinta DETRÁS de ese
+ *      fondo (y del de <body>) y no se ve nada. Aislando, el -1 queda
+ *      acotado a esta caja: debajo del contenido, encima del fondo.
+ *   2. `absolute` y no `fixed` — `.page-enter` termina con
+ *      `transform: translateY(0)` por el `animation-fill-mode: both`, y
+ *      cualquier transform convierte al elemento en bloque contenedor de
+ *      sus descendientes fijos. Un `fixed` acá no sería relativo al
+ *      viewport de todos modos, así que se usa absolute, que sí es
+ *      predecible. El desborde lateral lo recorta el `overflow-x-clip`
+ *      del contenedor raíz.
+ */
+.page-aurora {
+    position: relative;
+    isolation: isolate;
+}
+.page-aurora::before,
+.page-aurora::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    border-radius: 9999px;
+    filter: blur(90px);
+    pointer-events: none;
+    opacity: 0.55;
+}
+.page-aurora::before {
+    top: -9rem;
+    right: -7rem;
+    width: 30rem;
+    height: 30rem;
+    background: radial-gradient(circle, color-mix(in oklch, var(--primary) 45%, transparent), transparent 68%);
+    animation: sabana-aurora 26s var(--ease) infinite;
+}
+.page-aurora::after {
+    top: 45%;
+    left: -9rem;
+    width: 26rem;
+    height: 26rem;
+    background: radial-gradient(circle, color-mix(in oklch, var(--secondary) 42%, transparent), transparent 68%);
+    animation: sabana-aurora 34s var(--ease) infinite reverse;
+}
+.dark .page-aurora::before,
+.dark .page-aurora::after {
+    opacity: 0.32;
+}
+
+/* Encabezado de página: la banda de marca que abre cada módulo. El
+   gradiente se desplaza muy lento — a 18s el movimiento se percibe como
+   profundidad, no como una animación pidiendo atención. */
+.page-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--radius-3xl);
+    padding: 1.5rem;
+    color: #fff;
+    background: var(--gradient-hero);
+    background-size: 170% 170%;
+    box-shadow: var(--sh-xl);
+    animation: sabana-gradient-shift 18s var(--ease) infinite;
+}
+/* Rejilla fina sobre el gradiente: le da textura para que la banda no se
+   lea como un rectángulo de color plano. */
+.page-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 70% 90% at 85% 10%, #000, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 90% at 85% 10%, #000, transparent 70%);
+}
+/* Botón sobre el hero: el gradiente naranja del primario desaparecería
+   contra el fondo de marca, así que acá va vidrio sobre el gradiente. */
+.hero-action {
+    background: rgba(255, 255, 255, 0.16) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    color: #fff !important;
+    backdrop-filter: blur(8px);
+    border-color: rgba(255, 255, 255, 0.22) !important;
+}
+.hero-action:hover {
+    background: rgba(255, 255, 255, 0.26) !important;
+}
+
+/* Superficie de sección: la caja estándar para agrupar contenido. Se
+   distingue de una Card normal por el realce del borde al enfocarse. */
+.surface-section {
+    border-radius: var(--radius-2xl);
+    border: 1px solid var(--border);
+    background: var(--card);
+    box-shadow: var(--sh-sm);
+    transition:
+        box-shadow 0.3s var(--ease-out),
+        border-color 0.3s var(--ease);
+}
+.surface-section:hover {
+    box-shadow: var(--sh-md);
+}
+
+/* Barra de filtros: se agrupa en una sola pieza en vez de dejar los
+   controles sueltos flotando sobre el fondo. Reduce mucho el ruido en las
+   pantallas con tres o cuatro selectores seguidos. */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border);
+    background: color-mix(in oklch, var(--muted) 55%, transparent);
+    padding: 0.5rem;
+}
+
+/* ── Tablas ────────────────────────────────────────────────────────────
+   Las filas son el contenido que más se lee en la app; con hover plano se
+   pierde el renglón al recorrer una tabla ancha. */
+[data-slot="table"] tbody tr {
+    transition:
+        background-color 0.18s var(--ease),
+        box-shadow 0.18s var(--ease);
+}
+[data-slot="table"] tbody tr:hover {
+    background-color: color-mix(in oklch, var(--primary) 6%, transparent);
+    box-shadow: inset 3px 0 0 0 var(--primary);
+}
+[data-slot="table"] thead th {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+}
+
+/* Entrada escalonada de filas de tabla. El índice lo pone el componente
+   con style={{ '--i': n }}; se limita a 12 para que una tabla larga no
+   deje las últimas filas invisibles medio segundo. */
+.row-enter {
+    animation: sabana-fade-in 0.4s var(--ease-out) both;
+    animation-delay: calc(min(var(--i, 0), 12) * 26ms);
+}
+
+/* Estado vacío: un ícono en un halo de marca en vez de una línea de texto
+   gris centrada, que es lo que había en casi todas las pantallas. */
+.empty-state-icon {
+    display: grid;
+    place-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 9999px;
+    color: var(--primary);
+    background: color-mix(in oklch, var(--primary) 12%, transparent);
+    animation: sabana-glow 4s var(--ease) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-aurora::before,
+    .page-aurora::after,
+    .page-hero {
+        animation: none;
+    }
+}
+
 /* Contenido del editor rich-text de la descripción de tarjetas (Tiptap).
    No usamos el plugin de tipografía de Tailwind: el proyecto no lo trae, así
    que el espaciado de párrafos/listas/imágenes se define a mano aquí. */

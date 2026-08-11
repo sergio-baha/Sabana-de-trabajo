@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { MoreHorizontal, Pencil, Plus, Search, Trash2, Users } from "lucide-react"
+import PageHeader from "@/components/shared/PageHeader"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -51,28 +52,37 @@ export default function PersonasPage() {
     )
   }, [people, search])
 
+  const activeCount = (people ?? []).filter((p) => p.status === "activo").length
+  const availableHours = (people ?? []).reduce((sum, p) => sum + p.available_hours, 0)
+
   if (!activeMonthId) return <NoActiveMonth />
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Gestión de personas</h1>
-          <p className="text-sm text-muted-foreground">
-            Roster del mes activo: cargo, horas mensuales disponibles y estado.
-          </p>
-        </div>
-        {canWrite && (
-          <Button
-            onClick={() => {
-              setEditingPerson(null)
-              setFormOpen(true)
-            }}
-          >
-            <Plus /> Nueva persona
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        icon={Users}
+        eyebrow="Configuración"
+        title="Personas"
+        description="Roster del mes activo: cargo, horas mensuales disponibles y estado."
+        stats={[
+          { label: "En el roster", value: people?.length ?? 0 },
+          { label: "Activas", value: activeCount },
+          { label: "Horas disponibles", value: availableHours, suffix: " h" },
+        ]}
+        actions={
+          canWrite && (
+            <Button
+              className="hero-action shine-hover"
+              onClick={() => {
+                setEditingPerson(null)
+                setFormOpen(true)
+              }}
+            >
+              <Plus /> Nueva persona
+            </Button>
+          )
+        }
+      />
 
       <Card>
         <CardHeader>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { ChevronLeft, ChevronRight, Search } from "lucide-react"
+import { ChevronLeft, ChevronRight, History, Search } from "lucide-react"
+import PageHeader from "@/components/shared/PageHeader"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -65,14 +66,14 @@ export default function HistorialPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Historial</h1>
-        <p className="text-sm text-muted-foreground">
-          Todos los cambios registrados: usuario, fecha, campo modificado, valor anterior y nuevo.
-        </p>
-      </div>
+      <PageHeader
+        icon={History}
+        eyebrow="Configuración"
+        title="Historial"
+        description="Todos los cambios registrados: usuario, fecha, campo modificado, valor anterior y nuevo."
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="filter-bar">
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input

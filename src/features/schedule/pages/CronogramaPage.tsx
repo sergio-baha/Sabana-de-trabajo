@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { UserRoundX } from "lucide-react"
+import { GanttChartSquare, UserRoundX } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
+import PageHeader from "@/components/shared/PageHeader"
 import GanttChart from "@/features/schedule/components/GanttChart"
 import TimeCalendar from "@/features/schedule/components/TimeCalendar"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
@@ -78,6 +79,10 @@ export default function CronogramaPage() {
     () => (activities ?? []).filter((a) => a.allocation.person_id === personId),
     [activities, personId]
   )
+  const loggedHours = useMemo(
+    () => personActivities.reduce((sum, a) => sum + a.hours, 0),
+    [personActivities]
+  )
 
   const isOwnSchedule = Boolean(myPerson && personId === myPerson.id)
   // Registrar tiempo es siempre sobre el cronograma que se está viendo: un
@@ -106,30 +111,35 @@ export default function CronogramaPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Cronograma</h1>
-          <p className="text-sm text-muted-foreground">
-            Planeación de tareas en el tiempo y horas realmente registradas
-            {selectedPerson ? ` · ${selectedPerson.name}` : ""}.
-          </p>
-        </div>
-        {!restrictedToSelf && (
-          <Select value={personId ?? ""} onValueChange={setSelectedPersonId}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Elige una persona" />
-            </SelectTrigger>
-            <SelectContent>
-              {(people ?? []).map((person) => (
-                <SelectItem key={person.id} value={person.id}>
-                  {person.name}
-                  {myPerson?.id === person.id ? " (yo)" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
+      <PageHeader
+        icon={GanttChartSquare}
+        eyebrow="Mi trabajo"
+        title="Cronograma"
+        description={`Planeación de tareas en el tiempo y horas realmente registradas${
+          selectedPerson ? ` · ${selectedPerson.name}` : ""
+        }.`}
+        stats={[
+          { label: "Tareas", value: personTasks.length },
+          { label: "Horas registradas", value: loggedHours, suffix: " h", decimals: 1 },
+        ]}
+        actions={
+          !restrictedToSelf && (
+            <Select value={personId ?? ""} onValueChange={setSelectedPersonId}>
+              <SelectTrigger className="hero-action w-56">
+                <SelectValue placeholder="Elige una persona" />
+              </SelectTrigger>
+              <SelectContent>
+                {(people ?? []).map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.name}
+                    {myPerson?.id === person.id ? " (yo)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )
+        }
+      />
 
       {tasksLoading || activitiesLoading ? (
         <Skeleton className="h-72 w-full" />

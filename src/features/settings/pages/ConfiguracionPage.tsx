@@ -1,4 +1,6 @@
+import { Settings } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import PageHeader from "@/components/shared/PageHeader"
 import GeneralSettingsForm from "@/features/settings/components/GeneralSettingsForm"
 import UsersTable from "@/features/settings/components/UsersTable"
 import InvitationsPanel from "@/features/settings/components/InvitationsPanel"
@@ -6,12 +8,12 @@ import InvitationsPanel from "@/features/settings/components/InvitationsPanel"
 export default function ConfiguracionPage() {
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Configuración</h1>
-        <p className="text-sm text-muted-foreground">
-          Datos de la empresa, horas por defecto, usuarios e invitaciones.
-        </p>
-      </div>
+      <PageHeader
+        icon={Settings}
+        eyebrow="Administración"
+        title="Configuración"
+        description="Datos de la empresa, horas por defecto, usuarios e invitaciones."
+      />
 
       <Tabs defaultValue="general">
         <TabsList>

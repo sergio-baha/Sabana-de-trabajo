@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import KpiCard from "@/features/dashboard/components/KpiCard"
+import KpiCard from "@/components/shared/KpiCard"
 import UtilizationGauge from "@/features/dashboard/components/UtilizationGauge"
 import AttentionList from "@/features/dashboard/components/AttentionList"
 import TopProjectsList from "@/features/dashboard/components/TopProjectsList"
@@ -88,7 +88,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-5">
       {/* Hero con el gradiente de marca — ancla visual de la app */}
-      <div className="surface-brand animate-fade-in relative overflow-hidden rounded-3xl p-7 shadow-brand-xl">
+      <div className="page-hero animate-fade-in">
         <div
           aria-hidden
           className="animate-float pointer-events-none absolute -top-24 -right-16 size-64 rounded-full opacity-25 blur-3xl"
@@ -115,10 +115,7 @@ export default function DashboardPage() {
                     : " · sin sobreasignaciones")}
             </p>
           </div>
-          <Button
-            asChild
-            className="btn-plain bg-white/15 text-white backdrop-blur-sm hover:bg-white/25"
-          >
+          <Button asChild className="hero-action shine-hover">
             <Link to="/distribucion">
               Ir a la distribución <ArrowRight />
             </Link>

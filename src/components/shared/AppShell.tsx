@@ -22,7 +22,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -56,11 +55,6 @@ interface NavItem {
   allow: AppRole[]
 }
 
-interface NavSection {
-  label: string
-  items: NavItem[]
-}
-
 const ALL_ROLES: AppRole[] = [...TEAM_WIDE_ROLES, "analista_tecnologia"]
 
 // `allow` se declara siempre, incluso cuando son todos los roles: así,
@@ -68,50 +62,34 @@ const ALL_ROLES: AppRole[] = [...TEAM_WIDE_ROLES, "analista_tecnologia"]
 // vez de heredar acceso por omisión. Debe ir en línea con las mismas
 // restricciones del router (RoleRoute) — esto solo oculta el enlace.
 //
-// Los módulos van agrupados por para qué sirven, no en una lista corrida:
-// con diez enlaces seguidos había que leerlos todos para encontrar uno. El
-// corte también coincide con los roles — el Analista de Tecnología solo ve
-// el primer grupo, así que para él el menú se reduce a lo suyo.
-const NAV_SECTIONS: NavSection[] = [
-  {
-    label: "Mi trabajo",
-    items: [
-      { to: "/tareas", label: "Tareas", icon: KanbanSquare, allow: ALL_ROLES },
-      { to: "/cronograma", label: "Cronograma", icon: GanttChartSquare, allow: ALL_ROLES },
-    ],
-  },
-  {
-    label: "Planeación",
-    items: [
-      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, allow: TEAM_WIDE_ROLES },
-      {
-        to: "/distribucion",
-        label: "Distribución de trabajo",
-        icon: Grid3x3,
-        allow: TEAM_WIDE_ROLES,
-      },
-      { to: "/meses", label: "Meses", icon: CalendarRange, allow: TEAM_WIDE_ROLES },
-      { to: "/proyectos", label: "Proyectos", icon: FolderKanban, allow: TEAM_WIDE_ROLES },
-      { to: "/personas", label: "Personas", icon: Users, allow: TEAM_WIDE_ROLES },
-      { to: "/reportes", label: "Reportes", icon: BarChart3, allow: TEAM_WIDE_ROLES },
-    ],
-  },
-  {
-    label: "Administración",
-    items: [
-      { to: "/historial", label: "Historial", icon: History, allow: ["administrador"] },
-      { to: "/configuracion", label: "Configuración", icon: Settings, allow: ["administrador"] },
-    ],
-  },
+// La barra lateral lleva SOLO lo del día a día, sin etiquetas de grupo: con
+// diez enlaces repartidos en tres secciones había que leer el menú entero
+// para encontrar uno. Lo que se usa de vez en cuando (roster, meses,
+// auditoría, ajustes) vive en el menú del avatar — ver SETUP_ITEMS.
+const NAV_ITEMS: NavItem[] = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, allow: TEAM_WIDE_ROLES },
+  { to: "/tareas", label: "Tareas", icon: KanbanSquare, allow: ALL_ROLES },
+  { to: "/cronograma", label: "Cronograma", icon: GanttChartSquare, allow: ALL_ROLES },
+  { to: "/proyectos", label: "Proyectos", icon: FolderKanban, allow: TEAM_WIDE_ROLES },
+  { to: "/distribucion", label: "Distribución", icon: Grid3x3, allow: TEAM_WIDE_ROLES },
+  { to: "/reportes", label: "Reportes", icon: BarChart3, allow: TEAM_WIDE_ROLES },
 ]
 
-// Título que se muestra en la barra superior. Se saca del propio menú para
-// no mantener dos listas de nombres; `/perfil` no está en el menú, así que
-// va aparte.
+// Configuración del espacio de trabajo: se entra a esto para dejarlo listo,
+// no todos los días. El mes activo además ya se cambia desde el header, así
+// que /meses no necesita estar siempre a la vista.
+const SETUP_ITEMS: NavItem[] = [
+  { to: "/personas", label: "Personas", icon: Users, allow: TEAM_WIDE_ROLES },
+  { to: "/meses", label: "Meses", icon: CalendarRange, allow: TEAM_WIDE_ROLES },
+  { to: "/historial", label: "Historial", icon: History, allow: ["administrador"] },
+  { to: "/configuracion", label: "Configuración", icon: Settings, allow: ["administrador"] },
+]
+
+// Título que se muestra en la barra superior. Se saca de las propias listas
+// para no mantener dos juegos de nombres; `/perfil` no está en ninguna, así
+// que va aparte.
 const PAGE_TITLES: Record<string, string> = {
-  ...Object.fromEntries(
-    NAV_SECTIONS.flatMap((section) => section.items).map((item) => [item.to, item.label])
-  ),
+  ...Object.fromEntries([...NAV_ITEMS, ...SETUP_ITEMS].map((item) => [item.to, item.label])),
   "/perfil": "Mi perfil",
 }
 
@@ -137,11 +115,8 @@ export default function AppShell() {
     navigate("/login", { replace: true })
   }
 
-  // Un grupo sin módulos visibles no debe pintar ni su encabezado.
-  const visibleSections = NAV_SECTIONS.map((section) => ({
-    ...section,
-    items: section.items.filter((item) => profile && item.allow.includes(profile.role)),
-  })).filter((section) => section.items.length > 0)
+  const visibleNav = NAV_ITEMS.filter((item) => profile && item.allow.includes(profile.role))
+  const visibleSetup = SETUP_ITEMS.filter((item) => profile && item.allow.includes(profile.role))
 
   // Coincidencia por prefijo y no exacta: las rutas de detalle
   // (/proyectos/:projectId) deben mostrar el título de su módulo. Se toma
@@ -190,38 +165,34 @@ export default function AppShell() {
           </div>
         </SidebarHeader>
         <SidebarContent className="relative">
-          {visibleSections.map((section) => (
-            <SidebarGroup key={section.label}>
-              <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {section.items.map((item, index) => (
-                    // El escalonado va en el <li> y no en el enlace: la
-                    // animación termina con `both`, así que dejaría fijado un
-                    // `transform` sobre el enlace y anularía el desplazamiento
-                    // al pasar el mouse. Además el retardo corre por grupo,
-                    // para que no crezca con el total de módulos.
-                    <SidebarMenuItem
-                      key={item.to}
-                      className="stagger-item"
-                      style={{ "--i": index } as CSSProperties}
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleNav.map((item, index) => (
+                  // El escalonado va en el <li> y no en el enlace: la
+                  // animación termina con `both`, así que dejaría fijado un
+                  // `transform` sobre el enlace y anularía el desplazamiento
+                  // al pasar el mouse.
+                  <SidebarMenuItem
+                    key={item.to}
+                    className="stagger-item"
+                    style={{ "--i": index } as CSSProperties}
+                  >
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname.startsWith(item.to)}
+                      tooltip={item.label}
                     >
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location.pathname.startsWith(item.to)}
-                        tooltip={item.label}
-                      >
-                        <Link to={item.to}>
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ))}
+                      <Link to={item.to}>
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
           {profile && (
@@ -263,11 +234,27 @@ export default function AppShell() {
                     Mi perfil
                   </Link>
                 </DropdownMenuItem>
+                {visibleSetup.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-eyebrow text-muted-foreground">
+                      Configuración
+                    </DropdownMenuLabel>
+                    {visibleSetup.map((item) => (
+                      <DropdownMenuItem key={item.to} asChild>
+                        <Link to={item.to}>
+                          <item.icon />
+                          {item.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={toggleTheme}>
                   {theme === "dark" ? <Sun /> : <Moon />}
                   {theme === "dark" ? "Modo claro" : "Modo oscuro"}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
                   <LogOut />
                   Cerrar sesión
@@ -321,8 +308,13 @@ export default function AppShell() {
             )}
           </Button>
         </header>
-        {/* key por ruta: reinicia la animación de entrada en cada navegación */}
-        <main key={location.pathname} className="page-enter flex flex-1 flex-col gap-4 p-4 md:p-6">
+        {/* key por ruta: reinicia la animación de entrada en cada navegación.
+            `page-aurora` pinta las manchas de color del fondo detrás de todo
+            el contenido (z-index negativo, position fixed). */}
+        <main
+          key={location.pathname}
+          className="page-enter page-aurora relative flex flex-1 flex-col gap-4 p-4 md:p-6"
+        >
           <Outlet />
         </main>
       </SidebarInset>

@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Copy, History, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { CalendarRange, Copy, History, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import PageHeader from "@/components/shared/PageHeader"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -74,27 +75,35 @@ export default function MesesPage() {
     })
   }
 
+  const openCount = (months ?? []).filter((m) => m.status === "abierto").length
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Gestión de meses</h1>
-          <p className="text-sm text-muted-foreground">
-            Cada mes es una planificación independiente. Duplicar copia personas, proyectos y
-            distribución del mes elegido.
-          </p>
-        </div>
-        {canWrite && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={openCreate}>
-              <Plus /> Mes en blanco
-            </Button>
-            <Button onClick={() => openDuplicate(activeMonthId ?? undefined)}>
-              <Copy /> Duplicar mes
-            </Button>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        icon={CalendarRange}
+        eyebrow="Configuración"
+        title="Meses"
+        description="Cada mes es una planificación independiente. Duplicar copia personas, proyectos y distribución del mes elegido."
+        stats={[
+          { label: "Meses", value: months?.length ?? 0 },
+          { label: "Abiertos", value: openCount },
+        ]}
+        actions={
+          canWrite && (
+            <>
+              <Button variant="outline" className="hero-action" onClick={openCreate}>
+                <Plus /> Mes en blanco
+              </Button>
+              <Button
+                className="hero-action shine-hover"
+                onClick={() => openDuplicate(activeMonthId ?? undefined)}
+              >
+                <Copy /> Duplicar mes
+              </Button>
+            </>
+          )
+        }
+      />
 
       <Card>
         <CardHeader>

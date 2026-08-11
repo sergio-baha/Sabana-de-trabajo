@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, type CSSProperties } from "react"
 import { Link } from "react-router"
-import { Plus, Search } from "lucide-react"
+import { FolderKanban, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import PageHeader from "@/components/shared/PageHeader"
+import EmptyState from "@/components/shared/EmptyState"
 import ProjectFormDialog from "@/features/projects/components/ProjectFormDialog"
 import {
   usePortfolioCosts,
@@ -116,6 +118,7 @@ export default function ProyectosPage() {
 
   const mine = filtered.filter((r) => canManage(r.portfolio_project_id))
   const others = filtered.filter((r) => !canManage(r.portfolio_project_id))
+  const totalHours = filtered.reduce((sum, r) => sum + r.allocated_hours, 0)
 
   const renderTable = (rows: PortfolioTotals[]) => (
     <Table>
@@ -129,11 +132,15 @@ export default function ProyectosPage() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row) => {
+        {rows.map((row, index) => {
           const cost = costByProject.get(row.portfolio_project_id)
           const spent = (cost?.labor ?? 0) + row.expense_total
           return (
-            <TableRow key={row.portfolio_project_id}>
+            <TableRow
+              key={row.portfolio_project_id}
+              className="row-enter"
+              style={{ "--i": index } as CSSProperties}
+            >
               <TableCell className="font-medium">
                 <Link
                   to={`/proyectos/${row.portfolio_project_id}`}
@@ -173,26 +180,28 @@ export default function ProyectosPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Proyectos</h1>
-          <p className="text-sm text-muted-foreground">
-            Todos los proyectos del portafolio, en cualquier mes. Gestionas los que creaste o
-            donde estás asignado; los demás quedan en modo consulta.
-          </p>
-        </div>
-        {canCreate ? (
-          <Button onClick={() => setFormOpen(true)}>
-            <Plus /> Nuevo proyecto
-          </Button>
-        ) : (
-          !activeMonthId && (
-            <p className="text-xs text-muted-foreground">
-              Activa un mes para poder crear proyectos.
-            </p>
+      <PageHeader
+        icon={FolderKanban}
+        eyebrow="Portafolio"
+        title="Proyectos"
+        description="Todos los proyectos, en cualquier mes. Gestionas los que creaste o donde estás asignado; los demás quedan en modo consulta."
+        stats={[
+          { label: "Tuyos", value: mine.length },
+          { label: "En consulta", value: others.length },
+          { label: "Horas acumuladas", value: totalHours, suffix: " h" },
+        ]}
+        actions={
+          canCreate ? (
+            <Button className="hero-action shine-hover" onClick={() => setFormOpen(true)}>
+              <Plus /> Nuevo proyecto
+            </Button>
+          ) : (
+            !activeMonthId && (
+              <p className="text-xs text-white/70">Activa un mes para crear proyectos.</p>
+            )
           )
-        )}
-      </div>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -231,9 +240,11 @@ export default function ProyectosPage() {
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              No hay proyectos que coincidan con el filtro.
-            </p>
+            <EmptyState
+              icon={FolderKanban}
+              title="No hay proyectos que coincidan"
+              description="Prueba con otro estado o limpia la búsqueda para ver todo el portafolio."
+            />
           ) : (
             <div className="flex flex-col gap-6">
               <div>

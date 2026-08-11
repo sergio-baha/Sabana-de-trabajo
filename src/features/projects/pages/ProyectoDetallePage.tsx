@@ -25,6 +25,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import ConfirmDialog from "@/components/shared/ConfirmDialog"
+import AnimatedNumber from "@/components/shared/AnimatedNumber"
+import EmptyState from "@/components/shared/EmptyState"
 import BudgetBar from "@/features/portfolio/components/BudgetBar"
 import PhaseFormDialog from "@/features/portfolio/components/PhaseFormDialog"
 import ExpenseFormDialog from "@/features/portfolio/components/ExpenseFormDialog"
@@ -233,40 +235,51 @@ export default function ProyectoDetallePage() {
       </Button>
 
       {/* Cabecera con el consumo global del proyecto */}
-      <div className="surface-brand animate-fade-in relative overflow-hidden rounded-3xl p-6 shadow-brand-xl">
-        <div
-          aria-hidden
-          className="aurora-blob pointer-events-none -top-20 -right-10 size-64 opacity-30"
-          style={{ background: "var(--gradient-brand)" }}
-        />
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <div className="text-eyebrow flex items-center gap-2 text-white/70">
-              <span
-                aria-hidden
-                className="size-2.5 rounded-full ring-2 ring-white/40"
-                style={{ backgroundColor: project.color }}
-              />
-              {project.category === "institucional" ? "Tiempo institucional" : "Proyecto"}
+      <div className="page-hero animate-fade-in">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-4">
+            <div
+              aria-hidden
+              className="hidden size-12 shrink-0 place-content-center rounded-2xl bg-white/15 backdrop-blur-sm sm:grid"
+            >
+              <span className="size-4 rounded-full ring-2 ring-white/50" style={{ backgroundColor: project.color }} />
             </div>
-            <h1 className="text-display text-3xl font-semibold text-white">{project.name}</h1>
-            {project.description && (
-              <p className="max-w-xl text-sm text-white/75">{project.description}</p>
-            )}
-            <p className="text-sm text-white/70">
-              {totalsRow
-                ? `${totalsRow.months_count} ${totalsRow.months_count === 1 ? "mes" : "meses"} · ${totalsRow.people_count} ${totalsRow.people_count === 1 ? "persona" : "personas"}`
-                : "Sin horas registradas todavía"}
-            </p>
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-eyebrow text-white/70">
+                {project.category === "institucional" ? "Tiempo institucional" : "Proyecto"}
+              </span>
+              <h1 className="text-display text-2xl font-semibold sm:text-3xl">{project.name}</h1>
+              {project.description && (
+                <p className="max-w-2xl text-sm text-white/75">{project.description}</p>
+              )}
+            </div>
           </div>
           {canWrite && (
-            <Button
-              className="btn-plain bg-white/15 text-white backdrop-blur-sm hover:bg-white/25"
-              onClick={() => setEditOpen(true)}
-            >
+            <Button className="hero-action shine-hover" onClick={() => setEditOpen(true)}>
               <Pencil /> Editar
             </Button>
           )}
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/15 pt-4">
+          {[
+            { label: totalsRow?.months_count === 1 ? "Mes" : "Meses", value: totalsRow?.months_count ?? 0 },
+            { label: "Personas", value: totalsRow?.people_count ?? 0 },
+            { label: "Horas", value: totalsRow?.allocated_hours ?? 0, suffix: " h" },
+            { label: "Fases", value: (phaseTotals ?? []).length },
+            { label: "Tareas del mes", value: projectTasks.length },
+          ].map((stat, index) => (
+            <div
+              key={stat.label}
+              className="reveal flex flex-col"
+              style={{ "--i": index } as CSSProperties}
+            >
+              <span className="text-display text-xl font-semibold tabular-nums">
+                <AnimatedNumber value={stat.value} suffix={stat.suffix} />
+              </span>
+              <span className="text-eyebrow text-white/65">{stat.label}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -410,9 +423,25 @@ export default function ProyectoDetallePage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {(phaseTotals ?? []).length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Este proyecto todavía no tiene fases.
-            </p>
+            <EmptyState
+              icon={Plus}
+              title="Este proyecto todavía no tiene fases"
+              description="Las fases organizan las tareas en etapas (Descubrir, Definir, Entregar…). Agrega la primera para empezar."
+              action={
+                canManageProject && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingPhase(null)
+                      setPhaseOpen(true)
+                    }}
+                  >
+                    <Plus /> Agregar fase
+                  </Button>
+                )
+              }
+            />
           ) : (
             (phaseTotals ?? []).map((phase, index) => {
               const phaseSpent = (phaseCostById.get(phase.phase_id) ?? 0) + phase.expense_total
