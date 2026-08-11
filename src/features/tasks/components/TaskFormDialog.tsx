@@ -39,6 +39,7 @@ import { nextBoardOrder, type Task } from "@/features/tasks/api/tasksApi"
 import { uploadTaskImage } from "@/features/tasks/lib/uploadTaskImage"
 import { useCreateTask, useUpdateTask } from "@/features/tasks/hooks/useTasksQueries"
 import { useCreateProject, useProjectMembers } from "@/features/projects/hooks/useProjectsQueries"
+import { usePhasesForMonthlyProject } from "@/features/portfolio/hooks/usePortfolioQueries"
 import { useSessionStore } from "@/stores/sessionStore"
 import { canCreateProjects } from "@/lib/roles"
 import type { Project } from "@/features/projects/api/projectsApi"
@@ -58,6 +59,7 @@ const schema = z.object({
   title: z.string().min(1, "El título es obligatorio"),
   description: z.string(),
   projectId: z.string().min(1, "Elige un proyecto"),
+  phaseId: z.string(),
   workItemType: z.enum(["epica", "historia", "tarea", "bug"]),
   status: z.enum(["pendiente", "en_progreso", "en_revision", "bloqueada", "completada"]),
   priority: z.number().int().min(1).max(4),
@@ -87,6 +89,10 @@ interface TaskFormDialogProps {
   monthId: string
   task?: Task | null
   defaultStatus?: TaskStatus
+  // Prellena la fase al crear (p. ej. el botón "+ Tarea" de una fase
+  // concreta en la página del proyecto). A diferencia de lockedProjectId,
+  // sigue siendo editable — mover una tarea de fase es normal.
+  defaultPhaseId?: string | null
   tasks: Task[]
   projects: Project[]
   people: Person[]
@@ -121,6 +127,7 @@ export default function TaskFormDialog({
   monthId,
   task,
   defaultStatus = "pendiente",
+  defaultPhaseId = null,
   tasks,
   projects,
   people,
@@ -150,6 +157,7 @@ export default function TaskFormDialog({
       title: "",
       description: "",
       projectId: "",
+      phaseId: "",
       workItemType: "tarea",
       status: defaultStatus,
       priority: 3,
@@ -169,6 +177,7 @@ export default function TaskFormDialog({
       title: task?.title ?? "",
       description: task?.description ?? "",
       projectId: task?.project_id ?? lockedProjectId ?? "",
+      phaseId: task?.phase_id ?? defaultPhaseId ?? "",
       workItemType: task?.work_item_type ?? "tarea",
       status: task?.status ?? defaultStatus,
       priority: task?.priority ?? 3,
@@ -183,7 +192,7 @@ export default function TaskFormDialog({
     setJustCreated(null)
     setNewProjectName("")
     setAddingProject(false)
-  }, [open, task, defaultStatus, lockedPersonId, lockedProjectId, form])
+  }, [open, task, defaultStatus, defaultPhaseId, lockedPersonId, lockedProjectId, form])
 
   // Proyectos reales + el creado en esta sesión del diálogo, sin duplicarlo
   // cuando el refetch del padre ya lo trajo.
@@ -198,6 +207,7 @@ export default function TaskFormDialog({
   // proyecto) se ve la lista completa, como antes.
   const selectedProjectId = form.watch("projectId")
   const currentAssignedId = form.watch("assignedPersonId")
+  const { data: phasesForProject } = usePhasesForMonthlyProject(selectedProjectId || null)
   const projectMemberIds = new Set(
     (projectMembers ?? [])
       .filter((m) => m.project_id === selectedProjectId)
@@ -237,6 +247,7 @@ export default function TaskFormDialog({
       title: values.title.trim(),
       description: values.description.trim() || null,
       project_id: values.projectId,
+      phase_id: values.phaseId || null,
       work_item_type: values.workItemType,
       status: values.status,
       priority: values.priority,
@@ -391,6 +402,9 @@ export default function TaskFormDialog({
                           return
                         }
                         field.onChange(v)
+                        // Las fases son del proyecto: cambiar de proyecto
+                        // invalida cualquier fase ya elegida.
+                        form.setValue("phaseId", "")
                       }}
                       disabled={readOnly || Boolean(lockedProjectId)}
                     >
@@ -487,6 +501,36 @@ export default function TaskFormDialog({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="phaseId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fase</FormLabel>
+                  <Select
+                    value={field.value || "none"}
+                    onValueChange={(v) => field.onChange(v === "none" ? "" : v)}
+                    disabled={readOnly || !selectedProjectId || (phasesForProject ?? []).length === 0}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Sin fase" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Sin fase</SelectItem>
+                      {(phasesForProject ?? []).map((phase) => (
+                        <SelectItem key={phase.id} value={phase.id}>
+                          {phase.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField

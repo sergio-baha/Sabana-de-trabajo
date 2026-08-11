@@ -148,7 +148,7 @@ export default function RatesCard({ monthId, people }: RatesCardProps) {
         </Table>
 
         <Button variant="link" size="sm" className="mt-2 px-0" asChild>
-          <Link to="/portafolio">Ver el costo por proyecto en el portafolio</Link>
+          <Link to="/proyectos">Ver el costo por proyecto en Proyectos</Link>
         </Button>
       </CardContent>
     </Card>
