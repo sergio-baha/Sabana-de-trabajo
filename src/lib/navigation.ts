@@ -101,7 +101,7 @@ export const SETUP_ITEMS: NavItem[] = [
     icon: CalendarRange,
     allow: TEAM_WIDE_ROLES,
     description:
-      "Cada mes es una planificación aparte. Duplicar un mes copia personas, proyectos, equipos y tareas, así no se arranca de cero cada vez.",
+      "Cada mes es una planificación aparte. Duplicar un mes copia personas, proyectos, equipos y tareas, así no se arranca de cero cada vez. Atajo: el selector de mes del encabezado tiene “Gestionar meses” al final de la lista.",
   },
   {
     to: "/historial",
