@@ -7,7 +7,11 @@ import {
   Grid3x3,
   ListChecks,
   MessageSquare,
+  MoreHorizontal,
+  Pencil,
+  Plus,
   Search,
+  Trash2,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -23,7 +27,21 @@ import { Skeleton } from "@/components/ui/skeleton"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import PageHeader from "@/components/shared/PageHeader"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
-import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
+import {
+  useDeleteProject,
+  useProjectManagers,
+  useProjectMembers,
+  useProjects,
+} from "@/features/projects/hooks/useProjectsQueries"
+import type { Project } from "@/features/projects/api/projectsApi"
+import ProjectFormDialog from "@/features/projects/components/ProjectFormDialog"
+import ConfirmDialog from "@/components/shared/ConfirmDialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useAllocations, useUpsertAllocation } from "@/features/grid/hooks/useAllocationsQueries"
 import { useRealtimeAllocations } from "@/features/grid/hooks/useRealtimeAllocations"
 import {
@@ -84,6 +102,15 @@ export default function DistribucionPage() {
   const [activityCell, setActivityCell] = useState<{ personId: string; projectId: string } | null>(
     null
   )
+  // Alta/edición/baja de proyectos sin salir de la grilla: al repartir horas
+  // es cuando uno se da cuenta de que falta un proyecto o que sobra otro, y
+  // hasta ahora había que irse a /proyectos y volver.
+  const [projectFormOpen, setProjectFormOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+  const deleteProject = useDeleteProject(activeMonthId ?? "")
+  const { data: managers } = useProjectManagers(activeMonthId)
+  const { data: members } = useProjectMembers(activeMonthId)
 
   const activePosition = useRef<{ rowIdx: number; columnKey: string } | null>(null)
 
@@ -143,9 +170,48 @@ export default function DistribucionPage() {
       width: 240,
       resizable: true,
       renderCell: ({ row }) => (
-        <div className="flex h-full items-center gap-2 py-1 leading-tight" title={row.name}>
+        <div className="group/proj flex h-full items-center gap-2 py-1 leading-tight" title={row.name}>
           <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
-          <span className="line-clamp-2 whitespace-normal font-medium">{row.name}</span>
+          <span className="line-clamp-2 min-w-0 flex-1 whitespace-normal font-medium">
+            {row.name}
+          </span>
+          {/* El menú vive en la columna congelada para que siga a la vista
+              por más que se desplace la grilla a lo ancho. Aparece al pasar
+              el mouse (o al enfocarlo con el teclado) para no meter un ícono
+              fijo en cada una de las filas. */}
+          {canEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Acciones de ${row.name}`}
+                  className="shrink-0 opacity-0 transition-opacity group-hover/proj:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+                >
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onClick={() => {
+                    const project = visibleProjects.find((p) => p.id === row.projectId)
+                    if (project) setEditingProject(project)
+                  }}
+                >
+                  <Pencil /> Editar proyecto
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => {
+                    const project = visibleProjects.find((p) => p.id === row.projectId)
+                    if (project) setProjectToDelete(project)
+                  }}
+                >
+                  <Trash2 /> Eliminar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       ),
       renderSummaryCell: ({ row }) => (
@@ -257,7 +323,14 @@ export default function DistribucionPage() {
     }))
 
     return [projectCol, ...personCols]
-  }, [visiblePeople, canEdit, commentsByCell, activitiesByCell, summaryByPerson])
+  }, [
+    visiblePeople,
+    visibleProjects,
+    canEdit,
+    commentsByCell,
+    activitiesByCell,
+    summaryByPerson,
+  ])
 
   const personIdAtColumnOffset = (anchorColumnKey: string, offset: number): string | null => {
     const idx = visiblePeople.findIndex((p) => p.id === anchorColumnKey)
@@ -324,16 +397,29 @@ export default function DistribucionPage() {
             : "Modo de solo lectura — tu rol puede consultar y comentar, no editar horas."
         }
         actions={
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
-              <span className="size-2 rounded-full bg-success" /> Exacto
-            </span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
-              <span className="size-2 rounded-full bg-warning" /> Faltan horas
-            </span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
-              <span className="size-2 rounded-full bg-danger" /> De más
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+                <span className="size-2 rounded-full bg-success" /> Exacto
+              </span>
+              <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+                <span className="size-2 rounded-full bg-warning" /> Faltan horas
+              </span>
+              <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+                <span className="size-2 rounded-full bg-danger" /> De más
+              </span>
+            </div>
+            {canEdit && (
+              <Button
+                className="hero-action shine-hover"
+                onClick={() => {
+                  setEditingProject(null)
+                  setProjectFormOpen(true)
+                }}
+              >
+                <Plus /> Nuevo proyecto
+              </Button>
+            )}
           </div>
         }
       />
@@ -441,6 +527,39 @@ export default function DistribucionPage() {
             />
           )
         })()}
+
+      {activeMonthId && (
+        <ProjectFormDialog
+          // Crear y editar comparten diálogo: `editingProject` decide cuál
+          // de los dos es. Se abre cuando hay proyecto en edición o cuando
+          // el botón de alta puso el flag.
+          open={projectFormOpen || Boolean(editingProject)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setProjectFormOpen(false)
+              setEditingProject(null)
+            }
+          }}
+          monthId={activeMonthId}
+          project={editingProject}
+          people={people ?? []}
+          currentManager={managers?.find((m) => m.project_id === editingProject?.id)}
+          currentMemberIds={(members ?? [])
+            .filter((m) => m.project_id === editingProject?.id)
+            .map((m) => m.person_id)}
+        />
+      )}
+
+      <ConfirmDialog
+        open={Boolean(projectToDelete)}
+        onOpenChange={(open) => !open && setProjectToDelete(null)}
+        title={`Eliminar "${projectToDelete?.name}"`}
+        description="Se eliminarán también sus asignaciones de horas, tareas y comentarios asociados."
+        onConfirm={async () => {
+          if (projectToDelete) await deleteProject.mutateAsync(projectToDelete.id)
+          setProjectToDelete(null)
+        }}
+      />
     </div>
   )
 }
