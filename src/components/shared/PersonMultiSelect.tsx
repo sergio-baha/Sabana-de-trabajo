@@ -49,11 +49,7 @@ export function PersonMultiSelect({
             <ChevronDown className="text-muted-foreground" />
           </Button>
         </PopoverTrigger>
-        {/* El popover global usa un fondo "vidrio" (translúcido + blur) que
-            se ve bien flotando sobre la app, pero acá tapa a medias los
-            campos del formulario que quedan justo detrás — se fuerza un
-            fondo sólido para esta lista de checkboxes. */}
-        <PopoverContent align="start" className="p-1 !bg-popover !backdrop-blur-none">
+        <PopoverContent align="start" className="p-1">
           <ScrollArea className="h-56">
             <div className="flex flex-col gap-0.5 p-1">
               {people.length === 0 && (

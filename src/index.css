@@ -605,13 +605,23 @@
 [data-slot="tooltip-content"] {
     border-radius: var(--radius-xl);
     box-shadow: var(--sh-lg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
 }
+/*
+ * Fondo SÓLIDO, no vidrio. Estos menús se abren casi siempre encima de una
+ * tabla llena de texto, y un fondo translúcido deja que los renglones de
+ * atrás se lean a través de las opciones: justo cuando hay que elegir con
+ * precisión es cuando peor se ve. El vidrio (--glass-bg) se queda para
+ * superficies grandes como el header, donde lo que hay detrás es fondo y
+ * no contenido que compita.
+ *
+ * El borde acompaña al fondo: sin la translucidez, es lo único que separa
+ * el menú del contenido cuando ambos son claros.
+ */
 [data-slot="dropdown-menu-content"],
 [data-slot="popover-content"],
 [data-slot="select-content"] {
-    background: var(--glass-bg);
+    background: var(--popover);
+    border: 1px solid var(--border);
 }
 /* El ítem se desplaza levemente hacia la derecha al enfocarse: hace que el
    menú se sienta reactivo sin cambiar su lectura. */
