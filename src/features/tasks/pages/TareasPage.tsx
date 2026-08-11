@@ -26,7 +26,7 @@ import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canManageTasks, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
+import { canManageTasks, writesOwnWorkOnly } from "@/lib/roles"
 import type { TaskStatus } from "@/types/database.types"
 
 const ALL = "all"
@@ -37,11 +37,14 @@ export default function TareasPage() {
   // Igual que la grilla: el gating por rol es solo de UX, y RLS es lo que
   // además bloquea escribir en un mes cerrado y, para el Analista de
   // Tecnología, acota todo a sus propias tarjetas.
-  // Dos ejes distintos: `restrictedToSelf` acota lo que se *ve* (solo el
-  // Analista de Tecnología), `writesOwn` acota lo que se *escribe* (ambos
-  // roles de analista, que solo gestionan sus propias tarjetas).
-  const restrictedToSelf = isAnalistaTecnologia(profile?.role)
+  // En Tareas los dos roles de analista quedan equivalentes: ambos ven y
+  // escriben solo sus propias tarjetas (tasks_select_scoped usa
+  // is_analista_role, no is_analista_tecnologia). `restrictedToSelf` es
+  // alias de `writesOwn` a propósito, para que el día que un rol nuevo
+  // "escriba lo suyo" sin estar acotado en lectura, este archivo tenga que
+  // decidirlo explícitamente en vez de heredarlo en silencio.
   const writesOwn = writesOwnWorkOnly(profile?.role)
+  const restrictedToSelf = writesOwn
   const { myPerson } = useMyPerson(activeMonthId)
   // Sin vínculo cuenta ↔ roster, RLS rechazaría cualquier tarea que creara
   // (no podría asignársela a sí mismo), así que no se ofrece la acción.
