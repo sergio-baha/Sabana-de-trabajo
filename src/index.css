@@ -214,11 +214,6 @@
     --sh-purple: 0 20px 48px -18px rgba(94, 79, 156, 0.32);
     --sh-orange: 0 20px 48px -18px rgba(254, 80, 0, 0.18);
 
-    /* Glass */
-    --glass-bg: rgba(255, 255, 255, 0.72);
-    --glass-border: rgba(255, 255, 255, 0.55);
-    --glass-blur: saturate(1.5) blur(16px);
-
     /* Curvas de animación */
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -301,8 +296,6 @@
     --sh-purple: 0 20px 48px -18px rgba(133, 119, 194, 0.4);
     --sh-orange: 0 20px 48px -18px rgba(240, 137, 79, 0.35);
 
-    --glass-bg: rgba(28, 27, 40, 0.72);
-    --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 @layer base {
@@ -443,11 +436,14 @@
     color: #fff;
 }
 
-.surface-glass {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
+/* Barra superior. Sólida y no "vidrio": es sticky, así que TODO el
+   contenido de la página le pasa por detrás al hacer scroll — con
+   translucidez se leían los renglones de la tabla a través del título y del
+   selector de mes. La separación del contenido la dan el borde inferior, el
+   filo de gradiente de marca y una sombra corta, no la transparencia. */
+.app-header {
+    background: var(--background);
+    box-shadow: var(--sh-sm);
 }
 
 /* Skeletons con brillo que recorre, en vez de solo parpadear */
@@ -607,12 +603,15 @@
     box-shadow: var(--sh-lg);
 }
 /*
- * Fondo SÓLIDO, no vidrio. Estos menús se abren casi siempre encima de una
- * tabla llena de texto, y un fondo translúcido deja que los renglones de
- * atrás se lean a través de las opciones: justo cuando hay que elegir con
- * precisión es cuando peor se ve. El vidrio (--glass-bg) se queda para
- * superficies grandes como el header, donde lo que hay detrás es fondo y
- * no contenido que compita.
+ * Fondo SÓLIDO. Estos menús se abren casi siempre encima de una tabla llena
+ * de texto, y un fondo translúcido deja que los renglones de atrás se lean
+ * a través de las opciones: justo cuando hay que elegir con precisión es
+ * cuando peor se ve.
+ *
+ * (La app llegó a tener un set de tokens --glass-* para superficies
+ * translúcidas con blur. Se eliminaron: los dos únicos lugares donde se
+ * usaban —estos menús y la barra superior— tienen contenido pasando por
+ * detrás, que es exactamente donde el efecto estorba.)
  *
  * El borde acompaña al fondo: sin la translucidez, es lo único que separa
  * el menú del contenido cuando ambos son claros.

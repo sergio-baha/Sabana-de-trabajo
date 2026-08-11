@@ -236,7 +236,7 @@ export default function AppShell() {
           en `position: fixed`, no acompaña ese desplazamiento: el contenido
           se corre por debajo y el menú queda encima. */}
       <SidebarInset className="min-w-0">
-        <header className="surface-glass sticky top-0 z-30 flex h-15 shrink-0 items-center gap-3 border-x-0 border-t-0 border-b border-border px-4">
+        <header className="app-header sticky top-0 z-30 flex h-15 shrink-0 items-center gap-3 border-b border-border px-4">
           {/* Filo de gradiente sobre el borde inferior: separa el header del
               contenido con color de marca en vez de una línea gris más. */}
           <div
