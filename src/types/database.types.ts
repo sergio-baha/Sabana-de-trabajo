@@ -504,6 +504,7 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
+          onboarded_at: string | null
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string
         }
@@ -514,6 +515,7 @@ export type Database = {
           full_name: string
           id: string
           is_active?: boolean
+          onboarded_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
         }
@@ -524,6 +526,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
+          onboarded_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
         }

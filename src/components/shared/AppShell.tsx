@@ -1,21 +1,6 @@
 import { useState, type CSSProperties } from "react"
 import { Link, Outlet, useLocation, useNavigate } from "react-router"
-import {
-  BarChart3,
-  CalendarRange,
-  FolderKanban,
-  GanttChartSquare,
-  Grid3x3,
-  History,
-  KanbanSquare,
-  LayoutDashboard,
-  LogOut,
-  Moon,
-  Settings,
-  Sun,
-  UserRound,
-  Users,
-} from "lucide-react"
+import { Compass, LogOut, Moon, Sun, UserRound } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -42,48 +27,15 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useSessionStore } from "@/stores/sessionStore"
+import { ACCOUNT_TARGET, useOnboardingStore } from "@/stores/onboardingStore"
 import MonthSwitcher from "@/components/shared/MonthSwitcher"
+import OnboardingTour from "@/features/onboarding/components/OnboardingTour"
+import { useOnboarding } from "@/features/onboarding/hooks/useOnboarding"
 import { applyTheme, getSavedTheme, type Theme } from "@/lib/theme"
-import { roleLabel, TEAM_WIDE_ROLES } from "@/lib/roles"
+import { roleLabel } from "@/lib/roles"
+import { NAV_ITEMS, SETUP_ITEMS, visibleFor } from "@/lib/navigation"
 import { signOut } from "@/features/auth/api/authApi"
-import type { AppRole } from "@/types/database.types"
-
-interface NavItem {
-  to: string
-  label: string
-  icon: typeof LayoutDashboard
-  allow: AppRole[]
-}
-
-const ALL_ROLES: AppRole[] = [...TEAM_WIDE_ROLES, "analista_tecnologia"]
-
-// `allow` se declara siempre, incluso cuando son todos los roles: así,
-// agregar un rol nuevo obliga a decidir explícitamente qué módulos ve, en
-// vez de heredar acceso por omisión. Debe ir en línea con las mismas
-// restricciones del router (RoleRoute) — esto solo oculta el enlace.
-//
-// La barra lateral lleva SOLO lo del día a día, sin etiquetas de grupo: con
-// diez enlaces repartidos en tres secciones había que leer el menú entero
-// para encontrar uno. Lo que se usa de vez en cuando (roster, meses,
-// auditoría, ajustes) vive en el menú del avatar — ver SETUP_ITEMS.
-const NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, allow: TEAM_WIDE_ROLES },
-  { to: "/tareas", label: "Tareas", icon: KanbanSquare, allow: ALL_ROLES },
-  { to: "/cronograma", label: "Cronograma", icon: GanttChartSquare, allow: ALL_ROLES },
-  { to: "/proyectos", label: "Proyectos", icon: FolderKanban, allow: TEAM_WIDE_ROLES },
-  { to: "/distribucion", label: "Distribución", icon: Grid3x3, allow: TEAM_WIDE_ROLES },
-  { to: "/reportes", label: "Reportes", icon: BarChart3, allow: TEAM_WIDE_ROLES },
-]
-
-// Configuración del espacio de trabajo: se entra a esto para dejarlo listo,
-// no todos los días. El mes activo además ya se cambia desde el header, así
-// que /meses no necesita estar siempre a la vista.
-const SETUP_ITEMS: NavItem[] = [
-  { to: "/personas", label: "Personas", icon: Users, allow: TEAM_WIDE_ROLES },
-  { to: "/meses", label: "Meses", icon: CalendarRange, allow: TEAM_WIDE_ROLES },
-  { to: "/historial", label: "Historial", icon: History, allow: ["administrador"] },
-  { to: "/configuracion", label: "Configuración", icon: Settings, allow: ["administrador"] },
-]
+import { cn } from "@/lib/utils"
 
 // Título que se muestra en la barra superior. Se saca de las propias listas
 // para no mantener dos juegos de nombres; `/perfil` no está en ninguna, así
@@ -103,6 +55,11 @@ export default function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const [theme, setTheme] = useState<Theme>(getSavedTheme)
+  // Arranca el recorrido en el primer ingreso de la cuenta y lo marca visto
+  // al cerrarse; `highlight` es el ítem que debe brillar en el paso actual.
+  useOnboarding()
+  const startTour = useOnboardingStore((s) => s.start)
+  const tourHighlight = useOnboardingStore((s) => s.highlight)
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark"
@@ -115,8 +72,8 @@ export default function AppShell() {
     navigate("/login", { replace: true })
   }
 
-  const visibleNav = NAV_ITEMS.filter((item) => profile && item.allow.includes(profile.role))
-  const visibleSetup = SETUP_ITEMS.filter((item) => profile && item.allow.includes(profile.role))
+  const visibleNav = visibleFor(NAV_ITEMS, profile?.role)
+  const visibleSetup = visibleFor(SETUP_ITEMS, profile?.role)
 
   // Coincidencia por prefijo y no exacta: las rutas de detalle
   // (/proyectos/:projectId) deben mostrar el título de su módulo. Se toma
@@ -182,6 +139,7 @@ export default function AppShell() {
                       asChild
                       isActive={location.pathname.startsWith(item.to)}
                       tooltip={item.label}
+                      className={cn(tourHighlight === item.to && "tour-highlight")}
                     >
                       <Link to={item.to}>
                         <item.icon />
@@ -202,7 +160,10 @@ export default function AppShell() {
                     centra a mano para que no quede pegado al borde. */}
                 <SidebarMenuButton
                   size="lg"
-                  className="border border-sidebar-border bg-sidebar-accent/40 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent"
+                  className={cn(
+                    "border border-sidebar-border bg-sidebar-accent/40 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent",
+                    tourHighlight === ACCOUNT_TARGET && "tour-highlight"
+                  )}
                 >
                   <Avatar className="size-8 shrink-0">
                     {/* Iniciales sobre el gradiente de marca: es el único
@@ -251,6 +212,10 @@ export default function AppShell() {
                   </>
                 )}
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={startTour}>
+                  <Compass />
+                  Ver el recorrido
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={toggleTheme}>
                   {theme === "dark" ? <Sun /> : <Moon />}
                   {theme === "dark" ? "Modo claro" : "Modo oscuro"}
@@ -318,6 +283,7 @@ export default function AppShell() {
           <Outlet />
         </main>
       </SidebarInset>
+      <OnboardingTour />
     </SidebarProvider>
   )
 }

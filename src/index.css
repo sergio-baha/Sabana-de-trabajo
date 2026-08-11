@@ -1003,6 +1003,23 @@
 
 /* Estado vacío: un ícono en un halo de marca en vez de una línea de texto
    gris centrada, que es lo que había en casi todas las pantallas. */
+/* Ítem del menú señalado por el recorrido de bienvenida. El anillo pulsa
+   para que el ojo lo encuentre sin necesidad de oscurecer el resto de la
+   pantalla: un backdrop taparía justamente la barra que se está
+   explicando. */
+@keyframes sabana-tour-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 55%, transparent); }
+    50%      { box-shadow: 0 0 0 6px color-mix(in oklch, var(--primary) 0%, transparent); }
+}
+.tour-highlight {
+    position: relative;
+    z-index: 1;
+    background-color: color-mix(in oklch, var(--primary) 16%, transparent) !important;
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+    animation: sabana-tour-pulse 1.8s var(--ease) infinite;
+}
+
 .empty-state-icon {
     display: grid;
     place-content: center;
