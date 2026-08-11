@@ -26,13 +26,14 @@ import {
   useDeleteProject,
   useDuplicateProject,
   useProjectManagers,
+  useProjectMembers,
   useProjects,
 } from "@/features/projects/hooks/useProjectsQueries"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import type { Project } from "@/features/projects/api/projectsApi"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { isGestorOrAdmin } from "@/lib/roles"
+import { canCreateProjects, isGestorOrAdmin } from "@/lib/roles"
 
 const STATUS_LABEL: Record<Project["status"], string> = {
   activo: "Activo",
@@ -44,11 +45,17 @@ const STATUS_LABEL: Record<Project["status"], string> = {
 export default function ProyectosPage() {
   const { activeMonthId } = useActiveMonthStore()
   const profile = useSessionStore((s) => s.profile)
+  // Editar/duplicar/eliminar sigue siendo de Gestor/Administrador (RLS lo
+  // rechaza para cualquier otro rol). Crear un proyecto es más abierto —
+  // cualquiera con cuenta puede armar el suyo y sumar gente — así que usa un
+  // chequeo aparte, igual que ya pasa en el diálogo rápido de Tareas.
   const canWrite = isGestorOrAdmin(profile?.role)
+  const canCreate = canCreateProjects(profile?.role)
 
   const { data: projects, isLoading } = useProjects(activeMonthId)
   const { data: people } = usePeople(activeMonthId)
   const { data: managers } = useProjectManagers(activeMonthId)
+  const { data: members } = useProjectMembers(activeMonthId)
   const deleteProject = useDeleteProject(activeMonthId ?? "")
   const duplicateProject = useDuplicateProject(activeMonthId ?? "")
 
@@ -65,6 +72,18 @@ export default function ProyectosPage() {
     }
     return map
   }, [managers, people])
+
+  const memberNamesByProject = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const pm of members ?? []) {
+      const person = people?.find((p) => p.id === pm.person_id)
+      if (!person) continue
+      const list = map.get(pm.project_id) ?? []
+      list.push(person.name)
+      map.set(pm.project_id, list)
+    }
+    return map
+  }, [members, people])
 
   const filtered = useMemo(() => {
     if (!projects) return []
@@ -84,7 +103,7 @@ export default function ProyectosPage() {
             Proyectos del mes activo: color, gerente responsable y estado.
           </p>
         </div>
-        {canWrite && (
+        {canCreate && (
           <Button
             onClick={() => {
               setEditingProject(null)
@@ -123,6 +142,7 @@ export default function ProyectosPage() {
                 <TableRow>
                   <TableHead>Proyecto</TableHead>
                   <TableHead>Gerente responsable</TableHead>
+                  <TableHead>Equipo</TableHead>
                   <TableHead>Categoría</TableHead>
                   <TableHead>Estado</TableHead>
                   {canWrite && <TableHead className="w-10" />}
@@ -141,6 +161,9 @@ export default function ProyectosPage() {
                       </div>
                     </TableCell>
                     <TableCell>{managerNameByProject.get(project.id) ?? "—"}</TableCell>
+                    <TableCell className="max-w-48 text-muted-foreground">
+                      {(memberNamesByProject.get(project.id) ?? []).join(", ") || "—"}
+                    </TableCell>
                     <TableCell>
                       {project.category === "institucional" ? (
                         <Badge variant="secondary">Institucional</Badge>
@@ -187,7 +210,7 @@ export default function ProyectosPage() {
                 ))}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       Sin resultados.
                     </TableCell>
                   </TableRow>
@@ -206,6 +229,9 @@ export default function ProyectosPage() {
           project={editingProject}
           people={people ?? []}
           currentManager={managers?.find((m) => m.project_id === editingProject?.id)}
+          currentMemberIds={(members ?? [])
+            .filter((m) => m.project_id === editingProject?.id)
+            .map((m) => m.person_id)}
         />
       )}
       <ConfirmDialog

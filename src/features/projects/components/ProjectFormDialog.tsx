@@ -1,7 +1,8 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import { ChevronDown } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -28,10 +29,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import ColorPicker from "@/features/projects/components/ColorPicker"
+import { PersonMultiSelect } from "@/features/projects/components/PersonMultiSelect"
 import {
   useCreateProject,
   useSetProjectManager,
+  useSetProjectMembers,
   useUpdateProject,
 } from "@/features/projects/hooks/useProjectsQueries"
 import type { Project, ProjectManager } from "@/features/projects/api/projectsApi"
@@ -55,6 +59,7 @@ interface ProjectFormDialogProps {
   project?: Project | null
   people: Person[]
   currentManager?: ProjectManager
+  currentMemberIds?: string[]
 }
 
 export default function ProjectFormDialog({
@@ -64,11 +69,17 @@ export default function ProjectFormDialog({
   project,
   people,
   currentManager,
+  currentMemberIds = [],
 }: ProjectFormDialogProps) {
   const isEdit = Boolean(project)
   const createProject = useCreateProject(monthId)
   const updateProject = useUpdateProject(monthId)
   const setManager = useSetProjectManager(monthId)
+  const setMembers = useSetProjectMembers(monthId)
+  // Colapsados por defecto al crear (nombre + miembros basta para arrancar);
+  // abiertos al editar, para que los valores ya guardados no queden ocultos.
+  const [advancedOpen, setAdvancedOpen] = useState(isEdit)
+  const [memberIds, setMemberIds] = useState<string[]>(currentMemberIds)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -92,10 +103,16 @@ export default function ProjectFormDialog({
         managerId: currentManager?.person_id ?? "",
         description: project?.description ?? "",
       })
+      setMemberIds(currentMemberIds)
+      setAdvancedOpen(Boolean(project))
     }
-  }, [open, project, currentManager, form])
+  }, [open, project, currentManager, currentMemberIds, form])
 
-  const submitting = createProject.isPending || updateProject.isPending || setManager.isPending
+  const submitting =
+    createProject.isPending ||
+    updateProject.isPending ||
+    setManager.isPending ||
+    setMembers.isPending
 
   const onSubmit = async (values: FormValues) => {
     const { managerId, ...projectValues } = values
@@ -110,6 +127,7 @@ export default function ProjectFormDialog({
 
     if (projectId) {
       await setManager.mutateAsync({ projectId, personId: managerId || null })
+      await setMembers.mutateAsync({ projectId, personIds: memberIds })
     }
     onOpenChange(false)
   }
@@ -120,7 +138,9 @@ export default function ProjectFormDialog({
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar proyecto" : "Nuevo proyecto"}</DialogTitle>
           <DialogDescription>
-            El color identifica al gerente responsable y pinta la columna en la grilla.
+            {isEdit
+              ? "El color identifica al gerente responsable y pinta la columna en la grilla."
+              : "Ponle un nombre y suma al equipo que va a trabajar en él. El resto se puede ajustar después."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -132,116 +152,144 @@ export default function ProjectFormDialog({
                 <FormItem>
                   <FormLabel>Nombre</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input autoFocus placeholder="Nombre del proyecto" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Color</FormLabel>
-                  <FormControl>
-                    <ColorPicker value={field.value} onChange={field.onChange} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="managerId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Gerente responsable</FormLabel>
-                    <Select
-                      value={field.value || "none"}
-                      onValueChange={(v) => field.onChange(v === "none" ? "" : v)}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Sin asignar" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Sin asignar</SelectItem>
-                        {people.map((person) => (
-                          <SelectItem key={person.id} value={person.id}>
-                            {person.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+
+            <div className="flex flex-col gap-2">
+              <FormLabel>Equipo del proyecto</FormLabel>
+              <PersonMultiSelect
+                people={people}
+                value={memberIds}
+                onChange={setMemberIds}
+                placeholder="Agregar personas del equipo…"
               />
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estado</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="activo">Activo</SelectItem>
-                        <SelectItem value="pausado">Pausado</SelectItem>
-                        <SelectItem value="finalizado">Finalizado</SelectItem>
-                        <SelectItem value="archivado">Archivado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <p className="text-xs text-muted-foreground">
+                Cualquier persona del mes activo, sin importar su rol. Podrás asignarles tareas de
+                este proyecto desde el tablero.
+              </p>
             </div>
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoría</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="proyecto">Proyecto</SelectItem>
-                      <SelectItem value="institucional">Tiempo institucional</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    "Tiempo institucional" agrupa capacitaciones, feedback u otros bloques que no
-                    son un proyecto del portafolio — Reportes puede excluirlos.
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descripción</FormLabel>
-                  <FormControl>
-                    <Textarea rows={2} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <CollapsibleTrigger asChild>
+                <Button type="button" variant="ghost" size="sm" className="w-fit -ml-2 gap-1">
+                  <ChevronDown
+                    className={advancedOpen ? "rotate-180 transition-transform" : "transition-transform"}
+                  />
+                  Más opciones
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="flex flex-col gap-4 pt-2">
+                <FormField
+                  control={form.control}
+                  name="color"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Color</FormLabel>
+                      <FormControl>
+                        <ColorPicker value={field.value} onChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="managerId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gerente responsable</FormLabel>
+                        <Select
+                          value={field.value || "none"}
+                          onValueChange={(v) => field.onChange(v === "none" ? "" : v)}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Sin asignar" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Sin asignar</SelectItem>
+                            {people.map((person) => (
+                              <SelectItem key={person.id} value={person.id}>
+                                {person.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estado</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="activo">Activo</SelectItem>
+                            <SelectItem value="pausado">Pausado</SelectItem>
+                            <SelectItem value="finalizado">Finalizado</SelectItem>
+                            <SelectItem value="archivado">Archivado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoría</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="proyecto">Proyecto</SelectItem>
+                          <SelectItem value="institucional">Tiempo institucional</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        "Tiempo institucional" agrupa capacitaciones, feedback u otros bloques que
+                        no son un proyecto del portafolio — Reportes puede excluirlos.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descripción</FormLabel>
+                      <FormControl>
+                        <Textarea rows={2} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CollapsibleContent>
+            </Collapsible>
+
             <DialogFooter>
               <Button type="submit" disabled={submitting}>
                 {submitting ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear proyecto"}

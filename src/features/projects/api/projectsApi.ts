@@ -5,6 +5,7 @@ export type Project = Database["public"]["Tables"]["projects"]["Row"]
 export type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"]
 export type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"]
 export type ProjectManager = Database["public"]["Tables"]["project_managers"]["Row"]
+export type ProjectMember = Database["public"]["Tables"]["project_members"]["Row"]
 
 export async function listProjects(monthId: string): Promise<Project[]> {
   const { data, error } = await supabase
@@ -77,5 +78,52 @@ export async function setProjectManager(
       .from("project_managers")
       .insert({ month_id: monthId, project_id: projectId, person_id: personId, is_primary: true })
     if (insertError) throw insertError
+  }
+}
+
+export async function listProjectMembers(monthId: string): Promise<ProjectMember[]> {
+  const { data, error } = await supabase
+    .from("project_members")
+    .select("*")
+    .eq("month_id", monthId)
+  if (error) throw error
+  return data
+}
+
+// Reemplaza de una sola vez la lista de colaboradores de un proyecto por
+// `personIds`: borra los que ya no están y agrega los nuevos. Así el
+// multi-select del formulario no tiene que calcular el diff — manda la
+// lista completa deseada y esta función decide qué insertar/borrar.
+export async function setProjectMembers(
+  monthId: string,
+  projectId: string,
+  personIds: string[]
+): Promise<void> {
+  const { data: existing, error: listError } = await supabase
+    .from("project_members")
+    .select("person_id")
+    .eq("project_id", projectId)
+  if (listError) throw listError
+
+  const existingIds = new Set((existing ?? []).map((row) => row.person_id))
+  const nextIds = new Set(personIds)
+
+  const toRemove = [...existingIds].filter((id) => !nextIds.has(id))
+  const toAdd = [...nextIds].filter((id) => !existingIds.has(id))
+
+  if (toRemove.length > 0) {
+    const { error } = await supabase
+      .from("project_members")
+      .delete()
+      .eq("project_id", projectId)
+      .in("person_id", toRemove)
+    if (error) throw error
+  }
+
+  if (toAdd.length > 0) {
+    const { error } = await supabase.from("project_members").insert(
+      toAdd.map((personId) => ({ month_id: monthId, project_id: projectId, person_id: personId }))
+    )
+    if (error) throw error
   }
 }

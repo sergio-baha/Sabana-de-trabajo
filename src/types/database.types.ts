@@ -592,6 +592,76 @@ export type Database = {
           },
         ]
       }
+      project_members: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          month_id: string
+          person_id: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month_id: string
+          person_id: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month_id?: string
+          person_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_month_id_fkey"
+            columns: ["month_id"]
+            isOneToOne: false
+            referencedRelation: "months"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "v_person_month_totals"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_month_totals"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       person_rates: {
         Row: {
           created_at: string

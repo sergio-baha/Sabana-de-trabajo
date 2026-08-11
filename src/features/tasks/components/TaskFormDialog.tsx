@@ -38,7 +38,7 @@ import {
 import { nextBoardOrder, type Task } from "@/features/tasks/api/tasksApi"
 import { uploadTaskImage } from "@/features/tasks/lib/uploadTaskImage"
 import { useCreateTask, useUpdateTask } from "@/features/tasks/hooks/useTasksQueries"
-import { useCreateProject } from "@/features/projects/hooks/useProjectsQueries"
+import { useCreateProject, useProjectMembers } from "@/features/projects/hooks/useProjectsQueries"
 import { useSessionStore } from "@/stores/sessionStore"
 import { canCreateProjects } from "@/lib/roles"
 import type { Project } from "@/features/projects/api/projectsApi"
@@ -127,6 +127,7 @@ export default function TaskFormDialog({
   const createTask = useCreateTask(monthId)
   const updateTask = useUpdateTask(monthId)
   const createProject = useCreateProject(monthId)
+  const { data: projectMembers } = useProjectMembers(monthId)
   const profile = useSessionStore((s) => s.profile)
   const canAddProject = !readOnly && canCreateProjects(profile?.role)
 
@@ -185,6 +186,22 @@ export default function TaskFormDialog({
     justCreated && !projects.some((p) => p.id === justCreated.id)
       ? [...projects, justCreated]
       : projects
+
+  // Si el proyecto elegido tiene un equipo definido, el selector de
+  // responsable se acota a ese equipo — así no hay que buscar entre todas
+  // las personas del mes. Sin equipo configurado (o mientras se elige
+  // proyecto) se ve la lista completa, como antes.
+  const selectedProjectId = form.watch("projectId")
+  const currentAssignedId = form.watch("assignedPersonId")
+  const projectMemberIds = new Set(
+    (projectMembers ?? [])
+      .filter((m) => m.project_id === selectedProjectId)
+      .map((m) => m.person_id)
+  )
+  const assigneeOptions =
+    projectMemberIds.size > 0
+      ? people.filter((p) => projectMemberIds.has(p.id) || p.id === currentAssignedId)
+      : people
 
   const submitNewProject = async () => {
     const name = newProjectName.trim()
@@ -453,7 +470,7 @@ export default function TaskFormDialog({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">Sin asignar</SelectItem>
-                        {people.map((person) => (
+                        {assigneeOptions.map((person) => (
                           <SelectItem key={person.id} value={person.id}>
                             {person.name}
                           </SelectItem>

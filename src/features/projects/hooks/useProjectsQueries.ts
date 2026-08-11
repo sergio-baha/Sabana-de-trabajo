@@ -5,8 +5,10 @@ import {
   deleteProject,
   duplicateProject,
   listProjectManagers,
+  listProjectMembers,
   listProjects,
   setProjectManager,
+  setProjectMembers,
   updateProject,
   type Project,
   type ProjectInsert,
@@ -16,6 +18,7 @@ import {
 export const projectsKeys = {
   all: (monthId: string) => ["projects", monthId] as const,
   managers: (monthId: string) => ["project_managers", monthId] as const,
+  members: (monthId: string) => ["project_members", monthId] as const,
 }
 
 export function useProjects(monthId: string | null) {
@@ -95,5 +98,26 @@ export function useSetProjectManager(monthId: string) {
     },
     onError: (error) =>
       toast.error("No se pudo asignar el gerente", { description: error.message }),
+  })
+}
+
+export function useProjectMembers(monthId: string | null) {
+  return useQuery({
+    queryKey: projectsKeys.members(monthId ?? ""),
+    queryFn: () => listProjectMembers(monthId as string),
+    enabled: Boolean(monthId),
+  })
+}
+
+export function useSetProjectMembers(monthId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, personIds }: { projectId: string; personIds: string[] }) =>
+      setProjectMembers(monthId, projectId, personIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectsKeys.members(monthId) })
+    },
+    onError: (error) =>
+      toast.error("No se pudieron guardar los miembros", { description: error.message }),
   })
 }
