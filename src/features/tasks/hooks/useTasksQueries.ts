@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
+  bulkCreateTasks,
   createTask,
   deleteTask,
   moveTask,
@@ -33,6 +34,18 @@ export function useCreateTask(monthId: string) {
       toast.success("Tarea creada")
     },
     onError: (error) => toast.error("No se pudo crear la tarea", { description: error.message }),
+  })
+}
+
+export function useBulkCreateTasks(monthId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (inputs: TaskInsert[]) => bulkCreateTasks(inputs),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: tasksKeys.all(monthId) })
+      toast.success(`${created.length} tarea${created.length === 1 ? "" : "s"} importada${created.length === 1 ? "" : "s"}`)
+    },
+    onError: (error) => toast.error("No se pudo importar el archivo", { description: error.message }),
   })
 }
 

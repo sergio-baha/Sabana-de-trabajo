@@ -28,6 +28,17 @@ export async function createTask(input: TaskInsert): Promise<Task> {
   return data
 }
 
+// Cargue masivo desde Excel: un solo insert con todas las filas ya
+// validadas y mapeadas (título, fase, estado, prioridad, responsable,
+// board_order calculado). Si una fila viola una restricción, Postgres
+// rechaza el insert completo — no hay una tarea "a medias" en la tabla.
+export async function bulkCreateTasks(inputs: TaskInsert[]): Promise<Task[]> {
+  if (inputs.length === 0) return []
+  const { data, error } = await supabase.from("tasks").insert(inputs).select("*")
+  if (error) throw error
+  return data
+}
+
 export async function updateTask(id: string, patch: TaskUpdate): Promise<Task> {
   const { data, error } = await supabase
     .from("tasks")
@@ -44,8 +55,14 @@ export async function deleteTask(id: string): Promise<void> {
   if (error) throw error
 }
 
-// board_order de una tarjeta nueva: al final de su columna.
-export function nextBoardOrder(tasks: Task[], status: TaskStatus): number {
+// board_order de una tarjeta nueva: al final de su columna. Acepta filas
+// parciales (no solo Task completo) para que el import masivo pueda ir
+// calculando el siguiente hueco sin fabricar tareas falsas con todos los
+// campos.
+export function nextBoardOrder(
+  tasks: Pick<Task, "status" | "board_order">[],
+  status: TaskStatus
+): number {
   const inColumn = tasks.filter((t) => t.status === status)
   if (inColumn.length === 0) return ORDER_GAP
   return Math.max(...inColumn.map((t) => t.board_order)) + ORDER_GAP

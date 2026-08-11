@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  FileSpreadsheet,
   Info,
   Pencil,
   Plus,
@@ -48,6 +49,7 @@ import {
 } from "@/features/portfolio/lib/portfolioLabels"
 import TaskBacklogTable from "@/features/tasks/components/TaskBacklogTable"
 import TaskFormDialog from "@/features/tasks/components/TaskFormDialog"
+import ImportTasksDialog from "@/features/tasks/components/ImportTasksDialog"
 import ProjectFormDialog from "@/features/projects/components/ProjectFormDialog"
 import { useDeleteTask, useTasks } from "@/features/tasks/hooks/useTasksQueries"
 import { useRealtimeTasks } from "@/features/tasks/hooks/useRealtimeTasks"
@@ -132,6 +134,7 @@ export default function ProyectoDetallePage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [newTaskPhaseId, setNewTaskPhaseId] = useState<string | null>(null)
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   const openNewTask = (phaseId: string | null) => {
     setEditingTask(null)
@@ -380,16 +383,23 @@ export default function ProyectoDetallePage() {
             </CardDescription>
           </div>
           {canManageProject && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setEditingPhase(null)
-                setPhaseOpen(true)
-              }}
-            >
-              <Plus /> Fase
-            </Button>
+            <div className="flex items-center gap-2">
+              {monthlyProject && canManageTeamAndTasks && (
+                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                  <FileSpreadsheet /> Importar Excel
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEditingPhase(null)
+                  setPhaseOpen(true)
+                }}
+              >
+                <Plus /> Fase
+              </Button>
+            </div>
           )}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -669,6 +679,16 @@ export default function ProyectoDetallePage() {
             readOnly={!canManageTeamAndTasks}
             lockedPersonId={writesOwn ? myPerson?.id : null}
             lockedProjectId={monthlyProject.id}
+          />
+          <ImportTasksDialog
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            monthId={activeMonthId}
+            projectId={monthlyProject.id}
+            projectName={project.name}
+            phases={phases ?? []}
+            people={teamPeople}
+            existingTasks={projectTasks}
           />
         </>
       )}
