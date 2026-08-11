@@ -51,9 +51,10 @@ import TaskBacklogTable from "@/features/tasks/components/TaskBacklogTable"
 import TaskFormDialog from "@/features/tasks/components/TaskFormDialog"
 import ImportTasksDialog from "@/features/tasks/components/ImportTasksDialog"
 import ProjectFormDialog from "@/features/projects/components/ProjectFormDialog"
-import { useDeleteTask, useTasks } from "@/features/tasks/hooks/useTasksQueries"
+import { useDeleteTask, useTaskAssignees, useTasks } from "@/features/tasks/hooks/useTasksQueries"
 import { useRealtimeTasks } from "@/features/tasks/hooks/useRealtimeTasks"
 import { STATUS_LABELS } from "@/features/tasks/lib/taskLabels"
+import { buildAssigneesByTask } from "@/features/tasks/lib/taskAssignees"
 import type { Task } from "@/features/tasks/api/tasksApi"
 import {
   useCreateProject,
@@ -106,6 +107,11 @@ export default function ProyectoDetallePage() {
   useRealtimeTasks(activeMonthId)
 
   const { data: people } = usePeople(activeMonthId)
+  const { data: taskAssignees } = useTaskAssignees(activeMonthId)
+  const assigneesByTask = useMemo(
+    () => buildAssigneesByTask(taskAssignees ?? [], people ?? []),
+    [taskAssignees, people]
+  )
   const { data: managers } = useProjectManagers(activeMonthId)
   const { data: members } = useProjectMembers(activeMonthId)
   const managerName = people?.find(
@@ -512,7 +518,7 @@ export default function ProyectoDetallePage() {
                           tasks={phaseTasks}
                           allTasks={tasks ?? []}
                           projects={monthlyProjects ?? []}
-                          people={people ?? []}
+                          assigneesByTask={assigneesByTask}
                           canWrite={canManageTeamAndTasks}
                           onOpenTask={openTask}
                           onDeleteTask={setTaskToDelete}
@@ -558,7 +564,7 @@ export default function ProyectoDetallePage() {
                     tasks={unphasedTasks}
                     allTasks={tasks ?? []}
                     projects={monthlyProjects ?? []}
-                    people={people ?? []}
+                    assigneesByTask={assigneesByTask}
                     canWrite={canManageTeamAndTasks}
                     onOpenTask={openTask}
                     onDeleteTask={setTaskToDelete}
@@ -677,7 +683,7 @@ export default function ProyectoDetallePage() {
             projects={monthlyProjects ?? []}
             people={people ?? []}
             readOnly={!canManageTeamAndTasks}
-            lockedPersonId={writesOwn ? myPerson?.id : null}
+            defaultAssigneeIds={writesOwn && myPerson ? [myPerson.id] : []}
             lockedProjectId={monthlyProject.id}
           />
           <ImportTasksDialog

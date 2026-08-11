@@ -9,7 +9,7 @@ interface TaskCardProps {
   task: Task
   projectName: string
   projectColor: string
-  assigneeName: string | null
+  assigneeNames: string[]
   draggable: boolean
   isDragging: boolean
   onOpen: () => void
@@ -34,7 +34,7 @@ export default function TaskCard({
   task,
   projectName,
   projectColor,
-  assigneeName,
+  assigneeNames,
   draggable,
   isDragging,
   onOpen,
@@ -116,12 +116,25 @@ export default function TaskCard({
             </span>
           )}
         </div>
-        {assigneeName && (
-          <Avatar className="size-6" title={`${assigneeName} · ${PRIORITY_LABELS[task.priority]}`}>
-            <AvatarFallback className="bg-muted text-[10px]">
-              {initialsFor(assigneeName)}
-            </AvatarFallback>
-          </Avatar>
+        {assigneeNames.length > 0 && (
+          <div className="flex items-center -space-x-1.5">
+            {assigneeNames.slice(0, 3).map((name, i) => (
+              <Avatar
+                key={i}
+                className="size-6 ring-2 ring-card"
+                title={`${name} · ${PRIORITY_LABELS[task.priority]}`}
+              >
+                <AvatarFallback className="bg-muted text-[10px]">{initialsFor(name)}</AvatarFallback>
+              </Avatar>
+            ))}
+            {assigneeNames.length > 3 && (
+              <Avatar className="size-6 ring-2 ring-card" title={assigneeNames.slice(3).join(", ")}>
+                <AvatarFallback className="bg-muted text-[10px]">
+                  +{assigneeNames.length - 3}
+                </AvatarFallback>
+              </Avatar>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -22,7 +22,7 @@ import {
 import { downloadTaskImportTemplate } from "@/features/tasks/lib/taskImportTemplate"
 import { buildTaskInserts, parseTaskImportFile, type ImportedTaskRow } from "@/features/tasks/lib/taskImport"
 import { STATUS_LABELS, PRIORITY_LABELS } from "@/features/tasks/lib/taskLabels"
-import { useBulkCreateTasks } from "@/features/tasks/hooks/useTasksQueries"
+import { useBulkCreateTasks, useBulkSetTaskAssignees } from "@/features/tasks/hooks/useTasksQueries"
 import type { Task } from "@/features/tasks/api/tasksApi"
 import type { ProjectPhase } from "@/features/portfolio/api/portfolioApi"
 import type { Person } from "@/features/people/api/peopleApi"
@@ -53,6 +53,7 @@ export default function ImportTasksDialog({
   existingTasks,
 }: ImportTasksDialogProps) {
   const bulkCreate = useBulkCreateTasks(monthId)
+  const bulkSetAssignees = useBulkSetTaskAssignees(monthId)
   const [fileName, setFileName] = useState<string | null>(null)
   const [parsing, setParsing] = useState(false)
   const [rows, setRows] = useState<ImportedTaskRow[]>([])
@@ -83,14 +84,23 @@ export default function ImportTasksDialog({
   }
 
   const handleImport = async () => {
-    const inserts = buildTaskInserts(rows, {
+    const built = buildTaskInserts(rows, {
       monthId,
       projectId,
       phases,
       people,
       existingTasks,
     })
-    await bulkCreate.mutateAsync(inserts)
+    // El insert masivo conserva el orden de las filas, así que se puede
+    // emparejar cada tarea creada con los asignados de la fila que le dio
+    // origen por posición, sin tener que hacer un segundo viaje por id.
+    const created = await bulkCreate.mutateAsync(built.map((b) => b.insert))
+    const assignments = created
+      .map((task, i) => ({ taskId: task.id, personIds: built[i].assigneePersonIds }))
+      .filter((a) => a.personIds.length > 0)
+    if (assignments.length > 0) {
+      await bulkSetAssignees.mutateAsync(assignments)
+    }
     reset()
     onOpenChange(false)
   }
@@ -108,8 +118,9 @@ export default function ImportTasksDialog({
           <DialogTitle>Importar tareas desde Excel</DialogTitle>
           <DialogDescription>
             Descarga la plantilla, llénala con las tareas del proyecto y súbela aquí. Fase,
-            Estado, Prioridad y Responsable se reconocen por texto — usa la hoja "Valores
-            válidos" de la plantilla para copiar los nombres exactos.
+            Estado, Prioridad y Responsable(s) se reconocen por texto — usa la hoja "Valores
+            válidos" de la plantilla para copiar los nombres exactos. Una tarea puede tener
+            varios responsables: sepáralos con coma en la misma celda.
           </DialogDescription>
         </DialogHeader>
 
@@ -181,7 +192,7 @@ export default function ImportTasksDialog({
                       <TableHead>Fase</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Prioridad</TableHead>
-                      <TableHead>Responsable</TableHead>
+                      <TableHead>Responsable(s)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -206,7 +217,7 @@ export default function ImportTasksDialog({
                         </TableCell>
                         <TableCell className="text-sm">{PRIORITY_LABELS[row.priority]}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {row.assigneeName ?? "Sin asignar"}
+                          {row.assigneeNames.length > 0 ? row.assigneeNames.join(", ") : "Sin asignar"}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -220,10 +231,10 @@ export default function ImportTasksDialog({
         <DialogFooter>
           <Button
             type="button"
-            disabled={rows.length === 0 || bulkCreate.isPending}
+            disabled={rows.length === 0 || bulkCreate.isPending || bulkSetAssignees.isPending}
             onClick={() => void handleImport()}
           >
-            {bulkCreate.isPending
+            {bulkCreate.isPending || bulkSetAssignees.isPending
               ? "Importando…"
               : `Importar ${rows.length || ""} tarea${rows.length === 1 ? "" : "s"}`.trim()}
           </Button>

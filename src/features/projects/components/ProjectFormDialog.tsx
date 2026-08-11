@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/form"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import ColorPicker from "@/features/projects/components/ColorPicker"
-import { PersonMultiSelect } from "@/features/projects/components/PersonMultiSelect"
+import { PersonMultiSelect } from "@/components/shared/PersonMultiSelect"
 import {
   useCreateProject,
   useSetProjectManager,

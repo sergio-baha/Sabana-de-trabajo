@@ -15,8 +15,9 @@ import GanttChart from "@/features/schedule/components/GanttChart"
 import TimeCalendar from "@/features/schedule/components/TimeCalendar"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import TaskFormDialog from "@/features/tasks/components/TaskFormDialog"
-import { useTasks } from "@/features/tasks/hooks/useTasksQueries"
+import { useTaskAssignees, useTasks } from "@/features/tasks/hooks/useTasksQueries"
 import { useRealtimeTasks } from "@/features/tasks/hooks/useRealtimeTasks"
+import { buildAssigneeIdsByTask } from "@/features/tasks/lib/taskAssignees"
 import type { Task } from "@/features/tasks/api/tasksApi"
 import {
   useActivitiesForMonth,
@@ -39,6 +40,11 @@ export default function CronogramaPage() {
   const restrictedToSelf = isAnalistaTecnologia(profile?.role)
 
   const { data: tasks, isLoading: tasksLoading } = useTasks(activeMonthId)
+  const { data: taskAssignees } = useTaskAssignees(activeMonthId)
+  const assigneeIdsByTask = useMemo(
+    () => buildAssigneeIdsByTask(taskAssignees ?? []),
+    [taskAssignees]
+  )
   const { data: activities, isLoading: activitiesLoading } = useActivitiesForMonth(activeMonthId)
   const { data: projects } = useProjects(activeMonthId)
   const { data: people } = usePeople(activeMonthId)
@@ -63,8 +69,9 @@ export default function CronogramaPage() {
   const personId = restrictedToSelf ? (myPerson?.id ?? null) : selectedPersonId
 
   const personTasks = useMemo(
-    () => (tasks ?? []).filter((task) => task.assigned_person_id === personId),
-    [tasks, personId]
+    () =>
+      (tasks ?? []).filter((task) => (assigneeIdsByTask.get(task.id) ?? []).includes(personId ?? "")),
+    [tasks, personId, assigneeIdsByTask]
   )
 
   const personActivities = useMemo(
@@ -172,7 +179,7 @@ export default function CronogramaPage() {
         projects={projects ?? []}
         people={people ?? []}
         readOnly={!canManageTasks(profile?.role)}
-        lockedPersonId={writesOwnWorkOnly(profile?.role) ? myPerson?.id : null}
+        defaultAssigneeIds={writesOwnWorkOnly(profile?.role) && myPerson ? [myPerson.id] : []}
       />
     </div>
   )

@@ -7,7 +7,7 @@ export const TASK_IMPORT_HEADERS = [
   "Fase",
   "Estado",
   "Prioridad",
-  "Responsable",
+  "Responsable(s)",
   "Fecha inicio",
   "Fecha vencimiento",
   "Notas",
@@ -33,7 +33,7 @@ export async function downloadTaskImportTemplate(
       { type: String, value: phaseNames[0] ?? "" },
       { type: String, value: "Pendiente" },
       { type: String, value: "Media" },
-      { type: String, value: teamNames[0] ?? "" },
+      { type: String, value: teamNames.slice(0, 2).join(", ") },
       { type: String, value: "" },
       { type: String, value: "" },
       { type: String, value: "Borra esta fila antes de importar" },
@@ -45,7 +45,12 @@ export async function downloadTaskImportTemplate(
   const priorityLabels = Object.values(PRIORITY_LABELS).map((l) => l.split(" · ")[1])
 
   const validValuesRows: Row[] = [
-    headerRow(["Fases del proyecto", "Estados", "Prioridades", "Personas del equipo"]),
+    headerRow([
+      "Fases del proyecto",
+      "Estados",
+      "Prioridades",
+      "Personas del equipo (varias: sepáralas con coma en Responsable(s))",
+    ]),
     ...Array.from({ length: maxRows }, (_, i) => [
       { type: String, value: phaseNames[i] ?? "" },
       { type: String, value: statusLabels[i] ?? "" },
@@ -57,7 +62,7 @@ export async function downloadTaskImportTemplate(
   await writeXlsxFile(
     [
       { sheet: "Tareas", data: taskRows, columns: [{ width: 40 }, { width: 16 }, { width: 14 }, { width: 12 }, { width: 20 }, { width: 14 }, { width: 16 }, { width: 30 }] },
-      { sheet: "Valores válidos", data: validValuesRows, columns: [{ width: 20 }, { width: 16 }, { width: 14 }, { width: 20 }] },
+      { sheet: "Valores válidos", data: validValuesRows, columns: [{ width: 20 }, { width: 16 }, { width: 14 }, { width: 42 }] },
     ],
     { fontFamily: "Calibri" }
   ).toFile(`Plantilla tareas - ${projectName}.xlsx`)

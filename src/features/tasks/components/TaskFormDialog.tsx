@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { PersonMultiSelect } from "@/components/shared/PersonMultiSelect"
 import {
   Select,
   SelectContent,
@@ -37,7 +38,12 @@ import {
 } from "@/features/tasks/lib/taskLabels"
 import { nextBoardOrder, type Task } from "@/features/tasks/api/tasksApi"
 import { uploadTaskImage } from "@/features/tasks/lib/uploadTaskImage"
-import { useCreateTask, useUpdateTask } from "@/features/tasks/hooks/useTasksQueries"
+import {
+  useCreateTask,
+  useSetTaskAssignees,
+  useTaskAssignees,
+  useUpdateTask,
+} from "@/features/tasks/hooks/useTasksQueries"
 import { useCreateProject, useProjectMembers } from "@/features/projects/hooks/useProjectsQueries"
 import { usePhasesForMonthlyProject } from "@/features/portfolio/hooks/usePortfolioQueries"
 import { useSessionStore } from "@/stores/sessionStore"
@@ -63,7 +69,7 @@ const schema = z.object({
   workItemType: z.enum(["epica", "historia", "tarea", "bug"]),
   status: z.enum(["pendiente", "en_progreso", "en_revision", "bloqueada", "completada"]),
   priority: z.number().int().min(1).max(4),
-  assignedPersonId: z.string(),
+  assignedPersonIds: z.array(z.string()),
   parentTaskId: z.string(),
   startDate: z.string(),
   dueDate: z.string(),
@@ -97,11 +103,11 @@ interface TaskFormDialogProps {
   projects: Project[]
   people: Person[]
   readOnly: boolean
-  // Cuando quien edita solo puede trabajar sobre lo suyo (Analista de
-  // Tecnología), la tarea queda fijada a su persona: RLS rechaza cualquier
-  // otro responsable, así que dejar el campo libre solo produciría un error
-  // al guardar.
-  lockedPersonId?: string | null
+  // Prellena "Asignada a" al crear (p. ej. con uno mismo). No bloquea el
+  // campo: con varios asignados por igual, cualquier miembro del equipo del
+  // proyecto puede sumar o quitar a otros — la barrera real es RLS
+  // (is_project_team_member), no este valor por defecto.
+  defaultAssigneeIds?: string[]
   // Al crear una tarea desde la página de detalle de un proyecto, el
   // proyecto ya está decidido por el contexto — no tiene sentido pedirlo de
   // nuevo ni permitir cambiarlo a mitad de la edición.
@@ -132,12 +138,14 @@ export default function TaskFormDialog({
   projects,
   people,
   readOnly,
-  lockedPersonId = null,
+  defaultAssigneeIds = [],
   lockedProjectId = null,
 }: TaskFormDialogProps) {
   const isEdit = Boolean(task)
   const createTask = useCreateTask(monthId)
   const updateTask = useUpdateTask(monthId)
+  const setAssignees = useSetTaskAssignees(monthId)
+  const { data: taskAssignees } = useTaskAssignees(monthId)
   const createProject = useCreateProject(monthId)
   const { data: projectMembers } = useProjectMembers(monthId)
   const profile = useSessionStore((s) => s.profile)
@@ -161,7 +169,7 @@ export default function TaskFormDialog({
       workItemType: "tarea",
       status: defaultStatus,
       priority: 3,
-      assignedPersonId: "",
+      assignedPersonIds: [],
       parentTaskId: "",
       startDate: "",
       dueDate: "",
@@ -173,6 +181,9 @@ export default function TaskFormDialog({
 
   useEffect(() => {
     if (!open) return
+    const currentAssigneeIds = task
+      ? (taskAssignees ?? []).filter((a) => a.task_id === task.id).map((a) => a.person_id)
+      : defaultAssigneeIds
     form.reset({
       title: task?.title ?? "",
       description: task?.description ?? "",
@@ -181,7 +192,7 @@ export default function TaskFormDialog({
       workItemType: task?.work_item_type ?? "tarea",
       status: task?.status ?? defaultStatus,
       priority: task?.priority ?? 3,
-      assignedPersonId: task?.assigned_person_id ?? lockedPersonId ?? "",
+      assignedPersonIds: currentAssigneeIds,
       parentTaskId: task?.parent_task_id ?? "",
       startDate: task?.start_date ?? "",
       dueDate: task?.due_date ?? "",
@@ -192,7 +203,13 @@ export default function TaskFormDialog({
     setJustCreated(null)
     setNewProjectName("")
     setAddingProject(false)
-  }, [open, task, defaultStatus, defaultPhaseId, lockedPersonId, lockedProjectId, form])
+    // `defaultAssigneeIds` se deja fuera a propósito: el caller suele pasar
+    // un array literal nuevo en cada render, y si entrara a las deps el
+    // formulario se resetearía en cada tecleo mientras el diálogo está
+    // abierto. Solo importa su valor en el instante en que `open` pasa a
+    // true, que es cuando este efecto igual se vuelve a correr.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, task, taskAssignees, defaultStatus, defaultPhaseId, lockedProjectId, form])
 
   // Proyectos reales + el creado en esta sesión del diálogo, sin duplicarlo
   // cuando el refetch del padre ya lo trajo.
@@ -206,7 +223,7 @@ export default function TaskFormDialog({
   // las personas del mes. Sin equipo configurado (o mientras se elige
   // proyecto) se ve la lista completa, como antes.
   const selectedProjectId = form.watch("projectId")
-  const currentAssignedId = form.watch("assignedPersonId")
+  const currentAssigneeIds = form.watch("assignedPersonIds")
   const { data: phasesForProject } = usePhasesForMonthlyProject(selectedProjectId || null)
   const projectMemberIds = new Set(
     (projectMembers ?? [])
@@ -215,7 +232,7 @@ export default function TaskFormDialog({
   )
   const assigneeOptions =
     projectMemberIds.size > 0
-      ? people.filter((p) => projectMemberIds.has(p.id) || p.id === currentAssignedId)
+      ? people.filter((p) => projectMemberIds.has(p.id) || currentAssigneeIds.includes(p.id))
       : people
 
   const submitNewProject = async () => {
@@ -234,7 +251,7 @@ export default function TaskFormDialog({
     setAddingProject(false)
   }
 
-  const submitting = createTask.isPending || updateTask.isPending
+  const submitting = createTask.isPending || updateTask.isPending || setAssignees.isPending
 
   // Candidatas a padre: cualquier work item del mes que no sea la propia
   // tarjeta (evita el ciclo trivial A → A). Una jerarquía más profunda
@@ -251,7 +268,6 @@ export default function TaskFormDialog({
       work_item_type: values.workItemType,
       status: values.status,
       priority: values.priority,
-      assigned_person_id: values.assignedPersonId || null,
       parent_task_id: values.parentTaskId || null,
       start_date: values.startDate || null,
       due_date: values.dueDate || null,
@@ -260,14 +276,20 @@ export default function TaskFormDialog({
       tags: parseTags(values.tags),
     }
 
+    let taskId = task?.id
     if (isEdit && task) {
       await updateTask.mutateAsync({ id: task.id, patch: payload })
     } else {
-      await createTask.mutateAsync({
+      const created = await createTask.mutateAsync({
         ...payload,
         month_id: monthId,
         board_order: nextBoardOrder(tasks, values.status),
       })
+      taskId = created.id
+    }
+
+    if (taskId) {
+      await setAssignees.mutateAsync({ taskId, personIds: values.assignedPersonIds })
     }
     onOpenChange(false)
   }
@@ -471,36 +493,27 @@ export default function TaskFormDialog({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="assignedPersonId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Asignada a</FormLabel>
-                    <Select
-                      value={field.value || "none"}
-                      onValueChange={(v) => field.onChange(v === "none" ? "" : v)}
-                      disabled={readOnly || Boolean(lockedPersonId)}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Sin asignar" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Sin asignar</SelectItem>
-                        {assigneeOptions.map((person) => (
-                          <SelectItem key={person.id} value={person.id}>
-                            {person.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
+
+            <FormField
+              control={form.control}
+              name="assignedPersonIds"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Asignada a</FormLabel>
+                  <FormControl>
+                    <PersonMultiSelect
+                      people={assigneeOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={readOnly}
+                      placeholder="Sin asignar"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

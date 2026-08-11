@@ -2,9 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
   bulkCreateTasks,
+  bulkSetTaskAssignees,
   createTask,
   deleteTask,
+  listTaskAssignees,
   moveTask,
+  setTaskAssignees,
   updateTask,
   listTasks,
   type Task,
@@ -15,6 +18,7 @@ import type { TaskStatus } from "@/types/database.types"
 
 export const tasksKeys = {
   all: (monthId: string) => ["tasks", monthId] as const,
+  assignees: (monthId: string) => ["task_assignees", monthId] as const,
 }
 
 export function useTasks(monthId: string | null) {
@@ -46,6 +50,40 @@ export function useBulkCreateTasks(monthId: string) {
       toast.success(`${created.length} tarea${created.length === 1 ? "" : "s"} importada${created.length === 1 ? "" : "s"}`)
     },
     onError: (error) => toast.error("No se pudo importar el archivo", { description: error.message }),
+  })
+}
+
+export function useTaskAssignees(monthId: string | null) {
+  return useQuery({
+    queryKey: tasksKeys.assignees(monthId ?? ""),
+    queryFn: () => listTaskAssignees(monthId as string),
+    enabled: Boolean(monthId),
+  })
+}
+
+export function useSetTaskAssignees(monthId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, personIds }: { taskId: string; personIds: string[] }) =>
+      setTaskAssignees(monthId, taskId, personIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tasksKeys.assignees(monthId) })
+    },
+    onError: (error) =>
+      toast.error("No se pudieron guardar los asignados", { description: error.message }),
+  })
+}
+
+export function useBulkSetTaskAssignees(monthId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (assignments: { taskId: string; personIds: string[] }[]) =>
+      bulkSetTaskAssignees(monthId, assignments),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tasksKeys.assignees(monthId) })
+    },
+    onError: (error) =>
+      toast.error("No se pudieron asignar las tareas importadas", { description: error.message }),
   })
 }
 

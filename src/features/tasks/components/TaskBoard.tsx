@@ -7,14 +7,15 @@ import { BOARD_COLUMNS, STATUS_ACCENT, STATUS_LABELS } from "@/features/tasks/li
 import { orderForDrop, type Task } from "@/features/tasks/api/tasksApi"
 import { useMoveTask } from "@/features/tasks/hooks/useTasksQueries"
 import type { Project } from "@/features/projects/api/projectsApi"
-import type { Person } from "@/features/people/api/peopleApi"
 import type { TaskStatus } from "@/types/database.types"
 
 interface TaskBoardProps {
   monthId: string
   tasks: Task[]
   projects: Project[]
-  people: Person[]
+  // Nombres de los asignados de cada tarea, ya resueltos por el caller
+  // (task_assignees + people) — una tarea puede tener varias personas.
+  assigneesByTask: Map<string, string[]>
   canWrite: boolean
   onOpenTask: (task: Task) => void
   onNewTask: (status: TaskStatus) => void
@@ -33,7 +34,7 @@ export default function TaskBoard({
   monthId,
   tasks,
   projects,
-  people,
+  assigneesByTask,
   canWrite,
   onOpenTask,
   onNewTask,
@@ -47,12 +48,6 @@ export default function TaskBoard({
     for (const project of projects) map.set(project.id, project)
     return map
   }, [projects])
-
-  const personById = useMemo(() => {
-    const map = new Map<string, Person>()
-    for (const person of people) map.set(person.id, person)
-    return map
-  }, [people])
 
   const byColumn = useMemo(() => {
     const map = new Map<TaskStatus, Task[]>()
@@ -127,9 +122,6 @@ export default function TaskBoard({
             <div className="flex min-h-24 flex-col gap-2">
               {columnTasks.map((task) => {
                 const project = projectById.get(task.project_id)
-                const assignee = task.assigned_person_id
-                  ? personById.get(task.assigned_person_id)
-                  : null
 
                 return (
                   <div key={task.id} className="flex flex-col gap-2">
@@ -140,7 +132,7 @@ export default function TaskBoard({
                       task={task}
                       projectName={project?.name ?? "—"}
                       projectColor={project?.color ?? "var(--muted-foreground)"}
-                      assigneeName={assignee?.name ?? null}
+                      assigneeNames={assigneesByTask.get(task.id) ?? []}
                       draggable={canWrite}
                       isDragging={draggingId === task.id}
                       onOpen={() => onOpenTask(task)}

@@ -16,8 +16,9 @@ interface PersonMultiSelectProps {
 }
 
 // Selector de varias personas del roster, sin filtrar por rol a propósito:
-// cualquiera puede sumarse a un proyecto como colaborador, sin importar si
-// hoy es analista, gestor o administrador.
+// cualquiera puede sumarse a un proyecto o a una tarea, sin importar si hoy
+// es analista, gestor o administrador. Compartido entre Proyectos (equipo
+// del proyecto) y Tareas (varias personas asignadas a una misma tarea).
 export function PersonMultiSelect({
   people,
   value,

@@ -34,7 +34,6 @@ import {
 import { nextBoardOrder, type Task } from "@/features/tasks/api/tasksApi"
 import { useMoveTask } from "@/features/tasks/hooks/useTasksQueries"
 import type { Project } from "@/features/projects/api/projectsApi"
-import type { Person } from "@/features/people/api/peopleApi"
 import type { TaskStatus } from "@/types/database.types"
 
 interface TaskBacklogTableProps {
@@ -42,7 +41,9 @@ interface TaskBacklogTableProps {
   tasks: Task[]
   allTasks: Task[]
   projects: Project[]
-  people: Person[]
+  // Nombres de los asignados de cada tarea, ya resueltos por el caller
+  // (task_assignees + people) — una tarea puede tener varias personas.
+  assigneesByTask: Map<string, string[]>
   canWrite: boolean
   onOpenTask: (task: Task) => void
   onDeleteTask: (task: Task) => void
@@ -56,7 +57,7 @@ export default function TaskBacklogTable({
   tasks,
   allTasks,
   projects,
-  people,
+  assigneesByTask,
   canWrite,
   onOpenTask,
   onDeleteTask,
@@ -68,12 +69,6 @@ export default function TaskBacklogTable({
     for (const project of projects) map.set(project.id, project)
     return map
   }, [projects])
-
-  const personById = useMemo(() => {
-    const map = new Map<string, Person>()
-    for (const person of people) map.set(person.id, person)
-    return map
-  }, [people])
 
   const sorted = useMemo(
     () =>
@@ -107,9 +102,7 @@ export default function TaskBacklogTable({
       <TableBody>
         {sorted.map((task) => {
           const project = projectById.get(task.project_id)
-          const assignee = task.assigned_person_id
-            ? personById.get(task.assigned_person_id)
-            : null
+          const assigneeNames = assigneesByTask.get(task.id) ?? []
 
           return (
             <TableRow key={task.id}>
@@ -138,7 +131,9 @@ export default function TaskBacklogTable({
                   <span className="text-sm">{project?.name ?? "—"}</span>
                 </div>
               </TableCell>
-              <TableCell className="text-sm">{assignee?.name ?? "—"}</TableCell>
+              <TableCell className="text-sm">
+                {assigneeNames.length > 0 ? assigneeNames.join(", ") : "—"}
+              </TableCell>
               <TableCell>
                 {canWrite ? (
                   <Select

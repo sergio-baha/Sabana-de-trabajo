@@ -592,6 +592,59 @@ export type Database = {
           },
         ]
       }
+      task_assignees: {
+        Row: {
+          created_at: string
+          id: string
+          month_id: string
+          person_id: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month_id: string
+          person_id: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month_id?: string
+          person_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignees_month_id_fkey"
+            columns: ["month_id"]
+            isOneToOne: false
+            referencedRelation: "months"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "v_person_month_totals"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_members: {
         Row: {
           created_at: string
@@ -993,7 +1046,6 @@ export type Database = {
       }
       tasks: {
         Row: {
-          assigned_person_id: string | null
           board_order: number
           completed_at: string | null
           completed_hours: number | null
@@ -1017,7 +1069,6 @@ export type Database = {
           work_item_type: Database["public"]["Enums"]["work_item_type"]
         }
         Insert: {
-          assigned_person_id?: string | null
           board_order?: number
           completed_at?: string | null
           completed_hours?: number | null
@@ -1041,7 +1092,6 @@ export type Database = {
           work_item_type?: Database["public"]["Enums"]["work_item_type"]
         }
         Update: {
-          assigned_person_id?: string | null
           board_order?: number
           completed_at?: string | null
           completed_hours?: number | null
@@ -1071,20 +1121,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_assigned_person_id_fkey"
-            columns: ["assigned_person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_assigned_person_id_fkey"
-            columns: ["assigned_person_id"]
-            isOneToOne: false
-            referencedRelation: "v_person_month_totals"
-            referencedColumns: ["person_id"]
           },
           {
             foreignKeyName: "tasks_created_by_fkey"

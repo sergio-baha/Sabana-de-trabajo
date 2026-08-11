@@ -17,9 +17,10 @@ import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import TaskBoard from "@/features/tasks/components/TaskBoard"
 import TaskBacklogTable from "@/features/tasks/components/TaskBacklogTable"
 import TaskFormDialog from "@/features/tasks/components/TaskFormDialog"
-import { useDeleteTask, useTasks } from "@/features/tasks/hooks/useTasksQueries"
+import { useDeleteTask, useTaskAssignees, useTasks } from "@/features/tasks/hooks/useTasksQueries"
 import { useRealtimeTasks } from "@/features/tasks/hooks/useRealtimeTasks"
 import { STATUS_LABELS, WORK_ITEM_OPTIONS } from "@/features/tasks/lib/taskLabels"
+import { buildAssigneeIdsByTask, buildAssigneesByTask } from "@/features/tasks/lib/taskAssignees"
 import type { Task } from "@/features/tasks/api/tasksApi"
 import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
@@ -53,8 +54,18 @@ export default function TareasPage() {
   const { data: tasks, isLoading } = useTasks(activeMonthId)
   const { data: projects } = useProjects(activeMonthId)
   const { data: people } = usePeople(activeMonthId)
+  const { data: taskAssignees } = useTaskAssignees(activeMonthId)
   const deleteTask = useDeleteTask(activeMonthId ?? "")
   useRealtimeTasks(activeMonthId)
+
+  const assigneesByTask = useMemo(
+    () => buildAssigneesByTask(taskAssignees ?? [], people ?? []),
+    [taskAssignees, people]
+  )
+  const assigneeIdsByTask = useMemo(
+    () => buildAssigneeIdsByTask(taskAssignees ?? []),
+    [taskAssignees]
+  )
 
   const [search, setSearch] = useState("")
   const [projectFilter, setProjectFilter] = useState(ALL)
@@ -69,7 +80,8 @@ export default function TareasPage() {
     const q = search.trim().toLowerCase()
     return (tasks ?? []).filter((task) => {
       if (projectFilter !== ALL && task.project_id !== projectFilter) return false
-      if (personFilter !== ALL && task.assigned_person_id !== personFilter) return false
+      if (personFilter !== ALL && !(assigneeIdsByTask.get(task.id) ?? []).includes(personFilter))
+        return false
       if (typeFilter !== ALL && task.work_item_type !== typeFilter) return false
       if (!q) return true
       return (
@@ -78,7 +90,7 @@ export default function TareasPage() {
         task.tags.some((tag) => tag.toLowerCase().includes(q))
       )
     })
-  }, [tasks, search, projectFilter, personFilter, typeFilter])
+  }, [tasks, search, projectFilter, personFilter, typeFilter, assigneeIdsByTask])
 
   const counters = useMemo(() => {
     const total = filtered.length
@@ -202,7 +214,7 @@ export default function TareasPage() {
               monthId={activeMonthId}
               tasks={filtered}
               projects={projects ?? []}
-              people={people ?? []}
+              assigneesByTask={assigneesByTask}
               canWrite={canWrite}
               onOpenTask={openTask}
               onNewTask={openNewTask}
@@ -216,7 +228,7 @@ export default function TareasPage() {
                   tasks={filtered}
                   allTasks={tasks ?? []}
                   projects={projects ?? []}
-                  people={people ?? []}
+                  assigneesByTask={assigneesByTask}
                   canWrite={canWrite}
                   onOpenTask={openTask}
                   onDeleteTask={setTaskToDelete}
@@ -237,7 +249,7 @@ export default function TareasPage() {
         projects={projects ?? []}
         people={people ?? []}
         readOnly={!canWrite}
-        lockedPersonId={writesOwn ? myPerson?.id : null}
+        defaultAssigneeIds={writesOwn && myPerson ? [myPerson.id] : []}
       />
       <ConfirmDialog
         open={Boolean(taskToDelete)}

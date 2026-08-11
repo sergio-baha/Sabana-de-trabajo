@@ -11,7 +11,7 @@ interface RawImportRow {
   phaseName?: string
   statusLabel?: string
   priorityLabel?: string
-  assigneeName?: string
+  assigneeNames?: string
   startDate?: Date
   dueDate?: Date
   notes?: string
@@ -23,7 +23,8 @@ export interface ImportedTaskRow {
   phaseName: string | null
   status: TaskStatus
   priority: number
-  assigneeName: string | null
+  // Varias personas por tarea, separadas por coma en la celda.
+  assigneeNames: string[]
   startDate: string | null
   dueDate: string | null
   notes: string | null
@@ -65,7 +66,7 @@ const schema = {
   phaseName: { column: "Fase", type: String },
   statusLabel: { column: "Estado", type: String },
   priorityLabel: { column: "Prioridad", type: String },
-  assigneeName: { column: "Responsable", type: String },
+  assigneeNames: { column: "Responsable(s)", type: String },
   startDate: { column: "Fecha inicio", type: Date },
   dueDate: { column: "Fecha vencimiento", type: Date },
   notes: { column: "Notas", type: String },
@@ -125,11 +126,15 @@ export async function parseTaskImportFile(
         else warnings.push(`Prioridad "${r.priorityLabel}" no reconocida — se deja "Media"`)
       }
 
-      let assigneeName: string | null = null
-      if (r.assigneeName?.trim()) {
-        const match = personByName.get(normalize(r.assigneeName))
-        if (match) assigneeName = match
-        else warnings.push(`"${r.assigneeName}" no está en el equipo del proyecto — queda sin asignar`)
+      // Varios nombres separados por coma: cada uno se resuelve por
+      // separado, así que un nombre mal escrito no descarta a los demás.
+      const assigneeNames: string[] = []
+      for (const raw of (r.assigneeNames ?? "").split(",")) {
+        const name = raw.trim()
+        if (!name) continue
+        const match = personByName.get(normalize(name))
+        if (match) assigneeNames.push(match)
+        else warnings.push(`"${name}" no está en el equipo del proyecto — no se le asigna`)
       }
 
       return {
@@ -138,7 +143,7 @@ export async function parseTaskImportFile(
         phaseName,
         status,
         priority,
-        assigneeName,
+        assigneeNames,
         startDate: r.startDate ? format(r.startDate, "yyyy-MM-dd") : null,
         dueDate: r.dueDate ? format(r.dueDate, "yyyy-MM-dd") : null,
         notes: r.notes?.trim() || null,
@@ -157,13 +162,20 @@ interface BuildInsertsParams {
   existingTasks: Task[]
 }
 
-// Convierte las filas ya resueltas en TaskInsert, calculando board_order
-// como si cada tarea se hubiera agregado al final de su columna, en el
-// orden en que aparecen en el archivo — mismo criterio que usa el tablero.
+export interface BuiltTaskImportRow {
+  insert: TaskInsert
+  assigneePersonIds: string[]
+}
+
+// Convierte las filas ya resueltas en TaskInsert (+ los ids de sus
+// asignados, para el insert de task_assignees que hace el caller después),
+// calculando board_order como si cada tarea se hubiera agregado al final de
+// su columna, en el orden en que aparecen en el archivo — mismo criterio
+// que usa el tablero.
 export function buildTaskInserts(
   rows: ImportedTaskRow[],
   { monthId, projectId, phases, people, existingTasks }: BuildInsertsParams
-): TaskInsert[] {
+): BuiltTaskImportRow[] {
   const phaseIdByName = new Map(phases.map((p) => [p.name, p.id]))
   const personIdByName = new Map(people.map((p) => [p.name, p.id]))
   const running: Pick<Task, "status" | "board_order">[] = existingTasks.map((t) => ({
@@ -175,17 +187,21 @@ export function buildTaskInserts(
     const boardOrder = nextBoardOrder(running, row.status)
     running.push({ status: row.status, board_order: boardOrder })
     return {
-      month_id: monthId,
-      project_id: projectId,
-      phase_id: row.phaseName ? (phaseIdByName.get(row.phaseName) ?? null) : null,
-      title: row.title,
-      description: row.notes,
-      status: row.status,
-      priority: row.priority,
-      board_order: boardOrder,
-      assigned_person_id: row.assigneeName ? (personIdByName.get(row.assigneeName) ?? null) : null,
-      start_date: row.startDate,
-      due_date: row.dueDate,
+      insert: {
+        month_id: monthId,
+        project_id: projectId,
+        phase_id: row.phaseName ? (phaseIdByName.get(row.phaseName) ?? null) : null,
+        title: row.title,
+        description: row.notes,
+        status: row.status,
+        priority: row.priority,
+        board_order: boardOrder,
+        start_date: row.startDate,
+        due_date: row.dueDate,
+      },
+      assigneePersonIds: row.assigneeNames
+        .map((name) => personIdByName.get(name))
+        .filter((id): id is string => Boolean(id)),
     }
   })
 }

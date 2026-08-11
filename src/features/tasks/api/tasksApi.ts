@@ -4,6 +4,7 @@ import type { Database, TaskStatus } from "@/types/database.types"
 export type Task = Database["public"]["Tables"]["tasks"]["Row"]
 export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"]
 export type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"]
+export type TaskAssignee = Database["public"]["Tables"]["task_assignees"]["Row"]
 
 // Separación entre dos tarjetas consecutivas al final de una columna. Al
 // mover una tarjeta entre otras dos se usa el punto medio de sus
@@ -52,6 +53,68 @@ export async function updateTask(id: string, patch: TaskUpdate): Promise<Task> {
 
 export async function deleteTask(id: string): Promise<void> {
   const { error } = await supabase.from("tasks").delete().eq("id", id)
+  if (error) throw error
+}
+
+export async function listTaskAssignees(monthId: string): Promise<TaskAssignee[]> {
+  const { data, error } = await supabase
+    .from("task_assignees")
+    .select("*")
+    .eq("month_id", monthId)
+  if (error) throw error
+  return data
+}
+
+// Reemplaza de una sola vez la lista de asignados de una tarea, igual que
+// setProjectMembers: manda la lista completa deseada y esta función calcula
+// qué insertar/borrar.
+export async function setTaskAssignees(
+  monthId: string,
+  taskId: string,
+  personIds: string[]
+): Promise<void> {
+  const { data: existing, error: listError } = await supabase
+    .from("task_assignees")
+    .select("person_id")
+    .eq("task_id", taskId)
+  if (listError) throw listError
+
+  const existingIds = new Set((existing ?? []).map((row) => row.person_id))
+  const nextIds = new Set(personIds)
+
+  const toRemove = [...existingIds].filter((id) => !nextIds.has(id))
+  const toAdd = [...nextIds].filter((id) => !existingIds.has(id))
+
+  if (toRemove.length > 0) {
+    const { error } = await supabase
+      .from("task_assignees")
+      .delete()
+      .eq("task_id", taskId)
+      .in("person_id", toRemove)
+    if (error) throw error
+  }
+
+  if (toAdd.length > 0) {
+    const { error } = await supabase
+      .from("task_assignees")
+      .insert(toAdd.map((personId) => ({ month_id: monthId, task_id: taskId, person_id: personId })))
+    if (error) throw error
+  }
+}
+
+// Cargue masivo: cada tarea puede traer varios asignados, así que el insert
+// de task_assignees se hace en un solo lote después de crear las tareas
+// (bulkCreateTasks), emparejando por índice — mismo orden en el que se
+// insertaron las filas.
+export async function bulkSetTaskAssignees(
+  monthId: string,
+  assignments: { taskId: string; personIds: string[] }[]
+): Promise<void> {
+  const rows = assignments.flatMap(({ taskId, personIds }) =>
+    personIds.map((personId) => ({ month_id: monthId, task_id: taskId, person_id: personId }))
+  )
+  if (rows.length === 0) return
+  const { error } = await supabase.from("task_assignees").insert(rows)
   if (error) throw error
 }
 
