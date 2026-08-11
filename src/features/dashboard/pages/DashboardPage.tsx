@@ -28,6 +28,8 @@ import {
 import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import MonthStatusBadge from "@/features/months/components/MonthStatusBadge"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
+import { usePeople } from "@/features/people/hooks/usePeopleQueries"
+import { useProfiles } from "@/hooks/useProfiles"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
 import { isAdmin } from "@/lib/roles"
@@ -46,8 +48,33 @@ export default function DashboardPage() {
     isAdmin(profile?.role)
   )
 
+  // El Dashboard mide la planeación del equipo, y el Analista de Tecnología
+  // queda fuera de ella: gestiona su propio trabajo y no entra en el reparto
+  // de horas del mes. Dejar sus horas adentro inflaba la capacidad total y
+  // lo hacía aparecer en "Requiere atención" por un desajuste que nadie va
+  // a resolver desde la grilla.
+  //
+  // El rol vive en `profiles` y la fila del mes en `people`; el puente es
+  // `people.profile_id`. La vista v_person_month_totals no trae el rol, así
+  // que el cruce se hace acá y no en SQL.
+  const { data: people } = usePeople(activeMonthId)
+  const { byId: profilesById } = useProfiles()
+
+  const visiblePersonTotals = useMemo(() => {
+    const excluded = new Set(
+      (people ?? [])
+        .filter(
+          (person) =>
+            person.profile_id &&
+            profilesById.get(person.profile_id)?.role === "analista_tecnologia"
+        )
+        .map((person) => person.id)
+    )
+    return (personTotals ?? []).filter((row) => !excluded.has(row.person_id))
+  }, [personTotals, people, profilesById])
+
   const metrics = useMemo(() => {
-    const people = personTotals ?? []
+    const people = visiblePersonTotals
     const projects = (projectTotals ?? []).filter((p) => p.status !== "archivado")
     const allocated = people.reduce((sum, p) => sum + p.allocated_hours, 0)
     const available = people.reduce((sum, p) => sum + p.available_hours, 0)
@@ -63,7 +90,7 @@ export default function DashboardPage() {
       overallocated: people.filter((p) => p.status_color === "rojo").length,
       underallocated: people.filter((p) => p.status_color === "amarillo").length,
     }
-  }, [personTotals, projectTotals])
+  }, [visiblePersonTotals, projectTotals])
 
   const isLoading = loadingPeople || loadingProjects
 
@@ -230,7 +257,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <AttentionList people={personTotals ?? []} />
+              <AttentionList people={visiblePersonTotals} />
             )}
           </CardContent>
         </Card>
