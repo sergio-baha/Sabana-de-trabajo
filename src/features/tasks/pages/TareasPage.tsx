@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { KanbanSquare, Lock, Plus, Search, UserRoundX } from "lucide-react"
+import { KanbanSquare, Plus, Search, UserRoundX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -29,7 +29,7 @@ import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canManageTasks, isAdmin, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
+import { canManageTasks, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
 import type { TaskStatus } from "@/types/database.types"
 
 const ALL = "all"
@@ -37,9 +37,10 @@ const ALL = "all"
 export default function TareasPage() {
   const { activeMonthId } = useActiveMonthStore()
   const profile = useSessionStore((s) => s.profile)
-  // Igual que la grilla: el gating por rol es solo de UX, y RLS es lo que
-  // además bloquea escribir en un mes cerrado y, para el Analista de
-  // Tecnología, acota todo a sus propias tarjetas.
+  // El gating por rol de acá es solo de UX; la barrera real es RLS.
+  // A diferencia de la grilla de horas, las tareas NO dependen del estado
+  // del mes: un mes cerrado congela la contabilidad, no el trabajo.
+  //
   // En Tareas los dos roles de analista quedan equivalentes: ambos ven y
   // escriben solo sus propias tarjetas (tasks_select_scoped usa
   // is_analista_role, no is_analista_tecnologia). `restrictedToSelf` es
@@ -61,18 +62,12 @@ export default function TareasPage() {
   const { data: taskAssignees } = useTaskAssignees(activeMonthId, { allMonths: ignoresMonths })
   const { data: months } = useMonths()
 
-  // Un mes cerrado congela la escritura para todos menos el Administrador
-  // (ver can_write_month en la base). Sin este chequeo el tablero pintaba
-  // las tarjetas arrastrables y el botón de crear, y el rechazo solo
-  // aparecía como un error al soltar la tarjeta.
-  const activeMonth = months?.find((m) => m.id === activeMonthId)
-  const monthLocked = Boolean(activeMonth && activeMonth.status !== "abierto")
-  const lockedForMe = monthLocked && !isAdmin(profile?.role)
-
+  // El estado del mes NO limita las tareas: cerrar o archivar un mes congela
+  // las horas, no el trabajo. Ver *_tasks_ignore_month_lock.sql.
+  //
   // Sin vínculo cuenta ↔ roster, RLS rechazaría cualquier tarea que creara
   // (no podría asignársela a sí mismo), así que no se ofrece la acción.
-  const canWrite =
-    canManageTasks(profile?.role) && (!writesOwn || Boolean(myPerson)) && !lockedForMe
+  const canWrite = canManageTasks(profile?.role) && (!writesOwn || Boolean(myPerson))
 
   // Solo se pasa en modo "todos los meses": es lo que le dice a las vistas
   // que pinten la etiqueta, y evita ruido cuando el mes ya es el del filtro.
@@ -165,17 +160,6 @@ export default function TareasPage() {
           )
         }
       />
-
-      {lockedForMe && (
-        <div className="animate-fade-in flex items-start gap-3 rounded-xl border border-border bg-muted/60 p-3.5 text-sm">
-          <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          <span>
-            El mes <strong>{activeMonth?.name}</strong> está cerrado: puedes consultar sus tareas
-            pero no moverlas ni editarlas. Cambia a un mes abierto desde el selector del
-            encabezado, o pide a un administrador que lo reabra.
-          </span>
-        </div>
-      )}
 
       {writesOwn && !myPerson && (
         <div className="animate-fade-in flex items-start gap-3 rounded-xl border border-warning/40 bg-warning-muted/40 p-3.5 text-sm">
