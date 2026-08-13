@@ -4,11 +4,11 @@ import "react-data-grid/lib/styles.css"
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
+  Eraser,
   Grid3x3,
   Lock,
-  ListChecks,
-  MessageSquare,
   MoreHorizontal,
+  NotebookText,
   Pencil,
   Plus,
   Search,
@@ -45,7 +45,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useAllocations, useUpsertAllocation } from "@/features/grid/hooks/useAllocationsQueries"
+import {
+  useAllocations,
+  useClearAllocations,
+  useUpsertAllocation,
+} from "@/features/grid/hooks/useAllocationsQueries"
 import { useRealtimeAllocations } from "@/features/grid/hooks/useRealtimeAllocations"
 import {
   buildPersonSummaries,
@@ -58,12 +62,11 @@ import {
 import { tintBackground } from "@/features/grid/lib/colorContrast"
 import HoursEditCell from "@/features/grid/components/HoursEditCell"
 import { useCommentsByCell, useRealtimeComments } from "@/features/comments/hooks/useCommentsQueries"
-import CellCommentsDialog from "@/features/comments/components/CellCommentsDialog"
 import {
   useActivitiesByCell,
   useRealtimeActivities,
 } from "@/features/activities/hooks/useActivitiesQueries"
-import ActivityBreakdownDialog from "@/features/activities/components/ActivityBreakdownDialog"
+import CellDetailsDialog, { type CellTab } from "@/features/grid/components/CellDetailsDialog"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
 import { isAdmin, isGestorOrAdmin } from "@/lib/roles"
@@ -98,6 +101,7 @@ export default function DistribucionPage() {
   const { data: projects, isLoading: loadingProjects } = useProjects()
   const { data: allocations, isLoading: loadingAllocations } = useAllocations(activeMonthId)
   const upsertAllocation = useUpsertAllocation(activeMonthId ?? "")
+  const clearAllocations = useClearAllocations(activeMonthId ?? "")
   useRealtimeAllocations(activeMonthId)
   const { byCell: commentsByCell } = useCommentsByCell(activeMonthId)
   useRealtimeComments(activeMonthId)
@@ -107,12 +111,15 @@ export default function DistribucionPage() {
   const [search, setSearch] = useState("")
   const [sortField, setSortField] = useState<SortField>("name")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
-  const [commentCell, setCommentCell] = useState<{ personId: string; projectId: string } | null>(
-    null
-  )
-  const [activityCell, setActivityCell] = useState<{ personId: string; projectId: string } | null>(
-    null
-  )
+  // Un solo diálogo por celda (actividades + comentarios en pestañas): antes
+  // eran dos estados y dos botones casi iguales dentro de cada celda.
+  const [detailCell, setDetailCell] = useState<{
+    personId: string
+    projectId: string
+    tab: CellTab
+  } | null>(null)
+  // Fila (o grilla completa) a la que se le van a poner las horas en 0.
+  const [rowsToClear, setRowsToClear] = useState<ProjectGridRow[] | null>(null)
   // Alta/edición/baja de proyectos sin salir de la grilla: al repartir horas
   // es cuando uno se da cuenta de que falta un proyecto o que sobra otro, y
   // hasta ahora había que irse a /proyectos y volver.
@@ -222,6 +229,39 @@ export default function DistribucionPage() {
 
   const summaryRows = useMemo<SummaryRow[]>(() => [{ id: "total" }, { id: "disponible" }], [])
 
+  // Índice celda → allocation, para saber qué filas de la base tocar al
+  // limpiar sin recorrer el arreglo entero por cada celda.
+  const allocationIdByCell = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const a of allocations ?? []) map.set(`${a.person_id}:${a.project_id}`, a.id)
+    return map
+  }, [allocations])
+
+  // Qué se limpia de verdad: las celdas con desglose de actividades quedan
+  // fuera, porque ahí las horas las calcula el trigger que suma actividades y
+  // ponerlas en 0 a mano duraría hasta el siguiente cambio del desglose. Se
+  // avisa cuántas quedan sin tocar en la confirmación.
+  const clearPlanFor = (targets: ProjectGridRow[]) => {
+    const ids: string[] = []
+    let skipped = 0
+    for (const row of targets) {
+      for (const person of visiblePeople) {
+        const key = `${person.id}:${row.projectId}`
+        const allocationId = allocationIdByCell.get(key)
+        if (!allocationId) continue
+        if ((activitiesByCell.get(key) ?? []).length > 0) {
+          if ((row.hours[person.id] ?? 0) > 0) skipped += 1
+          continue
+        }
+        if ((row.hours[person.id] ?? 0) === 0) continue
+        ids.push(allocationId)
+      }
+    }
+    return { ids, skipped }
+  }
+
+  const clearPlan = rowsToClear ? clearPlanFor(rowsToClear) : null
+
   const columns = useMemo<Column<ProjectGridRow, SummaryRow>[]>(() => {
     const projectCol: Column<ProjectGridRow, SummaryRow> = {
       key: "name",
@@ -252,6 +292,9 @@ export default function DistribucionPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => setRowsToClear([row])}>
+                  <Eraser /> Limpiar horas de la fila
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
                     const project = visibleProjects.find((p) => p.id === row.projectId)
@@ -299,6 +342,12 @@ export default function DistribucionPage() {
         const hasComments = cellComments.length > 0
         const cellActivities = activitiesByCell.get(`${person.id}:${row.projectId}`) ?? []
         const hasActivities = cellActivities.length > 0
+        const marks = cellActivities.length + cellComments.length
+        // Un solo acceso al detalle de la celda. Abre en la pestaña de lo que
+        // ya tiene contenido (o en Actividades, que es lo que más se usa
+        // mientras se reparten horas).
+        const initialTab: CellTab =
+          cellActivities.length === 0 && hasComments ? "comentarios" : "actividades"
         return (
           <div
             className="relative flex h-full items-center justify-end px-2 tabular-nums"
@@ -309,50 +358,46 @@ export default function DistribucionPage() {
                 <button
                   type="button"
                   className={cn(
-                    "absolute left-1 top-1 flex size-4 items-center justify-center rounded-full",
-                    hasComments ? "text-primary" : "text-muted-foreground/40"
+                    "absolute left-1 top-1 flex items-center gap-0.5 rounded-full px-0.5 text-[10px] leading-none font-medium",
+                    marks > 0 ? "text-primary" : "text-muted-foreground/40"
                   )}
                   onClick={(e) => {
                     e.stopPropagation()
-                    setCommentCell({ personId: person.id, projectId: row.projectId })
+                    setDetailCell({
+                      personId: person.id,
+                      projectId: row.projectId,
+                      tab: initialTab,
+                    })
                   }}
-                  aria-label="Comentarios de la celda"
+                  aria-label="Detalle de la celda: actividades y comentarios"
                 >
-                  <MessageSquare className="size-3" fill={hasComments ? "currentColor" : "none"} />
+                  <NotebookText className="size-3" />
+                  {marks > 0 && <span>{marks}</span>}
                 </button>
               </TooltipTrigger>
-              {hasComments && (
-                <TooltipContent className="max-w-56">
-                  <p className="text-xs">{cellComments[cellComments.length - 1].body}</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-            {canEdit && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      "absolute bottom-1 left-1 flex size-4 items-center justify-center rounded-full",
-                      hasActivities ? "text-primary" : "text-muted-foreground/40"
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setActivityCell({ personId: person.id, projectId: row.projectId })
-                    }}
-                    aria-label="Desglose de actividades"
-                  >
-                    <ListChecks className="size-3" />
-                  </button>
-                </TooltipTrigger>
-                {hasActivities && (
-                  <TooltipContent className="max-w-56">
-                    <p className="text-xs">
-                      {cellActivities.length} actividad{cellActivities.length > 1 ? "es" : ""}
-                    </p>
-                  </TooltipContent>
+              <TooltipContent className="max-w-56">
+                <p className="text-xs">
+                  {marks === 0
+                    ? "Detalle de la celda: desglosar horas en actividades o comentar."
+                    : `${cellActivities.length} actividad${
+                        cellActivities.length === 1 ? "" : "es"
+                      } · ${cellComments.length} comentario${
+                        cellComments.length === 1 ? "" : "s"
+                      }`}
+                </p>
+                {hasComments && (
+                  <p className="mt-1 text-xs opacity-80">
+                    “{cellComments[cellComments.length - 1].body}”
+                  </p>
                 )}
-              </Tooltip>
+              </TooltipContent>
+            </Tooltip>
+            {hasActivities && (
+              <span
+                aria-hidden
+                title="Horas calculadas desde el desglose de actividades"
+                className="absolute bottom-1 left-1 h-0.5 w-3 rounded-full bg-primary/60"
+              />
             )}
             {value > 0 ? value : ""}
           </div>
@@ -522,6 +567,15 @@ export default function DistribucionPage() {
         >
           {sortDir === "asc" ? <ArrowUpNarrowWide /> : <ArrowDownWideNarrow />}
         </Button>
+        {canEdit && rows.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => setRowsToClear(rows)}
+            title="Poner en 0 las horas de las filas que se ven ahora"
+          >
+            <Eraser /> Limpiar horas
+          </Button>
+        )}
         {canEdit && addableProjects.length > 0 && (
           <Select value="" onValueChange={addProjectToMonth}>
             <SelectTrigger className="w-56">
@@ -570,48 +624,61 @@ export default function DistribucionPage() {
         </div>
       )}
 
-      {commentCell &&
+      {detailCell &&
         activeMonthId &&
         (() => {
-          const person = visiblePeople.find((p) => p.id === commentCell.personId)
-          const project = visibleProjects.find((p) => p.id === commentCell.projectId)
+          const person = visiblePeople.find((p) => p.id === detailCell.personId)
+          const project = visibleProjects.find((p) => p.id === detailCell.projectId)
           if (!person || !project) return null
+          const key = `${detailCell.personId}:${detailCell.projectId}`
           return (
-            <CellCommentsDialog
+            <CellDetailsDialog
               open
-              onOpenChange={(open) => !open && setCommentCell(null)}
+              onOpenChange={(open) => !open && setDetailCell(null)}
+              initialTab={detailCell.tab}
               monthId={activeMonthId}
-              personId={commentCell.personId}
-              projectId={commentCell.projectId}
+              personId={detailCell.personId}
+              projectId={detailCell.projectId}
               personName={person.name}
               projectName={project.name}
-              comments={commentsByCell.get(`${commentCell.personId}:${commentCell.projectId}`) ?? []}
-            />
-          )
-        })()}
-
-      {activityCell &&
-        activeMonthId &&
-        (() => {
-          const person = visiblePeople.find((p) => p.id === activityCell.personId)
-          const project = visibleProjects.find((p) => p.id === activityCell.projectId)
-          if (!person || !project) return null
-          return (
-            <ActivityBreakdownDialog
-              open
-              onOpenChange={(open) => !open && setActivityCell(null)}
-              monthId={activeMonthId}
-              personId={activityCell.personId}
-              projectId={activityCell.projectId}
-              personName={person.name}
-              projectName={project.name}
-              activities={
-                activitiesByCell.get(`${activityCell.personId}:${activityCell.projectId}`) ?? []
-              }
+              comments={commentsByCell.get(key) ?? []}
+              activities={activitiesByCell.get(key) ?? []}
               readOnly={!canEdit}
             />
           )
         })()}
+
+      <ConfirmDialog
+        open={Boolean(rowsToClear)}
+        onOpenChange={(open) => !open && setRowsToClear(null)}
+        title={
+          rowsToClear && rowsToClear.length === 1
+            ? `Limpiar las horas de "${rowsToClear[0].name}"`
+            : `Limpiar las horas de ${rowsToClear?.length ?? 0} proyectos`
+        }
+        description={
+          clearPlan && clearPlan.ids.length === 0
+            ? clearPlan.skipped > 0
+              ? "No hay nada que limpiar: las únicas celdas con horas vienen de un desglose de actividades, y esas se vacían borrando sus actividades."
+              : "No hay horas que limpiar en esta selección."
+            : `Se pondrán en 0 las horas de ${clearPlan?.ids.length ?? 0} celda${
+                clearPlan?.ids.length === 1 ? "" : "s"
+              }. Los proyectos siguen en el mes, y sus comentarios y actividades no se tocan.${
+                clearPlan && clearPlan.skipped > 0
+                  ? ` ${clearPlan.skipped} celda${
+                      clearPlan.skipped === 1 ? " queda" : "s quedan"
+                    } sin cambios porque sus horas salen de un desglose de actividades.`
+                  : ""
+              }`
+        }
+        confirmLabel={clearPlan && clearPlan.ids.length === 0 ? "Entendido" : "Limpiar"}
+        onConfirm={async () => {
+          if (clearPlan && clearPlan.ids.length > 0) {
+            await clearAllocations.mutateAsync(clearPlan.ids)
+          }
+          setRowsToClear(null)
+        }}
+      />
 
       {activeMonthId && (
         <ProjectFormDialog

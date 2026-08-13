@@ -32,6 +32,23 @@ export async function upsertAllocation(
   return data
 }
 
+// "Limpiar" celdas es ponerlas en 0, no borrarlas: mismo criterio que el
+// upsert de arriba (se conserva el rastro de auditoría) y además así la fila
+// del proyecto no desaparece de la grilla del mes al vaciarla.
+//
+// Recibe ids de allocations y no month+project porque quien limpia decide
+// celda por celda: las que tienen desglose de actividades no se tocan, ya que
+// allí las horas las manda el trigger que suma las actividades
+// (ver *_activities.sql) y un 0 escrito a mano quedaría desincronizado.
+export async function clearAllocationHours(allocationIds: string[]): Promise<void> {
+  if (allocationIds.length === 0) return
+  const { error } = await supabase
+    .from("allocations")
+    .update({ hours: 0 })
+    .in("id", allocationIds)
+  if (error) throw error
+}
+
 // Encuentra la fila de allocations para esta celda o la crea en 0 horas —
 // necesario para que un Analista pueda anclar un comentario a una celda que
 // nunca se guardó (ver migración *_allocations_allow_comment_anchor.sql), y

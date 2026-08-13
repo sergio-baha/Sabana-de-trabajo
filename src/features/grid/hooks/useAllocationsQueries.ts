@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
+  clearAllocationHours,
   listAllocations,
   upsertAllocation,
   type Allocation,
@@ -67,6 +68,35 @@ export function useUpsertAllocation(monthId: string) {
     onError: (error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(key, context.previous)
       toast.error("No se pudo guardar la celda", { description: error.message })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key })
+    },
+  })
+}
+
+// Vaciar una fila (o toda la grilla) en un solo viaje, también optimista para
+// que la limpieza se vea de inmediato aunque sean decenas de celdas.
+export function useClearAllocations(monthId: string) {
+  const queryClient = useQueryClient()
+  const key = allocationsKeys.all(monthId)
+
+  return useMutation({
+    mutationFn: (allocationIds: string[]) => clearAllocationHours(allocationIds),
+    onMutate: async (allocationIds) => {
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<Allocation[]>(key)
+      const ids = new Set(allocationIds)
+
+      queryClient.setQueryData<Allocation[]>(key, (current = []) =>
+        current.map((a) => (ids.has(a.id) ? { ...a, hours: 0 } : a))
+      )
+
+      return { previous }
+    },
+    onError: (error, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous)
+      toast.error("No se pudieron limpiar las horas", { description: error.message })
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: key })

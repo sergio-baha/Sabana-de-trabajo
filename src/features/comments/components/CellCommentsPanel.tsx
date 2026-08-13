@@ -1,12 +1,5 @@
 import { useMemo, useState } from "react"
 import { CheckCircle2, Circle, Send, Trash2 } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -23,14 +16,10 @@ import { useSessionStore } from "@/stores/sessionStore"
 import { isAdmin, isGestorOrAdmin } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 
-interface CellCommentsDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+interface CellCommentsPanelProps {
   monthId: string
   personId: string
   projectId: string
-  personName: string
-  projectName: string
   comments: CommentWithCell[]
 }
 
@@ -48,16 +37,16 @@ function formatWhen(iso: string) {
   })
 }
 
-export default function CellCommentsDialog({
-  open,
-  onOpenChange,
+// La conversación de una celda. Vive sin diálogo propio porque se muestra
+// como pestaña dentro de CellDetailsDialog, junto al desglose de actividades:
+// antes eran dos botones distintos en la celda y nadie distinguía cuál era
+// cuál.
+export default function CellCommentsPanel({
   monthId,
   personId,
   projectId,
-  personName,
-  projectName,
   comments,
-}: CellCommentsDialogProps) {
+}: CellCommentsPanelProps) {
   const profile = useSessionStore((s) => s.profile)
   const { byId: profilesById } = useProfiles()
   const addComment = useAddComment(monthId)
@@ -142,53 +131,49 @@ export default function CellCommentsDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {personName} · {projectName}
-          </DialogTitle>
-          <DialogDescription>Comentarios sobre esta celda.</DialogDescription>
-        </DialogHeader>
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted-foreground">
+        Notas y acuerdos sobre esta celda. No cambian las horas.
+      </p>
 
-        <ScrollArea className="max-h-80">
-          <div className="flex flex-col gap-3 pr-3">
-            {thread.topLevel.length === 0 && (
-              <p className="text-sm text-muted-foreground">Todavía no hay comentarios.</p>
-            )}
-            {thread.topLevel.map((comment) => (
-              <div key={comment.id} className="flex flex-col gap-2">
-                {renderComment(comment, false)}
-                {(thread.repliesByParent.get(comment.id) ?? []).map((reply) =>
-                  renderComment(reply, true)
-                )}
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-
-        <div className="flex items-end gap-2 border-t border-border pt-3">
-          <Textarea
-            placeholder="Escribe un comentario…"
-            rows={2}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                handleSend()
-              }
-            }}
-          />
-          <Button
-            size="icon"
-            onClick={handleSend}
-            disabled={addComment.isPending || !body.trim()}
-          >
-            <Send />
-          </Button>
+      <ScrollArea className="max-h-72">
+        <div className="flex flex-col gap-3 pr-3">
+          {thread.topLevel.length === 0 && (
+            <p className="text-sm text-muted-foreground">Todavía no hay comentarios.</p>
+          )}
+          {thread.topLevel.map((comment) => (
+            <div key={comment.id} className="flex flex-col gap-2">
+              {renderComment(comment, false)}
+              {(thread.repliesByParent.get(comment.id) ?? []).map((reply) =>
+                renderComment(reply, true)
+              )}
+            </div>
+          ))}
         </div>
-      </DialogContent>
-    </Dialog>
+      </ScrollArea>
+
+      <div className="flex items-end gap-2 border-t border-border pt-3">
+        <Textarea
+          placeholder="Escribe un comentario…"
+          rows={2}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault()
+              handleSend()
+            }
+          }}
+        />
+        <Button
+          size="icon"
+          onClick={handleSend}
+          disabled={addComment.isPending || !body.trim()}
+          aria-label="Enviar comentario"
+        >
+          <Send />
+        </Button>
+      </div>
+    </div>
   )
 }
