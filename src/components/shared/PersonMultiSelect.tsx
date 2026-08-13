@@ -64,7 +64,13 @@ export function PersonMultiSelect({
             <ChevronDown className="text-muted-foreground" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="p-1">
+        {/* La lista toma el ancho de su disparador: dentro de un formulario
+            ancho, un panel de 288 px flotando bajo un campo a todo lo ancho se
+            ve suelto y corta los nombres largos. */}
+        <PopoverContent
+          align="start"
+          className="w-(--radix-popover-trigger-width) min-w-72 p-1"
+        >
           <ScrollArea className="h-56">
             <div className="flex flex-col gap-0.5 p-1">
               {people.length === 0 && (

@@ -186,7 +186,11 @@ export default function ProjectFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90svh] overflow-y-auto">
+      {/* El diálogo por defecto mide 384 px (sm:max-w-sm), pensado para
+          confirmaciones de una línea. Este es el formulario más denso de la
+          app —identidad, equipo, fechas y presupuesto, con tres filas de dos
+          columnas— y a ese ancho cada campo quedaba en una tira angosta. */}
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-3xl sm:p-6">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar proyecto" : "Nuevo proyecto"}</DialogTitle>
           <DialogDescription>
