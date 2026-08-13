@@ -104,10 +104,6 @@ export const router = createBrowserRouter([
                 lazy: lazyPage(() => import("@/features/projects/pages/ProyectoDetallePage")),
               },
               {
-                path: "personas",
-                lazy: lazyPage(() => import("@/features/people/pages/PersonasPage")),
-              },
-              {
                 path: "reportes",
                 lazy: lazyPage(() => import("@/features/reports/pages/ReportesPage")),
               },

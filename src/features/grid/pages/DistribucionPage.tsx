@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState } from "react"
-import { Link } from "react-router"
 import { DataGrid, type Column, type PositionChangeArgs } from "react-data-grid"
 import "react-data-grid/lib/styles.css"
 import {
@@ -32,7 +31,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import EmptyState from "@/components/shared/EmptyState"
 import PageHeader from "@/components/shared/PageHeader"
-import { usePeople, useSeedMonthPeople } from "@/features/people/hooks/usePeopleQueries"
+import {
+  usePeople,
+  useSeedMonthPeople,
+  useUpdatePerson,
+} from "@/features/people/hooks/usePeopleQueries"
 import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { usePlanningExclusions } from "@/features/people/hooks/usePlanningExclusions"
 import {
@@ -68,6 +71,7 @@ import {
 } from "@/features/grid/lib/gridRows"
 import { tintBackground } from "@/features/grid/lib/colorContrast"
 import HoursEditCell from "@/features/grid/components/HoursEditCell"
+import AvailableHoursCell from "@/features/grid/components/AvailableHoursCell"
 import { useCommentsByCell, useRealtimeComments } from "@/features/comments/hooks/useCommentsQueries"
 import {
   useActivitiesByCell,
@@ -110,6 +114,7 @@ export default function DistribucionPage() {
   const upsertAllocation = useUpsertAllocation(activeMonthId ?? "")
   const clearAllocations = useClearAllocations(activeMonthId ?? "")
   const seedPeople = useSeedMonthPeople(activeMonthId ?? "")
+  const updatePerson = useUpdatePerson(activeMonthId ?? "")
   useRealtimeAllocations(activeMonthId)
   const { byCell: commentsByCell } = useCommentsByCell(activeMonthId)
   useRealtimeComments(activeMonthId)
@@ -416,10 +421,19 @@ export default function DistribucionPage() {
         const summary = summaryByPerson.get(person.id)
         if (!summary) return null
         if (row.id === "disponible") {
+          // Las horas disponibles se editan acá, que es donde se miran: son el
+          // denominador del semáforo. Antes vivían en el módulo Personas, a
+          // dos pantallas de distancia del único lugar donde significan algo.
           return (
-            <div className="flex h-full items-center justify-end px-2 tabular-nums text-muted-foreground">
-              {summary.availableHours}
-            </div>
+            <AvailableHoursCell
+              personId={person.id}
+              personName={person.name}
+              hours={summary.availableHours}
+              canEdit={canEdit}
+              onSave={(hours) =>
+                updatePerson.mutate({ id: person.id, patch: { available_hours: hours } })
+              }
+            />
           )
         }
         return (
@@ -443,6 +457,7 @@ export default function DistribucionPage() {
     commentsByCell,
     activitiesByCell,
     summaryByPerson,
+    updatePerson,
   ])
 
   const personIdAtColumnOffset = (anchorColumnKey: string, offset: number): string | null => {
@@ -656,7 +671,7 @@ export default function DistribucionPage() {
         <EmptyState
           icon={Users}
           title="Este mes todavía no tiene equipo"
-          description="La grilla pone una columna por cada persona del mes. Trae el equipo del mes anterior —los meses nuevos ya lo hacen solos— y reparte: al escribirle horas a alguien queda vinculado a ese proyecto automáticamente."
+          description="La grilla pone una columna por cada cuenta activa. Trae el equipo —los meses nuevos ya lo hacen solos— y reparte: al escribirle horas a alguien queda vinculado a ese proyecto automáticamente. Si falta alguien, actívale la cuenta en Configuración › Usuarios."
           action={
             isGestorOrAdmin(profile?.role) ? (
               <div className="flex flex-wrap items-center justify-center gap-2">
@@ -665,9 +680,6 @@ export default function DistribucionPage() {
                   disabled={seedPeople.isPending}
                 >
                   <UserPlus /> Traer el equipo del mes anterior
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link to="/personas">Ir a Personas</Link>
                 </Button>
               </div>
             ) : undefined

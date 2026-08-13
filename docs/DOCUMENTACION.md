@@ -193,21 +193,33 @@ grilla), gerente responsable, estado y categoría. La categoría
 `institucional` marca bloques que no son un proyecto del portafolio
 (capacitación, feedback…) para poder excluirlos en Reportes.
 
-### 5.7 Personas (`/personas`)
+### 5.7 El equipo ya no se administra aparte
 
-CRUD del equipo del mes: nombre, cargo, horas disponibles y estado.
-`available_hours` es el denominador del semáforo de la grilla.
+**No existe un módulo `/personas`.** Se eliminó: el equipo casi no cambia y
+todo el mundo tiene cuenta, así que mantener un roster a mano era llevar dos
+listas de las mismas personas — y dar de alta a alguien exigía invitar la
+cuenta, agregarlo al roster y vincular ambas cosas, con el tercer paso
+olvidándose siempre (el síntoma eran los gestores que no aparecían al
+asignar).
 
-**El equipo no se arma cada mes.** `people` sigue siendo por mes —las horas
-disponibles sí cambian (vacaciones, medio tiempo, ingresos a mitad de mes) y
-cada mes conserva la foto de su equipo—, pero el roster se **siembra solo**:
-al crear un mes en blanco, un trigger copia las personas **activas** del mes
-más reciente con su cargo, sus horas, su vínculo con la cuenta y su tarifa
-(`seed_month_people`, en `*_sembrar_roster_del_mes.sql`). Duplicar un mes ya
-lo hacía por su cuenta, así que el trigger se salta los meses con
-`source_month_id`. Para un mes que quedó vacío de antes, el botón "Traer el
-equipo del mes anterior" llama a la misma función; es idempotente, con gente
-en el mes no hace nada.
+La tabla `people` **sí sigue existiendo**, y es estructural: `allocations`,
+`task_assignees`, `project_managers`, `project_members` y `person_rates`
+apuntan a ella, y al ser por mes es lo que conserva el histórico ("en agosto
+éramos 12"). Lo que desapareció es tener que mantenerla:
+
+| Qué | Dónde se hace ahora |
+|---|---|
+| Alta | Activar la cuenta en *Configuración › Usuarios*. Un trigger (`profile_syncs_person`) le crea la fila en todos los meses **abiertos**, ya vinculada y con las horas por defecto del mes. |
+| Baja | Desactivar la cuenta: la persona queda `inactivo` en los meses abiertos, sin borrar su historial. |
+| Nombre y cargo | En la cuenta. `profiles.job_title` es la fuente; baja a `people.job_title` de los meses abiertos, que es lo que leen las vistas de reporte. Los meses cerrados conservan el cargo que la persona tenía entonces. |
+| Horas disponibles | En la **fila "Disponible" de la grilla de Distribución**, editable en línea. Son del mes (vacaciones, medio tiempo) y ahí es donde se miran: son el denominador del semáforo. |
+| Tarifas | *Configuración › Tarifas* (solo Administrador), como antes por persona-mes. |
+
+Un mes nuevo arranca con el equipo puesto: `seed_month_people` copia las
+personas activas del mes más reciente **y** suma cualquier cuenta activa que
+no tenga fila. Es idempotente — con gente en el mes no hace nada — y el botón
+"Traer el equipo" de Distribución llama a la misma función para un mes que
+haya quedado vacío.
 
 Pertenecer a un proyecto tampoco se declara aparte: repartirle horas a alguien
 en Distribución lo suma al equipo del proyecto

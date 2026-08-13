@@ -8,7 +8,6 @@ import {
   KanbanSquare,
   LayoutDashboard,
   Settings,
-  Users,
   type LucideIcon,
 } from "lucide-react"
 import { TEAM_WIDE_ROLES } from "@/lib/roles"
@@ -116,18 +115,6 @@ export const NAV_ITEMS: NavItem[] = [
 // no todos los días. Por eso vive en el menú del avatar y no en la barra.
 export const SETUP_ITEMS: NavItem[] = [
   {
-    to: "/personas",
-    label: "Personas",
-    icon: Users,
-    allow: TEAM_WIDE_ROLES,
-    description:
-      "El equipo del mes: cargo, horas disponibles y la cuenta de la plataforma con la que se vincula cada quien. Ese vínculo es el que hace que alguien vea sus propias tareas.",
-    tips: [
-      "Vincula cada persona con su cuenta: ese vínculo le muestra sus tareas.",
-      "Ahí se definen las horas disponibles de cada quien en el mes.",
-    ],
-  },
-  {
     to: "/meses",
     label: "Meses",
     icon: CalendarRange,
@@ -157,8 +144,11 @@ export const SETUP_ITEMS: NavItem[] = [
     icon: Settings,
     allow: ["administrador"],
     description:
-      "Datos de la empresa, horas por defecto, y el alta de usuarios e invitaciones.",
-    tips: ["Desde aquí se invita a alguien nuevo y se le asigna su rol."],
+      "Datos de la empresa, usuarios, invitaciones y tarifas. Activar una cuenta suma sola a esa persona al equipo de los meses abiertos.",
+    tips: [
+      "Desde aquí se invita a alguien nuevo, se le asigna su rol y su cargo.",
+      "El equipo no se arma a mano: activar o desactivar la cuenta lo hace por ti.",
+    ],
   },
 ]
 
