@@ -50,6 +50,7 @@ import {
   useProjectMembers,
 } from "@/features/projects/hooks/useProjectsQueries"
 import { usePhases } from "@/features/projects/hooks/useProjectBudgetQueries"
+import { usePeopleByRole } from "@/features/people/hooks/usePeopleByRole"
 import { useSessionStore } from "@/stores/sessionStore"
 import { canCreateProjects, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
 import { Separator } from "@/components/ui/separator"
@@ -237,9 +238,26 @@ export default function TaskFormDialog({
       .filter((m) => m.project_id === selectedProjectId)
       .map((m) => m.person_id)
   )
+  // Los gestores (y administradores) del roster nunca se filtran: son los
+  // dueños de los proyectos y hay que poder encargarles trabajo aunque no
+  // tengan horas repartidas en la sábana — que es de donde sale hoy la
+  // pertenencia al equipo (allocation_implies_membership). Sin esto,
+  // justamente los responsables desaparecían del selector.
+  const { owners } = usePeopleByRole(people)
+  const alwaysVisibleIds = new Set(owners.map((p) => p.id))
+  const projectManagerPersonId = (projectManagers ?? []).find(
+    (m) => m.project_id === selectedProjectId
+  )?.person_id
+  if (projectManagerPersonId) alwaysVisibleIds.add(projectManagerPersonId)
+
   const assigneeOptions =
     projectMemberIds.size > 0
-      ? people.filter((p) => projectMemberIds.has(p.id) || currentAssigneeIds.includes(p.id))
+      ? people.filter(
+          (p) =>
+            projectMemberIds.has(p.id) ||
+            currentAssigneeIds.includes(p.id) ||
+            alwaysVisibleIds.has(p.id)
+        )
       : people
 
   const submitNewProject = async () => {
