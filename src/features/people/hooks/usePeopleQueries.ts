@@ -4,6 +4,7 @@ import {
   createPerson,
   deletePerson,
   listPeople,
+  seedMonthPeople,
   updatePerson,
   type PersonInsert,
   type PersonUpdate,
@@ -18,6 +19,26 @@ export function usePeople(monthId: string | null) {
     queryKey: peopleKeys.all(monthId ?? ""),
     queryFn: () => listPeople(monthId as string),
     enabled: Boolean(monthId),
+  })
+}
+
+// "Traer el equipo": para un mes que quedó vacío (los nuevos ya nacen con el
+// roster). Copia también la tarifa de cada quien, así que el costo del mes no
+// arranca en cero por descuido.
+export function useSeedMonthPeople(monthId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => seedMonthPeople(monthId),
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: peopleKeys.all(monthId) })
+      if (count > 0) {
+        toast.success(`Se agregaron ${count} persona${count === 1 ? "" : "s"} al mes`)
+      } else {
+        toast.info("No hay un mes anterior con equipo para copiar")
+      }
+    },
+    onError: (error) =>
+      toast.error("No se pudo traer el equipo", { description: error.message }),
   })
 }
 

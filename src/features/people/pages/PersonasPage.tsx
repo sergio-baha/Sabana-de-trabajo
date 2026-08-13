@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { MoreHorizontal, Pencil, Plus, Search, Trash2, Users } from "lucide-react"
+import { MoreHorizontal, Pencil, Plus, Search, Trash2, UserPlus, Users } from "lucide-react"
 import PageHeader from "@/components/shared/PageHeader"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,7 +23,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import ConfirmDialog from "@/components/shared/ConfirmDialog"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import PersonFormDialog from "@/features/people/components/PersonFormDialog"
-import { useDeletePerson, usePeople } from "@/features/people/hooks/usePeopleQueries"
+import {
+  useDeletePerson,
+  usePeople,
+  useSeedMonthPeople,
+} from "@/features/people/hooks/usePeopleQueries"
 import type { Person } from "@/features/people/api/peopleApi"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
@@ -37,6 +41,7 @@ export default function PersonasPage() {
 
   const { data: people, isLoading } = usePeople(activeMonthId)
   const deletePerson = useDeletePerson(activeMonthId ?? "")
+  const seedPeople = useSeedMonthPeople(activeMonthId ?? "")
 
   const [search, setSearch] = useState("")
   const [formOpen, setFormOpen] = useState(false)
@@ -71,15 +76,31 @@ export default function PersonasPage() {
         ]}
         actions={
           canWrite && (
-            <Button
-              className="btn-press"
-              onClick={() => {
-                setEditingPerson(null)
-                setFormOpen(true)
-              }}
-            >
-              <Plus /> Nueva persona
-            </Button>
+            <>
+              {/* El equipo no cambia mes a mes: los meses nuevos ya nacen con
+                  el roster del anterior, y este botón resuelve los que
+                  quedaron vacíos de antes. Solo aparece si no hay nadie —
+                  con gente en el mes la función no haría nada. */}
+              {(people?.length ?? 0) === 0 && (
+                <Button
+                  variant="outline"
+                  className="btn-press"
+                  onClick={() => seedPeople.mutate()}
+                  disabled={seedPeople.isPending}
+                >
+                  <UserPlus /> Traer el equipo del mes anterior
+                </Button>
+              )}
+              <Button
+                className="btn-press"
+                onClick={() => {
+                  setEditingPerson(null)
+                  setFormOpen(true)
+                }}
+              >
+                <Plus /> Nueva persona
+              </Button>
+            </>
           )
         }
       />

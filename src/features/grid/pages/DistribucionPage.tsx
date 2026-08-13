@@ -14,6 +14,7 @@ import {
   Plus,
   Search,
   Trash2,
+  UserPlus,
   Users,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -30,7 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import EmptyState from "@/components/shared/EmptyState"
 import PageHeader from "@/components/shared/PageHeader"
-import { usePeople } from "@/features/people/hooks/usePeopleQueries"
+import { usePeople, useSeedMonthPeople } from "@/features/people/hooks/usePeopleQueries"
 import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { usePlanningExclusions } from "@/features/people/hooks/usePlanningExclusions"
 import {
@@ -107,6 +108,7 @@ export default function DistribucionPage() {
   const { data: allocations, isLoading: loadingAllocations } = useAllocations(activeMonthId)
   const upsertAllocation = useUpsertAllocation(activeMonthId ?? "")
   const clearAllocations = useClearAllocations(activeMonthId ?? "")
+  const seedPeople = useSeedMonthPeople(activeMonthId ?? "")
   useRealtimeAllocations(activeMonthId)
   const { byCell: commentsByCell } = useCommentsByCell(activeMonthId)
   useRealtimeComments(activeMonthId)
@@ -638,14 +640,20 @@ export default function DistribucionPage() {
         <EmptyState
           icon={Users}
           title="Este mes todavía no tiene equipo"
-          description="La grilla pone una columna por cada persona del mes. Agrega el equipo en Personas y vuelve: al escribirle horas a alguien en un proyecto, queda vinculado a ese proyecto automáticamente."
+          description="La grilla pone una columna por cada persona del mes. Trae el equipo del mes anterior —los meses nuevos ya lo hacen solos— y reparte: al escribirle horas a alguien queda vinculado a ese proyecto automáticamente."
           action={
             isGestorOrAdmin(profile?.role) ? (
-              <Button asChild>
-                <Link to="/personas">
-                  <Users /> Ir a Personas
-                </Link>
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  onClick={() => seedPeople.mutate()}
+                  disabled={seedPeople.isPending}
+                >
+                  <UserPlus /> Traer el equipo del mes anterior
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to="/personas">Ir a Personas</Link>
+                </Button>
+              </div>
             ) : undefined
           }
         />

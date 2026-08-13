@@ -86,7 +86,7 @@ export default function MonthFormDialog({ open, onOpenChange, month }: MonthForm
           <DialogDescription>
             {isEdit
               ? "Actualiza el nombre y la configuración de este mes."
-              : "Crea un mes sin copiar datos de otro. Para partir de un mes existente, usa \"Duplicar mes\"."}
+              : "Crea un mes sin proyectos ni horas. El equipo sí llega solo: se traen las personas activas del último mes, porque el equipo no cambia de un mes a otro. Para arrancar además con los proyectos y su distribución, usa \"Duplicar mes\"."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

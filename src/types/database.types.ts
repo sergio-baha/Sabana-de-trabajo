@@ -1533,6 +1533,10 @@ export type Database = {
         Args: { p_snapshot_id: string }
         Returns: undefined
       }
+      seed_month_people: {
+        Args: { p_month_id: string }
+        Returns: number
+      }
       seed_default_project_phases: {
         Args: { p_portfolio_id: string }
         Returns: undefined

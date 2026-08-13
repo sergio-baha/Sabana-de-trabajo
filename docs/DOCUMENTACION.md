@@ -187,6 +187,21 @@ grilla), gerente responsable, estado y categoría. La categoría
 CRUD del equipo del mes: nombre, cargo, horas disponibles y estado.
 `available_hours` es el denominador del semáforo de la grilla.
 
+**El equipo no se arma cada mes.** `people` sigue siendo por mes —las horas
+disponibles sí cambian (vacaciones, medio tiempo, ingresos a mitad de mes) y
+cada mes conserva la foto de su equipo—, pero el roster se **siembra solo**:
+al crear un mes en blanco, un trigger copia las personas **activas** del mes
+más reciente con su cargo, sus horas, su vínculo con la cuenta y su tarifa
+(`seed_month_people`, en `*_sembrar_roster_del_mes.sql`). Duplicar un mes ya
+lo hacía por su cuenta, así que el trigger se salta los meses con
+`source_month_id`. Para un mes que quedó vacío de antes, el botón "Traer el
+equipo del mes anterior" llama a la misma función; es idempotente, con gente
+en el mes no hace nada.
+
+Pertenecer a un proyecto tampoco se declara aparte: repartirle horas a alguien
+en Distribución lo suma al equipo del proyecto
+(`allocation_implies_membership`).
+
 ### 5.8 Reportes (`/reportes`)
 
 Resumen ejecutivo con gráficos (horas por proyecto, por gerente, ranking de
