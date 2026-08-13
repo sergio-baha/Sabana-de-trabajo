@@ -1,11 +1,12 @@
 import { useMemo, useState, type CSSProperties } from "react"
-import { Link, useParams } from "react-router"
+import { Link, useNavigate, useParams } from "react-router"
 import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
   FileSpreadsheet,
   Info,
+  MoreHorizontal,
   Pencil,
   Plus,
   Receipt,
@@ -24,6 +25,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import ConfirmDialog from "@/components/shared/ConfirmDialog"
 import AnimatedNumber from "@/components/shared/AnimatedNumber"
 import EmptyState from "@/components/shared/EmptyState"
@@ -58,6 +65,7 @@ import { STATUS_LABELS } from "@/features/tasks/lib/taskLabels"
 import { buildAssigneesByTask } from "@/features/tasks/lib/taskAssignees"
 import type { Task } from "@/features/tasks/api/tasksApi"
 import {
+  useDeleteProject,
   useProject,
   useProjectManagers,
   useProjectMembers,
@@ -78,6 +86,7 @@ import type { TaskStatus } from "@/types/database.types"
 // (allocations) y las tareas, que se filtran por el mes activo.
 export default function ProyectoDetallePage() {
   const { projectId } = useParams<{ projectId: string }>()
+  const navigate = useNavigate()
   const { activeMonthId } = useActiveMonthStore()
   const profile = useSessionStore((s) => s.profile)
   const canWrite = isGestorOrAdmin(profile?.role)
@@ -95,6 +104,7 @@ export default function ProyectoDetallePage() {
   const { data: expenses } = useExpenses(projectId ?? null)
 
   const { data: projects } = useProjects()
+  const deleteProject = useDeleteProject()
 
   const { data: tasks } = useTasks(activeMonthId)
   const projectTasks = useMemo(
@@ -130,6 +140,7 @@ export default function ProyectoDetallePage() {
   const deleteExpense = useDeleteExpense(projectId ?? "")
 
   const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
   const [phaseOpen, setPhaseOpen] = useState(false)
   const [editingPhase, setEditingPhase] = useState<ProjectPhase | null>(null)
@@ -254,11 +265,29 @@ export default function ProyectoDetallePage() {
               )}
             </div>
           </div>
-          {canManageProject && (
-            <Button className="btn-press" onClick={() => setEditOpen(true)}>
-              <Pencil /> Editar
-            </Button>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {canManageProject && (
+              <Button className="btn-press" onClick={() => setEditOpen(true)}>
+                <Pencil /> Editar
+              </Button>
+            )}
+            {/* Eliminar el proyecto entero es de Gestor y Administrador por
+                igual (projects_delete_write), no de quien lo creó. */}
+            {canWrite && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" aria-label="Más acciones del proyecto">
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                    <Trash2 /> Eliminar proyecto
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-border pt-4">
@@ -698,6 +727,17 @@ export default function ProyectoDetallePage() {
       )}
 
       {reviewDialogs}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={`Eliminar "${project.name}"`}
+        description="El proyecto es durable: se elimina de TODOS los meses, junto con sus horas repartidas, fases, tareas y comentarios. Si solo quieres sacarlo de la planeación en curso, márcalo como finalizado o archivado."
+        onConfirm={async () => {
+          await deleteProject.mutateAsync(project.id)
+          navigate("/proyectos")
+        }}
+      />
 
       <ConfirmDialog
         open={Boolean(phaseToDelete)}

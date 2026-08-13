@@ -7,6 +7,9 @@ import { BOARD_COLUMNS, STATUS_ACCENT, STATUS_LABELS } from "@/features/tasks/li
 import { orderForDrop, type Task } from "@/features/tasks/api/tasksApi"
 import { useMoveTask } from "@/features/tasks/hooks/useTasksQueries"
 import type { Project } from "@/features/projects/api/projectsApi"
+import { useManagedProjectIds } from "@/features/projects/hooks/useManagedProjects"
+import { useSessionStore } from "@/stores/sessionStore"
+import { canDeleteTask } from "@/lib/roles"
 import type { TaskStatus } from "@/types/database.types"
 
 interface TaskBoardProps {
@@ -38,6 +41,8 @@ interface TaskBoardProps {
   canWrite: boolean
   onOpenTask: (task: Task) => void
   onNewTask: (status: TaskStatus) => void
+  /** Abre la confirmación de borrado. La tarjeta solo lo ofrece a quien puede. */
+  onDeleteTask?: (task: Task) => void
 }
 
 interface DropTarget {
@@ -60,8 +65,11 @@ export default function TaskBoard({
   canWrite,
   onOpenTask,
   onNewTask,
+  onDeleteTask,
 }: TaskBoardProps) {
   const moveTask = useMoveTask()
+  const profile = useSessionStore((s) => s.profile)
+  const managedProjectIds = useManagedProjectIds()
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
 
@@ -202,6 +210,17 @@ export default function TaskBoard({
                       assigneeNames={assigneesByTask.get(task.id) ?? []}
                       monthLabel={monthNameById?.get(task.month_id)}
                       awaitingMyReview={awaitingMyReview?.has(task.id)}
+                      onDelete={
+                        onDeleteTask &&
+                        canDeleteTask(
+                          profile?.role,
+                          task.created_by,
+                          profile?.id,
+                          managedProjectIds.has(task.project_id)
+                        )
+                          ? () => onDeleteTask(task)
+                          : undefined
+                      }
                       draggable={canWrite}
                       isDragging={draggingId === task.id}
                       onOpen={() => onOpenTask(task)}

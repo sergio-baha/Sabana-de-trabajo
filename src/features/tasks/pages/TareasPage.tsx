@@ -324,6 +324,7 @@ export default function TareasPage() {
               canWrite={canWrite}
               onOpenTask={openTask}
               onNewTask={openNewTask}
+              onDeleteTask={setTaskToDelete}
             />
           </TabsContent>
           <TabsContent value="backlog" className="mt-4">

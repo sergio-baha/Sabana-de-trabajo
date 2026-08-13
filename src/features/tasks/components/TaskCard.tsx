@@ -1,5 +1,12 @@
-import { CalendarClock, GripVertical } from "lucide-react"
+import { CalendarClock, GripVertical, MoreHorizontal, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { PRIORITY_LABELS, WORK_ITEM_DOT, WORK_ITEM_LABELS } from "@/features/tasks/lib/taskLabels"
@@ -14,6 +21,8 @@ interface TaskCardProps {
   monthLabel?: string | null
   /** La entregaron y me toca revisarla: se pinta en mi columna "Por hacer". */
   awaitingMyReview?: boolean
+  /** Solo se ofrece a quien de verdad puede borrarla (ver canDeleteTask). */
+  onDelete?: () => void
   draggable: boolean
   isDragging: boolean
   onOpen: () => void
@@ -41,6 +50,7 @@ export default function TaskCard({
   assigneeNames,
   monthLabel,
   awaitingMyReview = false,
+  onDelete,
   draggable,
   isDragging,
   onOpen,
@@ -95,6 +105,38 @@ export default function TaskCard({
           title={WORK_ITEM_LABELS[task.work_item_type]}
         />
         <p className="flex-1 text-sm leading-snug font-medium">{task.title}</p>
+        {/* Acciones de la tarjeta. Aparecen al pasar el mouse (o al enfocarlas
+            con el teclado) para no meter un ícono fijo en cada tarjeta, y
+            paran la propagación: un clic aquí no debe abrir el detalle ni
+            arrancar el arrastre. */}
+        {onDelete && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label={`Acciones de ${task.title}`}
+                draggable={false}
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+                className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+              >
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onDelete()
+                }}
+              >
+                <Trash2 /> Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {draggable && (
           <GripVertical className="size-4 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
         )}

@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from "react"
 import { Link } from "react-router"
-import { FolderKanban, Plus, Search } from "lucide-react"
+import { FolderKanban, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import ConfirmDialog from "@/components/shared/ConfirmDialog"
 import PageHeader from "@/components/shared/PageHeader"
 import EmptyState from "@/components/shared/EmptyState"
 import ProjectFormDialog from "@/features/projects/components/ProjectFormDialog"
@@ -30,6 +37,7 @@ import {
 } from "@/features/projects/hooks/useProjectBudgetQueries"
 import { formatHours, formatMoney } from "@/features/projects/lib/projectLabels"
 import {
+  useDeleteProject,
   useProjectManagers,
   useProjectMembers,
   useProjects,
@@ -59,10 +67,14 @@ export default function ProyectosPage() {
   const profile = useSessionStore((s) => s.profile)
   const canCreate = canCreateProjects(profile?.role)
   const canSeeCost = canSeeCosts(profile?.role)
+  // Borrar un proyecto es de Gestor y Administrador, sin importar quién lo
+  // creó — mismo criterio que projects_delete_write en la base.
+  const canDelete = isGestorOrAdmin(profile?.role)
 
   const { data: totals, isLoading } = useProjectTotals()
   const { data: projects } = useProjects()
   const { data: costs } = useProjectCosts()
+  const deleteProject = useDeleteProject()
   // Las personas siguen siendo del mes activo: la nómina sí es mensual.
   const { data: people } = usePeople(activeMonthId)
   const { data: managers } = useProjectManagers()
@@ -72,6 +84,7 @@ export default function ProyectosPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "todos">("activo")
   const [formOpen, setFormOpen] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null)
 
   const costByProject = useMemo(() => {
     const map = new Map<string, { labor: number; unrated: number }>()
@@ -126,6 +139,7 @@ export default function ProyectosPage() {
           <TableHead>Horas</TableHead>
           {canSeeCost && <TableHead>Presupuesto</TableHead>}
           <TableHead>Meses / Equipo</TableHead>
+          {canDelete && <TableHead className="w-10" />}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -168,6 +182,33 @@ export default function ProyectosPage() {
                 {row.months_count} {row.months_count === 1 ? "mes" : "meses"} ·{" "}
                 {row.people_count} {row.people_count === 1 ? "persona" : "personas"}
               </TableCell>
+              {/* Borrar un proyecto es de Gestor y Administrador por igual
+                  (projects_delete_write). Hasta ahora solo se podía desde la
+                  grilla de Distribución, que es un lugar raro para buscarlo. */}
+              {canDelete && (
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" aria-label={`Acciones de ${row.name}`}>
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link to={`/proyectos/${row.project_id}`}>
+                          <Pencil /> Abrir y gestionar
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setProjectToDelete({ id: row.project_id, name: row.name })}
+                      >
+                        <Trash2 /> Eliminar
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              )}
             </TableRow>
           )
         })}
@@ -264,6 +305,17 @@ export default function ProyectosPage() {
       </Card>
 
       <ProjectFormDialog open={formOpen} onOpenChange={setFormOpen} people={people ?? []} />
+
+      <ConfirmDialog
+        open={Boolean(projectToDelete)}
+        onOpenChange={(open) => !open && setProjectToDelete(null)}
+        title={`Eliminar "${projectToDelete?.name}"`}
+        description="El proyecto es durable: se elimina de TODOS los meses, junto con sus horas repartidas, fases, tareas y comentarios. Si solo quieres sacarlo de la planeación en curso, márcalo como finalizado o archivado."
+        onConfirm={async () => {
+          if (projectToDelete) await deleteProject.mutateAsync(projectToDelete.id)
+          setProjectToDelete(null)
+        }}
+      />
     </div>
   )
 }
