@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react"
+import { Link } from "react-router"
 import { DataGrid, type Column, type PositionChangeArgs } from "react-data-grid"
 import "react-data-grid/lib/styles.css"
 import {
@@ -13,6 +14,7 @@ import {
   Plus,
   Search,
   Trash2,
+  Users,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -26,6 +28,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
+import EmptyState from "@/components/shared/EmptyState"
 import PageHeader from "@/components/shared/PageHeader"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useMonths } from "@/features/months/hooks/useMonthsQueries"
@@ -43,6 +46,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -516,16 +521,54 @@ export default function DistribucionPage() {
                 <span className="size-2 rounded-full bg-danger" /> De más
               </span>
             </div>
+            {/* Un solo acceso para sumar filas a la grilla: primero lo que ya
+                existe (el caso normal — el proyecto se creó en otro mes o en
+                el módulo Proyectos) y al final crear uno nuevo. Antes eran
+                dos controles separados y en dos zonas distintas de la
+                pantalla, así que se creaban proyectos duplicados sin ver que
+                el original ya estaba a un clic. */}
             {canEdit && (
-              <Button
-                className="btn-press"
-                onClick={() => {
-                  setEditingProject(null)
-                  setProjectFormOpen(true)
-                }}
-              >
-                <Plus /> Nuevo proyecto
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="btn-press">
+                    <Plus /> Agregar proyecto
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="max-h-96 w-64 overflow-y-auto">
+                  <DropdownMenuLabel className="text-eyebrow text-muted-foreground">
+                    Proyectos existentes
+                  </DropdownMenuLabel>
+                  {addableProjects.length === 0 ? (
+                    <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                      Todos los proyectos ya están en este mes.
+                    </p>
+                  ) : (
+                    addableProjects.map((project) => (
+                      <DropdownMenuItem
+                        key={project.id}
+                        onClick={() => addProjectToMonth(project.id)}
+                      >
+                        <span
+                          aria-hidden
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        <span className="truncate">{project.name}</span>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-primary"
+                    onClick={() => {
+                      setEditingProject(null)
+                      setProjectFormOpen(true)
+                    }}
+                  >
+                    <Plus /> Crear un proyecto nuevo
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         }
@@ -578,20 +621,6 @@ export default function DistribucionPage() {
             <Eraser /> Limpiar horas
           </Button>
         )}
-        {canEdit && addableProjects.length > 0 && (
-          <Select value="" onValueChange={addProjectToMonth}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Agregar proyecto al mes…" />
-            </SelectTrigger>
-            <SelectContent>
-              {addableProjects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
       {isLoading ? (
@@ -601,9 +630,25 @@ export default function DistribucionPage() {
           ))}
         </div>
       ) : visiblePeople.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Agrega al menos una persona a este mes para poder distribuir horas.
-        </p>
+        // Las columnas de la grilla son el equipo del MES, no el de un
+        // proyecto: sin roster no hay a quién repartirle horas. El mensaje lo
+        // dice explícito porque "no hay personas" se leía como si faltara
+        // asignar gente a los proyectos — que es justo al revés, la
+        // pertenencia al proyecto nace de repartirle horas aquí.
+        <EmptyState
+          icon={Users}
+          title="Este mes todavía no tiene equipo"
+          description="La grilla pone una columna por cada persona del mes. Agrega el equipo en Personas y vuelve: al escribirle horas a alguien en un proyecto, queda vinculado a ese proyecto automáticamente."
+          action={
+            isGestorOrAdmin(profile?.role) ? (
+              <Button asChild>
+                <Link to="/personas">
+                  <Users /> Ir a Personas
+                </Link>
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <div onPaste={handlePaste} className="overflow-hidden rounded-md border border-border">
           <DataGrid

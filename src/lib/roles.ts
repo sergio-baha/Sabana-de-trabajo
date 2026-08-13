@@ -34,6 +34,12 @@ export const isAnalistaTecnologia = (role: AppRole | undefined | null) =>
 export const writesOwnWorkOnly = (role: AppRole | undefined | null) =>
   role === "analista" || role === "analista_tecnologia"
 
+// Dinero: presupuestos, tarifas, nómina y gastos. El Analista planea y
+// consulta horas, no costos — no ve ninguna cifra en pesos, ni siquiera el
+// campo de presupuesto al crear un proyecto. Las tarifas son un escalón más
+// arriba todavía (solo Administrador, ver RatesCard y person_rates).
+export const canSeeCosts = (role: AppRole | undefined | null) => isGestorOrAdmin(role)
+
 // Quién puede crear y mover tarjetas en el tablero. Que un analista solo
 // toque las suyas lo garantiza RLS, no este chequeo.
 export const canManageTasks = (role: AppRole | undefined | null) =>

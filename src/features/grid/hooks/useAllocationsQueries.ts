@@ -6,6 +6,7 @@ import {
   upsertAllocation,
   type Allocation,
 } from "@/features/grid/api/allocationsApi"
+import { projectsKeys } from "@/features/projects/hooks/useProjectsQueries"
 
 export const allocationsKeys = {
   all: (monthId: string) => ["allocations", monthId] as const,
@@ -71,6 +72,10 @@ export function useUpsertAllocation(monthId: string) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: key })
+      // Repartirle horas a alguien lo hace miembro del proyecto (lo resuelve
+      // el trigger `allocation_implies_membership` en la base), así que la
+      // lista de equipos que ya está en pantalla quedó desactualizada.
+      queryClient.invalidateQueries({ queryKey: projectsKeys.members })
     },
   })
 }

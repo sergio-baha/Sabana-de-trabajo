@@ -38,7 +38,7 @@ import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canCreateProjects, isGestorOrAdmin } from "@/lib/roles"
+import { canCreateProjects, canSeeCosts, isGestorOrAdmin } from "@/lib/roles"
 import type { ProjectTotals } from "@/features/projects/api/projectBudgetApi"
 import type { ProjectStatus } from "@/types/database.types"
 
@@ -58,7 +58,7 @@ export default function ProyectosPage() {
   const { activeMonthId } = useActiveMonthStore()
   const profile = useSessionStore((s) => s.profile)
   const canCreate = canCreateProjects(profile?.role)
-  const canSeeCost = isGestorOrAdmin(profile?.role)
+  const canSeeCost = canSeeCosts(profile?.role)
 
   const { data: totals, isLoading } = useProjectTotals()
   const { data: projects } = useProjects()

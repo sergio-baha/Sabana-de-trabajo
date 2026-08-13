@@ -33,6 +33,8 @@ import {
 } from "@/features/projects/hooks/useProjectBudgetQueries"
 import { PHASE_STATUS_OPTIONS } from "@/features/projects/lib/projectLabels"
 import type { ProjectPhase } from "@/features/projects/api/projectBudgetApi"
+import { useSessionStore } from "@/stores/sessionStore"
+import { canSeeCosts } from "@/lib/roles"
 
 const optionalNumber = z
   .string()
@@ -79,6 +81,7 @@ export default function PhaseFormDialog({
   const isEdit = Boolean(phase)
   const createPhase = useCreatePhase(projectId)
   const updatePhase = useUpdatePhase(projectId)
+  const canSeeCost = canSeeCosts(useSessionStore((s) => s.profile)?.role)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -207,19 +210,30 @@ export default function PhaseFormDialog({
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="budget_amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Presupuesto (COP)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="0" step="1000" placeholder="Sin definir" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* El presupuesto en pesos es dato de costo: el Analista, que
+                  sí gestiona las fases de sus propios proyectos, no lo ve ni
+                  lo edita (el valor guardado se conserva intacto). */}
+              {canSeeCost && (
+                <FormField
+                  control={form.control}
+                  name="budget_amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Presupuesto (COP)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1000"
+                          placeholder="Sin definir"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={form.control}
                 name="budget_hours"

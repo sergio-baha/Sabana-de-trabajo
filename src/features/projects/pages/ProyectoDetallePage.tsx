@@ -66,7 +66,7 @@ import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canManageTasks, isGestorOrAdmin, writesOwnWorkOnly } from "@/lib/roles"
+import { canManageTasks, canSeeCosts, isGestorOrAdmin, writesOwnWorkOnly } from "@/lib/roles"
 import type { ProjectPhase, ProjectExpense } from "@/features/projects/api/projectBudgetApi"
 import type { TaskStatus } from "@/types/database.types"
 
@@ -80,7 +80,7 @@ export default function ProyectoDetallePage() {
   const { activeMonthId } = useActiveMonthStore()
   const profile = useSessionStore((s) => s.profile)
   const canWrite = isGestorOrAdmin(profile?.role)
-  const canSeeCost = isGestorOrAdmin(profile?.role)
+  const canSeeCost = canSeeCosts(profile?.role)
   const writesOwn = writesOwnWorkOnly(profile?.role)
   const { myPerson } = useMyPerson(activeMonthId)
   const canWriteTasks = canManageTasks(profile?.role) && (!writesOwn || Boolean(myPerson))

@@ -40,6 +40,8 @@ import {
 } from "@/features/projects/hooks/useProjectsQueries"
 import type { Project, ProjectManager } from "@/features/projects/api/projectsApi"
 import type { Person } from "@/features/people/api/peopleApi"
+import { useSessionStore } from "@/stores/sessionStore"
+import { canSeeCosts } from "@/lib/roles"
 
 // Los campos de presupuesto y fecha se manejan como texto y se convierten al
 // enviar: un `<input type="number">` vacío entrega "" y no null, y en zod un
@@ -104,6 +106,9 @@ export default function ProjectFormDialog({
   const updateProject = useUpdateProject()
   const setManager = useSetProjectManager()
   const setMembers = useSetProjectMembers()
+  // El Analista puede crear proyectos (válvula de escape del diálogo de
+  // tareas), pero el dinero no es asunto suyo: no ve el presupuesto.
+  const canSeeCost = canSeeCosts(useSessionStore((s) => s.profile)?.role)
   // Colapsados por defecto al crear (nombre + miembros basta para arrancar);
   // abiertos al editar, para que los valores ya guardados no queden ocultos.
   const [advancedOpen, setAdvancedOpen] = useState(isEdit)
@@ -212,6 +217,8 @@ export default function ProjectFormDialog({
               <p className="text-xs text-muted-foreground">
                 Cualquier persona, sin importar su rol. Podrás asignarles tareas de este proyecto
                 desde el tablero. El equipo acompaña al proyecto mientras dure, no solo un mes.
+                Repartirle horas a alguien en Distribución también lo suma al equipo, así que
+                esta lista es para adelantarse a eso, no un requisito previo.
               </p>
             </div>
 
@@ -347,25 +354,27 @@ export default function ProjectFormDialog({
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="budget_amount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Presupuesto (COP)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="1000"
-                            placeholder="Sin definir"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {canSeeCost && (
+                    <FormField
+                      control={form.control}
+                      name="budget_amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Presupuesto (COP)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="1000"
+                              placeholder="Sin definir"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <FormField
                     control={form.control}
                     name="budget_hours"
