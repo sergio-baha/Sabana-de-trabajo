@@ -193,6 +193,17 @@ grilla), gerente responsable, estado y categoría. La categoría
 `institucional` marca bloques que no son un proyecto del portafolio
 (capacitación, feedback…) para poder excluirlos en Reportes.
 
+
+**Tres categorías.** `proyecto` es el portafolio; `institucional` agrupa
+bloques que no son un proyecto (capacitación, feedback) y Reportes puede
+excluirlos; `emergente` es trabajo que apareció sin estar planeado. El
+emergente consume horas y se le asignan personas y tareas igual que a un
+proyecto —por eso es una categoría y no una tabla aparte—, pero se navega
+separado: en Proyectos vive en su propia tarjeta al final, con buscador y
+filtro de estado propios y ordenado del más viejo al más nuevo; y en la
+sábana no aparece mezclado en "Agregar proyecto", sino en su propio grupo del
+menú, con su acción "Crear un emergente".
+
 ### 5.7 El equipo ya no se administra aparte
 
 **No existe un módulo `/personas`.** Se eliminó: el equipo casi no cambia y

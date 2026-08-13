@@ -1,10 +1,16 @@
 import { useMemo, useState, type CSSProperties } from "react"
 import { Link } from "react-router"
-import { FolderKanban, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { FolderKanban, MoreHorizontal, Pencil, Plus, Search, Trash2, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -83,6 +89,9 @@ export default function ProyectosPage() {
 
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "todos">("activo")
+  // Filtros propios del bloque de emergentes: ver el comentario de la lista.
+  const [emergentSearch, setEmergentSearch] = useState("")
+  const [emergentStatus, setEmergentStatus] = useState<ProjectStatus | "todos">("activo")
   const [formOpen, setFormOpen] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null)
 
@@ -116,19 +125,47 @@ export default function ProyectosPage() {
     }
   }, [profile, createdByProject, managers, members, myPerson])
 
-  const filtered = useMemo(() => {
-    const rows = totals ?? []
+  // Cuándo se creó cada proyecto. La vista de totales no lo trae, y los
+  // emergentes se ordenan por eso: del más viejo al más nuevo, que es el
+  // orden en que fueron apareciendo.
+  const createdAtByProject = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const p of projects ?? []) map.set(p.id, p.created_at)
+    return map
+  }, [projects])
+
+  // El portafolio y los emergentes se filtran por separado: son dos listas
+  // con ritmos distintos —una se consulta, la otra crece cada semana— y un
+  // solo buscador obligaba a limpiarlo para pasar de una a otra.
+  const portafolio = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return rows.filter(
+    return (totals ?? []).filter(
       (r) =>
+        r.category !== "emergente" &&
         (statusFilter === "todos" || r.status === statusFilter) &&
         (q === "" || r.name.toLowerCase().includes(q))
     )
   }, [totals, search, statusFilter])
 
-  const mine = filtered.filter((r) => canManage(r.project_id))
-  const others = filtered.filter((r) => !canManage(r.project_id))
-  const totalHours = filtered.reduce((sum, r) => sum + r.allocated_hours, 0)
+  const emergentes = useMemo(() => {
+    const q = emergentSearch.trim().toLowerCase()
+    return (totals ?? [])
+      .filter(
+        (r) =>
+          r.category === "emergente" &&
+          (emergentStatus === "todos" || r.status === emergentStatus) &&
+          (q === "" || r.name.toLowerCase().includes(q))
+      )
+      .sort((a, b) =>
+        (createdAtByProject.get(a.project_id) ?? "").localeCompare(
+          createdAtByProject.get(b.project_id) ?? ""
+        )
+      )
+  }, [totals, emergentSearch, emergentStatus, createdAtByProject])
+
+  const mine = portafolio.filter((r) => canManage(r.project_id))
+  const others = portafolio.filter((r) => !canManage(r.project_id))
+  const totalHours = [...portafolio, ...emergentes].reduce((sum, r) => sum + r.allocated_hours, 0)
 
   const renderTable = (rows: ProjectTotals[]) => (
     <Table>
@@ -226,6 +263,7 @@ export default function ProyectosPage() {
         stats={[
           { label: "Tuyos", value: mine.length },
           { label: "En consulta", value: others.length },
+          { label: "Emergentes", value: emergentes.length },
           { label: "Horas acumuladas", value: totalHours, suffix: " h" },
         ]}
         actions={
@@ -273,7 +311,7 @@ export default function ProyectosPage() {
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : portafolio.length === 0 ? (
             <EmptyState
               icon={FolderKanban}
               title="No hay proyectos que coincidan"
@@ -300,6 +338,59 @@ export default function ProyectosPage() {
                 </div>
               )}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Los emergentes van en su propia tarjeta, debajo del portafolio y con
+          sus propios filtros: es trabajo no planeado, se acumula rápido y
+          mezclarlo arriba enterraba los proyectos de verdad. Del más viejo al
+          más nuevo — el orden en que fueron apareciendo. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex flex-wrap items-center gap-3">
+            <span className="flex items-center gap-2">
+              <Zap className="size-4 text-primary" /> Emergentes
+            </span>
+            <div className="relative w-full max-w-xs">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar emergente…"
+                className="pl-8"
+                value={emergentSearch}
+                onChange={(e) => setEmergentSearch(e.target.value)}
+              />
+            </div>
+            <Select
+              value={emergentStatus}
+              onValueChange={(v) => setEmergentStatus(v as ProjectStatus | "todos")}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos los estados</SelectItem>
+                <SelectItem value="activo">Activos</SelectItem>
+                <SelectItem value="pausado">Pausados</SelectItem>
+                <SelectItem value="finalizado">Finalizados</SelectItem>
+                <SelectItem value="archivado">Archivados</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardTitle>
+          <CardDescription>
+            Trabajo que apareció sin estar planeado. Consume horas igual que un proyecto, pero se
+            lista aparte y del más antiguo al más reciente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {emergentes.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              {emergentSearch || emergentStatus !== "todos"
+                ? "Ningún emergente coincide con el filtro."
+                : "No hay emergentes registrados."}
+            </p>
+          ) : (
+            renderTable(emergentes)
           )}
         </CardContent>
       </Card>

@@ -16,6 +16,7 @@ import {
   Trash2,
   UserPlus,
   Users,
+  Zap,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -45,6 +46,7 @@ import {
   useProjects,
 } from "@/features/projects/hooks/useProjectsQueries"
 import type { Project } from "@/features/projects/api/projectsApi"
+import type { ProjectCategory } from "@/types/database.types"
 import ProjectFormDialog from "@/features/projects/components/ProjectFormDialog"
 import ConfirmDialog from "@/components/shared/ConfirmDialog"
 import {
@@ -137,6 +139,10 @@ export default function DistribucionPage() {
   // es cuando uno se da cuenta de que falta un proyecto o que sobra otro, y
   // hasta ahora había que irse a /proyectos y volver.
   const [projectFormOpen, setProjectFormOpen] = useState(false)
+  // Con qué categoría abre el formulario al crear desde la sábana: "Crear un
+  // emergente" es una acción propia, no un campo que haya que acordarse de
+  // cambiar dentro del diálogo.
+  const [newProjectCategory, setNewProjectCategory] = useState<ProjectCategory>("proyecto")
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
   // Proyectos sumados a la grilla de este mes que aún no tienen horas. Se
@@ -189,17 +195,25 @@ export default function DistribucionPage() {
     [projects, monthProjectIds, extraProjectIds]
   )
 
-  // Para el selector de "agregar al mes": lo que existe y todavía no está.
-  const addableProjects = useMemo(
-    () =>
-      (projects ?? [])
-        .filter(
-          (p) =>
-            p.status !== "archivado" && !monthProjectIds.has(p.id) && !extraProjectIds.has(p.id)
-        )
+  // Para el menú de "agregar al mes": lo que existe y todavía no está.
+  //
+  // Los emergentes van en su propio grupo y no mezclados entre los proyectos:
+  // son trabajo que apareció sin planear, suelen ser muchos y de nombre
+  // parecido, y enterraban al portafolio en la lista. Se ordenan del más
+  // viejo al más nuevo — el orden en que fueron apareciendo.
+  const addable = useMemo(() => {
+    const disponibles = (projects ?? []).filter(
+      (p) => p.status !== "archivado" && !monthProjectIds.has(p.id) && !extraProjectIds.has(p.id)
+    )
+    return {
+      proyectos: disponibles
+        .filter((p) => p.category !== "emergente")
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [projects, monthProjectIds, extraProjectIds]
-  )
+      emergentes: disponibles
+        .filter((p) => p.category === "emergente")
+        .sort((a, b) => a.created_at.localeCompare(b.created_at)),
+    }
+  }, [projects, monthProjectIds, extraProjectIds])
 
   const allRows = useMemo(
     () => buildProjectGridRows(visibleProjects, allocations ?? []),
@@ -552,16 +566,41 @@ export default function DistribucionPage() {
                     <Plus /> Agregar proyecto
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="max-h-96 w-64 overflow-y-auto">
+                <DropdownMenuContent align="end" className="max-h-96 w-72 overflow-y-auto">
                   <DropdownMenuLabel className="text-eyebrow text-muted-foreground">
-                    Proyectos existentes
+                    Proyectos
                   </DropdownMenuLabel>
-                  {addableProjects.length === 0 ? (
+                  {addable.proyectos.length === 0 ? (
                     <p className="px-2 py-1.5 text-sm text-muted-foreground">
                       Todos los proyectos ya están en este mes.
                     </p>
                   ) : (
-                    addableProjects.map((project) => (
+                    addable.proyectos.map((project) => (
+                      <DropdownMenuItem
+                        key={project.id}
+                        onClick={() => addProjectToMonth(project.id)}
+                      >
+                        <span
+                          aria-hidden
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        <span className="truncate">{project.name}</span>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                  <DropdownMenuSeparator />
+                  {/* Los emergentes van aparte: no compiten con el portafolio
+                      en la lista de arriba, del más viejo al más nuevo. */}
+                  <DropdownMenuLabel className="text-eyebrow text-muted-foreground">
+                    Emergentes
+                  </DropdownMenuLabel>
+                  {addable.emergentes.length === 0 ? (
+                    <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                      No hay emergentes por agregar.
+                    </p>
+                  ) : (
+                    addable.emergentes.map((project) => (
                       <DropdownMenuItem
                         key={project.id}
                         onClick={() => addProjectToMonth(project.id)}
@@ -580,10 +619,21 @@ export default function DistribucionPage() {
                     className="text-primary"
                     onClick={() => {
                       setEditingProject(null)
+                      setNewProjectCategory("proyecto")
                       setProjectFormOpen(true)
                     }}
                   >
                     <Plus /> Crear un proyecto nuevo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-primary"
+                    onClick={() => {
+                      setEditingProject(null)
+                      setNewProjectCategory("emergente")
+                      setProjectFormOpen(true)
+                    }}
+                  >
+                    <Zap /> Crear un emergente
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -777,6 +827,7 @@ export default function DistribucionPage() {
           }}
           // Un proyecto creado desde acá se espera ver en la grilla ya, aunque
           // todavía no tenga horas repartidas.
+          defaultCategory={newProjectCategory}
           onSaved={(saved) => addProjectToMonth(saved.id)}
           project={editingProject}
           people={people ?? []}

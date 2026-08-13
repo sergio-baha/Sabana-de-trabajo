@@ -1588,7 +1588,7 @@ export type Database = {
       month_status: "abierto" | "cerrado" | "archivado"
       person_status: "activo" | "inactivo"
       phase_status: "pendiente" | "en_curso" | "completada"
-      project_category: "proyecto" | "institucional"
+      project_category: "proyecto" | "institucional" | "emergente"
       project_status: "activo" | "pausado" | "finalizado" | "archivado"
       task_status:
         | "pendiente"
@@ -1740,7 +1740,7 @@ export const Constants = {
       month_status: ["abierto", "cerrado", "archivado"],
       person_status: ["activo", "inactivo"],
       phase_status: ["pendiente", "en_curso", "completada"],
-      project_category: ["proyecto", "institucional"],
+      project_category: ["proyecto", "institucional", "emergente"],
       project_status: ["activo", "pausado", "finalizado", "archivado"],
       task_status: [
         "pendiente",

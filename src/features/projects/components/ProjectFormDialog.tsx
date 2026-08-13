@@ -45,6 +45,7 @@ import type { Person } from "@/features/people/api/peopleApi"
 import { usePeopleByRole } from "@/features/people/hooks/usePeopleByRole"
 import { useSessionStore } from "@/stores/sessionStore"
 import { canSeeCosts } from "@/lib/roles"
+import type { ProjectCategory } from "@/types/database.types"
 
 // Los campos de presupuesto y fecha se manejan como texto y se convierten al
 // enviar: un `<input type="number">` vacío entrega "" y no null, y en zod un
@@ -62,7 +63,7 @@ const schema = z
     name: z.string().min(1, "El nombre es obligatorio"),
     color: z.string().min(1),
     status: z.enum(["activo", "pausado", "finalizado", "archivado"]),
-    category: z.enum(["proyecto", "institucional"]),
+    category: z.enum(["proyecto", "institucional", "emergente"]),
     managerId: z.string(),
     description: z.string(),
     start_date: z.string(),
@@ -87,6 +88,9 @@ interface ProjectFormDialogProps {
   people: Person[]
   currentManager?: ProjectManager
   currentMemberIds?: string[]
+  /** Categoría con la que abre al crear: la sábana ofrece "emergente" como
+   *  una acción propia, separada de "crear proyecto". */
+  defaultCategory?: ProjectCategory
   /** Recibe la fila guardada. Distribución lo usa para meter el proyecto
    *  recién creado en la grilla del mes sin esperar a que tenga horas. */
   onSaved?: (project: Project) => void
@@ -102,6 +106,7 @@ export default function ProjectFormDialog({
   people,
   currentManager,
   currentMemberIds = [],
+  defaultCategory = "proyecto",
   onSaved,
 }: ProjectFormDialogProps) {
   const isEdit = Boolean(project)
@@ -141,7 +146,7 @@ export default function ProjectFormDialog({
       name: project?.name ?? "",
       color: project?.color ?? "#3A5BA7",
       status: project?.status ?? "activo",
-      category: project?.category ?? "proyecto",
+      category: project?.category ?? defaultCategory,
       managerId: currentManager?.person_id ?? "",
       description: project?.description ?? "",
       start_date: project?.start_date ?? "",
@@ -151,7 +156,7 @@ export default function ProjectFormDialog({
     })
     setMemberIds(currentMemberIds)
     setAdvancedOpen(Boolean(project))
-  }, [open, project, currentManager, currentMemberIds, form])
+  }, [open, project, currentManager, currentMemberIds, defaultCategory, form])
 
   const submitting =
     createProject.isPending ||
@@ -352,12 +357,15 @@ export default function ProjectFormDialog({
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="proyecto">Proyecto</SelectItem>
+                          <SelectItem value="emergente">Emergente</SelectItem>
                           <SelectItem value="institucional">Tiempo institucional</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        "Tiempo institucional" agrupa capacitaciones, feedback u otros bloques que
-                        no son un proyecto — Reportes puede excluirlos.
+                        "Emergente" es trabajo que apareció sin estar planeado: consume horas
+                        igual, pero se lista aparte en Proyectos y en la sábana. "Tiempo
+                        institucional" agrupa capacitaciones, feedback u otros bloques que no son
+                        un proyecto — Reportes puede excluirlos.
                       </p>
                       <FormMessage />
                     </FormItem>

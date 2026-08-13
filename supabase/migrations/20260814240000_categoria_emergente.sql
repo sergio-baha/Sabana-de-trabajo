@@ -1,0 +1,16 @@
+-- Tercera categoría de proyecto: `emergente`.
+--
+-- Un emergente es trabajo que aparece sin estar planeado (una urgencia, un
+-- pedido de última hora) y se registra igual que un proyecto porque consume
+-- horas reales. Lo que cambia es cómo se navega: no compite con el portafolio
+-- en la lista de "agregar proyecto" de la sábana, y en Proyectos vive en su
+-- propio bloque, del más viejo al más nuevo — el orden en que aparecieron.
+--
+-- Es una categoría y no una tabla aparte a propósito: consume horas, se le
+-- reparten personas y se le asignan tareas exactamente igual. Duplicar el
+-- modelo por una diferencia de presentación habría duplicado también las
+-- vistas de reporte, la RLS y la grilla.
+--
+-- `alter type ... add value` va solo en esta migración: Postgres no deja usar
+-- el valor nuevo en la misma transacción que lo crea.
+alter type public.project_category add value if not exists 'emergente';

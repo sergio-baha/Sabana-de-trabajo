@@ -49,6 +49,7 @@ import {
   useReorderPhases,
 } from "@/features/projects/hooks/useProjectBudgetQueries"
 import {
+  CATEGORY_LABEL,
   formatHours,
   formatMoney,
   PHASE_STATUS_DOT,
@@ -257,7 +258,7 @@ export default function ProyectoDetallePage() {
             </div>
             <div className="flex min-w-0 flex-col gap-1">
               <span className="text-eyebrow text-muted-foreground">
-                {project.category === "institucional" ? "Tiempo institucional" : "Proyecto"}
+                {CATEGORY_LABEL[project.category]}
               </span>
               <h1 className="text-display text-xl font-extrabold sm:text-2xl">{project.name}</h1>
               {project.description && (

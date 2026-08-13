@@ -1,4 +1,13 @@
-import type { PhaseStatus } from "@/types/database.types"
+import type { PhaseStatus, ProjectCategory } from "@/types/database.types"
+
+// Las tres categorías de proyecto. "Emergente" es trabajo que apareció sin
+// estar planeado: consume horas igual que un proyecto, pero se navega aparte
+// para que no compita con el portafolio.
+export const CATEGORY_LABEL: Record<ProjectCategory, string> = {
+  proyecto: "Proyecto",
+  institucional: "Tiempo institucional",
+  emergente: "Emergente",
+}
 
 export const PHASE_STATUS_LABEL: Record<PhaseStatus, string> = {
   pendiente: "Pendiente",
