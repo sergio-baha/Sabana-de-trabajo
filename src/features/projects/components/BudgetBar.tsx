@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { budgetTone, consumedPct } from "@/features/portfolio/lib/portfolioLabels"
+import { budgetTone, consumedPct } from "@/features/projects/lib/projectLabels"
 
 interface BudgetBarProps {
   label: string

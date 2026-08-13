@@ -28,8 +28,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { useCreateExpense } from "@/features/portfolio/hooks/usePortfolioQueries"
-import type { ProjectPhase } from "@/features/portfolio/api/portfolioApi"
+import { useCreateExpense } from "@/features/projects/hooks/useProjectBudgetQueries"
+import type { ProjectPhase } from "@/features/projects/api/projectBudgetApi"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 
 const schema = z.object({
@@ -51,17 +51,17 @@ type FormValues = z.infer<typeof schema>
 interface ExpenseFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  portfolioProjectId: string
+  projectId: string
   phases: ProjectPhase[]
 }
 
 export default function ExpenseFormDialog({
   open,
   onOpenChange,
-  portfolioProjectId,
+  projectId,
   phases,
 }: ExpenseFormDialogProps) {
-  const createExpense = useCreateExpense(portfolioProjectId)
+  const createExpense = useCreateExpense(projectId)
   const { activeMonthId } = useActiveMonthStore()
 
   const form = useForm<FormValues>({
@@ -88,7 +88,7 @@ export default function ExpenseFormDialog({
 
   const onSubmit = async (values: FormValues) => {
     await createExpense.mutateAsync({
-      portfolio_project_id: portfolioProjectId,
+      project_id: projectId,
       // "none" es el valor centinela del Select: Radix no admite un
       // SelectItem con value="" porque lo usa internamente para "sin
       // selección".

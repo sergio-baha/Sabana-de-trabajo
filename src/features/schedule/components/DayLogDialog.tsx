@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAddActivity, useDeleteActivity } from "@/features/activities/hooks/useActivitiesQueries"
-import { usePhasesForMonthlyProject } from "@/features/portfolio/hooks/usePortfolioQueries"
+import { usePhases } from "@/features/projects/hooks/useProjectBudgetQueries"
 import type { ActivityWithCell } from "@/features/activities/api/activitiesApi"
 
 interface DayLogDialogProps {
@@ -59,9 +59,8 @@ export default function DayLogDialog({
   const [hours, setHours] = useState("")
   const [phaseId, setPhaseId] = useState<string>("none")
 
-  // Las fases viven en el proyecto del portafolio; el hook hace el salto
-  // desde la fila mensual, que es lo único que conoce el calendario.
-  const { data: phases } = usePhasesForMonthlyProject(open ? projectId : null)
+  // Las fases son del proyecto completo, no del mes que muestra el calendario.
+  const { data: phases } = usePhases(open ? projectId : null)
 
   const total = activities.reduce((sum, a) => sum + a.hours, 0)
   const parsedHours = Number(hours)

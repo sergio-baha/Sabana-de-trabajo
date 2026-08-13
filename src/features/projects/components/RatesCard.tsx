@@ -16,8 +16,8 @@ import {
   useClearPersonRate,
   usePersonRates,
   useSetPersonRate,
-} from "@/features/portfolio/hooks/usePortfolioQueries"
-import { formatMoney } from "@/features/portfolio/lib/portfolioLabels"
+} from "@/features/projects/hooks/useProjectBudgetQueries"
+import { formatMoney } from "@/features/projects/lib/projectLabels"
 import type { Person } from "@/features/people/api/peopleApi"
 
 interface RatesCardProps {
@@ -27,7 +27,7 @@ interface RatesCardProps {
 
 /**
  * Tarifa por hora de cada persona, para calcular el costo de nómina de los
- * proyectos del portafolio.
+ * proyectos.
  *
  * Solo se monta para Administrador. No es solo gating de UI: `person_rates`
  * tiene una política RLS que niega la lectura a cualquier otro rol, así que
@@ -128,8 +128,8 @@ export default function RatesCard({ monthId, people }: RatesCardProps) {
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {/* Referencia rápida: lo que costaría su capacidad completa
-                        del mes. No es lo asignado a proyectos — eso sale en el
-                        portafolio. */}
+                        del mes. No es lo asignado a proyectos — eso sale en la
+                        ficha de cada proyecto. */}
                     {rate === undefined
                       ? "—"
                       : formatMoney(rate * person.available_hours)}

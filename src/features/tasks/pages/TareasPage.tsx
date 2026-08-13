@@ -57,7 +57,7 @@ export default function TareasPage() {
   const ignoresMonths = isAnalistaTecnologia(profile?.role)
 
   const { data: tasks, isLoading } = useTasks(activeMonthId, { allMonths: ignoresMonths })
-  const { data: projects } = useProjects(activeMonthId)
+  const { data: projects } = useProjects()
   const { data: people } = usePeople(activeMonthId)
   const { data: taskAssignees } = useTaskAssignees(activeMonthId, { allMonths: ignoresMonths })
   const { data: months } = useMonths()

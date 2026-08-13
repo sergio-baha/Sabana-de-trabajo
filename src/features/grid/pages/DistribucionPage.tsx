@@ -5,6 +5,7 @@ import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
   Grid3x3,
+  Lock,
   ListChecks,
   MessageSquare,
   MoreHorizontal,
@@ -27,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import PageHeader from "@/components/shared/PageHeader"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
+import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { usePlanningExclusions } from "@/features/people/hooks/usePlanningExclusions"
 import {
   useDeleteProject,
@@ -64,7 +66,7 @@ import {
 import ActivityBreakdownDialog from "@/features/activities/components/ActivityBreakdownDialog"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { isGestorOrAdmin } from "@/lib/roles"
+import { isAdmin, isGestorOrAdmin } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 
 type SortField = "name" | "total"
@@ -82,10 +84,18 @@ const STATUS_CLASS: Record<PersonSummary["statusColor"], string> = {
 export default function DistribucionPage() {
   const { activeMonthId } = useActiveMonthStore()
   const profile = useSessionStore((s) => s.profile)
-  const canEdit = isGestorOrAdmin(profile?.role)
+  // Acá el candado del mes SÍ aplica: esta grilla edita horas, que es
+  // exactamente lo que un mes cerrado congela (can_write_month en la base).
+  // Sin este chequeo la grilla se veía editable y el rechazo solo aparecía
+  // al guardar — el mismo hueco que tenía el tablero de tareas, donde en
+  // cambio se resolvió al revés porque las tareas ya no dependen del mes.
+  const { data: months } = useMonths()
+  const activeMonth = months?.find((m) => m.id === activeMonthId)
+  const monthLocked = Boolean(activeMonth && activeMonth.status !== "abierto")
+  const canEdit = isGestorOrAdmin(profile?.role) && (!monthLocked || isAdmin(profile?.role))
 
   const { data: people, isLoading: loadingPeople } = usePeople(activeMonthId)
-  const { data: projects, isLoading: loadingProjects } = useProjects(activeMonthId)
+  const { data: projects, isLoading: loadingProjects } = useProjects()
   const { data: allocations, isLoading: loadingAllocations } = useAllocations(activeMonthId)
   const upsertAllocation = useUpsertAllocation(activeMonthId ?? "")
   useRealtimeAllocations(activeMonthId)
@@ -109,9 +119,21 @@ export default function DistribucionPage() {
   const [projectFormOpen, setProjectFormOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
-  const deleteProject = useDeleteProject(activeMonthId ?? "")
-  const { data: managers } = useProjectManagers(activeMonthId)
-  const { data: members } = useProjectMembers(activeMonthId)
+  // Proyectos sumados a la grilla de este mes que aún no tienen horas. Se
+  // guardan por mes para que cambiar de mes no arrastre filas vacías ajenas.
+  const [extraByMonth, setExtraByMonth] = useState<Record<string, string[]>>({})
+  const extraProjectIds = useMemo(
+    () => new Set(extraByMonth[activeMonthId ?? ""] ?? []),
+    [extraByMonth, activeMonthId]
+  )
+  const addProjectToMonth = (projectId: string) =>
+    setExtraByMonth((prev) => {
+      const key = activeMonthId ?? ""
+      return { ...prev, [key]: [...(prev[key] ?? []), projectId] }
+    })
+  const deleteProject = useDeleteProject()
+  const { data: managers } = useProjectManagers()
+  const { data: members } = useProjectMembers()
 
   const activePosition = useRef<{ rowIdx: number; columnKey: string } | null>(null)
 
@@ -127,9 +149,36 @@ export default function DistribucionPage() {
     [people, excludedPersonIds]
   )
 
+  // Los proyectos son durables, pero la sábana es de un mes: la grilla trae
+  // los que consumen horas en el mes activo. `extraProjectIds` deja meter
+  // uno que todavía no tiene ninguna — apenas se le escriba una hora se
+  // sostiene solo, y si no, desaparece al recargar (no queda basura).
+  const monthProjectIds = useMemo(
+    () => new Set((allocations ?? []).map((a) => a.project_id)),
+    [allocations]
+  )
+
   const visibleProjects = useMemo(
-    () => sortActiveProjectsFirst((projects ?? []).filter((p) => p.status !== "archivado")),
-    [projects]
+    () =>
+      sortActiveProjectsFirst(
+        (projects ?? []).filter(
+          (p) =>
+            p.status !== "archivado" && (monthProjectIds.has(p.id) || extraProjectIds.has(p.id))
+        )
+      ),
+    [projects, monthProjectIds, extraProjectIds]
+  )
+
+  // Para el selector de "agregar al mes": lo que existe y todavía no está.
+  const addableProjects = useMemo(
+    () =>
+      (projects ?? [])
+        .filter(
+          (p) =>
+            p.status !== "archivado" && !monthProjectIds.has(p.id) && !extraProjectIds.has(p.id)
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [projects, monthProjectIds, extraProjectIds]
   )
 
   const allRows = useMemo(
@@ -435,6 +484,17 @@ export default function DistribucionPage() {
         }
       />
 
+      {monthLocked && !isAdmin(profile?.role) && (
+        <div className="animate-fade-in flex items-start gap-3 rounded-xl border border-border bg-muted/60 p-3.5 text-sm">
+          <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <span>
+            <strong>{activeMonth?.name}</strong> está cerrado, así que sus horas quedaron
+            congeladas y la grilla es de solo lectura. Las tareas del mes sí se pueden seguir
+            trabajando desde el tablero.
+          </span>
+        </div>
+      )}
+
       <div className="filter-bar">
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -462,6 +522,20 @@ export default function DistribucionPage() {
         >
           {sortDir === "asc" ? <ArrowUpNarrowWide /> : <ArrowDownWideNarrow />}
         </Button>
+        {canEdit && addableProjects.length > 0 && (
+          <Select value="" onValueChange={addProjectToMonth}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Agregar proyecto al mes…" />
+            </SelectTrigger>
+            <SelectContent>
+              {addableProjects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {isLoading ? (
@@ -551,7 +625,9 @@ export default function DistribucionPage() {
               setEditingProject(null)
             }
           }}
-          monthId={activeMonthId}
+          // Un proyecto creado desde acá se espera ver en la grilla ya, aunque
+          // todavía no tenga horas repartidas.
+          onSaved={(saved) => addProjectToMonth(saved.id)}
           project={editingProject}
           people={people ?? []}
           currentManager={managers?.find((m) => m.project_id === editingProject?.id)}

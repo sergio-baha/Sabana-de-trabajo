@@ -44,7 +44,7 @@ export default function ReportesPage() {
   // cualquier otro proyecto.
   const [includeInstitutional, setIncludeInstitutional] = useState(false)
 
-  const portfolioProjects = useMemo(() => {
+  const realProjects = useMemo(() => {
     const active = (projects ?? []).filter((x) => x.status !== "archivado")
     return includeInstitutional ? active : active.filter((x) => x.category !== "institucional")
   }, [projects, includeInstitutional])
@@ -53,11 +53,11 @@ export default function ReportesPage() {
     const p = people ?? []
     return {
       totalPeople: p.length,
-      totalProjects: portfolioProjects.length,
+      totalProjects: realProjects.length,
       allocatedHours: p.reduce((sum, x) => sum + x.allocated_hours, 0),
       availableHours: p.reduce((sum, x) => sum + x.available_hours, 0),
     }
-  }, [people, portfolioProjects])
+  }, [people, realProjects])
 
   const isLoading = loadingPeople || loadingProjects || loadingManagers
 
@@ -173,7 +173,7 @@ export default function ReportesPage() {
             </div>
           </CardHeader>
           <CardContent className="h-64">
-            {isLoading ? <Skeleton className="h-full w-full" /> : <ProjectHoursChart projects={portfolioProjects} />}
+            {isLoading ? <Skeleton className="h-full w-full" /> : <ProjectHoursChart projects={realProjects} />}
           </CardContent>
         </Card>
 

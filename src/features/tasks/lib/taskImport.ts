@@ -2,7 +2,7 @@ import { readSheet } from "read-excel-file/browser"
 import { format } from "date-fns"
 import { STATUS_LABELS, PRIORITY_LABELS } from "@/features/tasks/lib/taskLabels"
 import { nextBoardOrder, type Task, type TaskInsert } from "@/features/tasks/api/tasksApi"
-import type { ProjectPhase } from "@/features/portfolio/api/portfolioApi"
+import type { ProjectPhase } from "@/features/projects/api/projectBudgetApi"
 import type { Person } from "@/features/people/api/peopleApi"
 import type { TaskStatus } from "@/types/database.types"
 

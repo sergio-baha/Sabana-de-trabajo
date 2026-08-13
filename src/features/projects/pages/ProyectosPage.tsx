@@ -25,11 +25,10 @@ import PageHeader from "@/components/shared/PageHeader"
 import EmptyState from "@/components/shared/EmptyState"
 import ProjectFormDialog from "@/features/projects/components/ProjectFormDialog"
 import {
-  usePortfolioCosts,
-  usePortfolioProjects,
-  usePortfolioTotals,
-} from "@/features/portfolio/hooks/usePortfolioQueries"
-import { formatHours, formatMoney } from "@/features/portfolio/lib/portfolioLabels"
+  useProjectCosts,
+  useProjectTotals,
+} from "@/features/projects/hooks/useProjectBudgetQueries"
+import { formatHours, formatMoney } from "@/features/projects/lib/projectLabels"
 import {
   useProjectManagers,
   useProjectMembers,
@@ -40,7 +39,7 @@ import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
 import { canCreateProjects, isGestorOrAdmin } from "@/lib/roles"
-import type { PortfolioTotals } from "@/features/portfolio/api/portfolioApi"
+import type { ProjectTotals } from "@/features/projects/api/projectBudgetApi"
 import type { ProjectStatus } from "@/types/database.types"
 
 const STATUS_LABEL: Record<ProjectStatus, string> = {
@@ -50,24 +49,24 @@ const STATUS_LABEL: Record<ProjectStatus, string> = {
   archivado: "Archivado",
 }
 
-// Lista de TODOS los proyectos del portafolio, sin importar el mes: un
-// proyecto vive en varios meses y antes había que ir mes a mes para
-// encontrarlo. La gestión real (fases, tareas, presupuesto, equipo) pasa a
-// vivir dentro de cada proyecto — esta página es solo el punto de entrada,
-// separada en lo que cada quien puede gestionar y lo que solo puede ver.
+// Lista de TODOS los proyectos, sin importar el mes: un proyecto dura lo que
+// dure y antes había que ir mes a mes para encontrarlo. La gestión real
+// (fases, tareas, presupuesto, equipo) vive dentro de cada proyecto — esta
+// página es solo el punto de entrada, separada en lo que cada quien puede
+// gestionar y lo que solo puede ver.
 export default function ProyectosPage() {
   const { activeMonthId } = useActiveMonthStore()
   const profile = useSessionStore((s) => s.profile)
-  const canCreate = canCreateProjects(profile?.role) && Boolean(activeMonthId)
+  const canCreate = canCreateProjects(profile?.role)
   const canSeeCost = isGestorOrAdmin(profile?.role)
 
-  const { data: totals, isLoading } = usePortfolioTotals()
-  const { data: portfolioProjects } = usePortfolioProjects()
-  const { data: costs } = usePortfolioCosts()
+  const { data: totals, isLoading } = useProjectTotals()
+  const { data: projects } = useProjects()
+  const { data: costs } = useProjectCosts()
+  // Las personas siguen siendo del mes activo: la nómina sí es mensual.
   const { data: people } = usePeople(activeMonthId)
-  const { data: monthlyProjects } = useProjects(activeMonthId)
-  const { data: managers } = useProjectManagers(activeMonthId)
-  const { data: members } = useProjectMembers(activeMonthId)
+  const { data: managers } = useProjectManagers()
+  const { data: members } = useProjectMembers()
   const { myPerson } = useMyPerson(activeMonthId)
 
   const [search, setSearch] = useState("")
@@ -77,34 +76,32 @@ export default function ProyectosPage() {
   const costByProject = useMemo(() => {
     const map = new Map<string, { labor: number; unrated: number }>()
     for (const c of costs ?? []) {
-      map.set(c.portfolio_project_id, { labor: c.labor_cost, unrated: c.unrated_hours })
+      map.set(c.project_id, { labor: c.labor_cost, unrated: c.unrated_hours })
     }
     return map
   }, [costs])
 
   const createdByProject = useMemo(() => {
     const map = new Map<string, string | null>()
-    for (const p of portfolioProjects ?? []) map.set(p.id, p.created_by)
+    for (const p of projects ?? []) map.set(p.id, p.created_by)
     return map
-  }, [portfolioProjects])
+  }, [projects])
 
-  // Gestionable = gestor/admin, quien creó el proyecto, o quien figura como
-  // gerente/miembro de su fila del mes activo. Mismo criterio que la RLS de
-  // fases (can_manage_portfolio_project) — esto solo decide qué se ve
-  // primero, la barrera real vive en la base.
+  // Gestionable = gestor/admin, quien creó el proyecto, o quien figura en su
+  // equipo. Mismo criterio que la RLS (can_manage_project) — esto solo decide
+  // qué se ve primero, la barrera real vive en la base.
   const canManage = useMemo(() => {
-    const managedMonthlyIds = new Set<string>()
+    const managedIds = new Set<string>()
     if (myPerson) {
-      for (const m of managers ?? []) if (m.person_id === myPerson.id) managedMonthlyIds.add(m.project_id)
-      for (const m of members ?? []) if (m.person_id === myPerson.id) managedMonthlyIds.add(m.project_id)
+      for (const m of managers ?? []) if (m.person_id === myPerson.id) managedIds.add(m.project_id)
+      for (const m of members ?? []) if (m.person_id === myPerson.id) managedIds.add(m.project_id)
     }
-    return (portfolioProjectId: string) => {
+    return (projectId: string) => {
       if (isGestorOrAdmin(profile?.role)) return true
-      if (createdByProject.get(portfolioProjectId) === profile?.id) return true
-      const monthlyId = monthlyProjects?.find((p) => p.portfolio_project_id === portfolioProjectId)?.id
-      return Boolean(monthlyId && managedMonthlyIds.has(monthlyId))
+      if (createdByProject.get(projectId) === profile?.id) return true
+      return managedIds.has(projectId)
     }
-  }, [profile, createdByProject, monthlyProjects, managers, members, myPerson])
+  }, [profile, createdByProject, managers, members, myPerson])
 
   const filtered = useMemo(() => {
     const rows = totals ?? []
@@ -116,11 +113,11 @@ export default function ProyectosPage() {
     )
   }, [totals, search, statusFilter])
 
-  const mine = filtered.filter((r) => canManage(r.portfolio_project_id))
-  const others = filtered.filter((r) => !canManage(r.portfolio_project_id))
+  const mine = filtered.filter((r) => canManage(r.project_id))
+  const others = filtered.filter((r) => !canManage(r.project_id))
   const totalHours = filtered.reduce((sum, r) => sum + r.allocated_hours, 0)
 
-  const renderTable = (rows: PortfolioTotals[]) => (
+  const renderTable = (rows: ProjectTotals[]) => (
     <Table>
       <TableHeader>
         <TableRow>
@@ -133,17 +130,17 @@ export default function ProyectosPage() {
       </TableHeader>
       <TableBody>
         {rows.map((row, index) => {
-          const cost = costByProject.get(row.portfolio_project_id)
+          const cost = costByProject.get(row.project_id)
           const spent = (cost?.labor ?? 0) + row.expense_total
           return (
             <TableRow
-              key={row.portfolio_project_id}
+              key={row.project_id}
               className="row-enter"
               style={{ "--i": index } as CSSProperties}
             >
               <TableCell className="font-medium">
                 <Link
-                  to={`/proyectos/${row.portfolio_project_id}`}
+                  to={`/proyectos/${row.project_id}`}
                   className="flex items-center gap-2 hover:underline"
                 >
                   <span
@@ -182,7 +179,7 @@ export default function ProyectosPage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         icon={FolderKanban}
-        eyebrow="Portafolio"
+        eyebrow="Gestión"
         title="Proyectos"
         description="Todos los proyectos, en cualquier mes. Gestionas los que creaste o donde estás asignado; los demás quedan en modo consulta."
         stats={[
@@ -191,14 +188,10 @@ export default function ProyectosPage() {
           { label: "Horas acumuladas", value: totalHours, suffix: " h" },
         ]}
         actions={
-          canCreate ? (
+          canCreate && (
             <Button className="hero-action shine-hover" onClick={() => setFormOpen(true)}>
               <Plus /> Nuevo proyecto
             </Button>
-          ) : (
-            !activeMonthId && (
-              <p className="text-xs text-white/70">Activa un mes para crear proyectos.</p>
-            )
           )
         }
       />
@@ -243,7 +236,7 @@ export default function ProyectosPage() {
             <EmptyState
               icon={FolderKanban}
               title="No hay proyectos que coincidan"
-              description="Prueba con otro estado o limpia la búsqueda para ver todo el portafolio."
+              description="Prueba con otro estado o limpia la búsqueda para ver todos los proyectos."
             />
           ) : (
             <div className="flex flex-col gap-6">
@@ -270,14 +263,7 @@ export default function ProyectosPage() {
         </CardContent>
       </Card>
 
-      {activeMonthId && (
-        <ProjectFormDialog
-          open={formOpen}
-          onOpenChange={setFormOpen}
-          monthId={activeMonthId}
-          people={people ?? []}
-        />
-      )}
+      <ProjectFormDialog open={formOpen} onOpenChange={setFormOpen} people={people ?? []} />
     </div>
   )
 }

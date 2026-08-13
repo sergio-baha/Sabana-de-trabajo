@@ -27,10 +27,9 @@ import {
 import ConfirmDialog from "@/components/shared/ConfirmDialog"
 import AnimatedNumber from "@/components/shared/AnimatedNumber"
 import EmptyState from "@/components/shared/EmptyState"
-import BudgetBar from "@/features/portfolio/components/BudgetBar"
-import PhaseFormDialog from "@/features/portfolio/components/PhaseFormDialog"
-import ExpenseFormDialog from "@/features/portfolio/components/ExpenseFormDialog"
-import PortfolioFormDialog from "@/features/portfolio/components/PortfolioFormDialog"
+import BudgetBar from "@/features/projects/components/BudgetBar"
+import PhaseFormDialog from "@/features/projects/components/PhaseFormDialog"
+import ExpenseFormDialog from "@/features/projects/components/ExpenseFormDialog"
 import {
   useDeleteExpense,
   useDeletePhase,
@@ -38,17 +37,16 @@ import {
   usePhaseCosts,
   usePhaseTotals,
   usePhases,
-  usePortfolioCosts,
-  usePortfolioProject,
-  usePortfolioTotals,
+  useProjectCosts,
+  useProjectTotals,
   useReorderPhases,
-} from "@/features/portfolio/hooks/usePortfolioQueries"
+} from "@/features/projects/hooks/useProjectBudgetQueries"
 import {
   formatHours,
   formatMoney,
   PHASE_STATUS_DOT,
   PHASE_STATUS_LABEL,
-} from "@/features/portfolio/lib/portfolioLabels"
+} from "@/features/projects/lib/projectLabels"
 import TaskBacklogTable from "@/features/tasks/components/TaskBacklogTable"
 import TaskFormDialog from "@/features/tasks/components/TaskFormDialog"
 import ImportTasksDialog from "@/features/tasks/components/ImportTasksDialog"
@@ -59,7 +57,7 @@ import { STATUS_LABELS } from "@/features/tasks/lib/taskLabels"
 import { buildAssigneesByTask } from "@/features/tasks/lib/taskAssignees"
 import type { Task } from "@/features/tasks/api/tasksApi"
 import {
-  useCreateProject,
+  useProject,
   useProjectManagers,
   useProjectMembers,
   useProjects,
@@ -68,16 +66,15 @@ import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canCreateProjects, canManageTasks, isGestorOrAdmin, writesOwnWorkOnly } from "@/lib/roles"
-import type { ProjectPhase, ProjectExpense } from "@/features/portfolio/api/portfolioApi"
+import { canManageTasks, isGestorOrAdmin, writesOwnWorkOnly } from "@/lib/roles"
+import type { ProjectPhase, ProjectExpense } from "@/features/projects/api/projectBudgetApi"
 import type { TaskStatus } from "@/types/database.types"
 
-// "Gestionar el proyecto" vive aquí: identidad + presupuesto (que ya movía
-// PortafolioDetallePage) y ahora también sus tareas, organizadas por fase en
-// vez de por estado — un proyecto se piensa en etapas (Descubrir → Definir →
-// …), no en columnas de tablero. Las tareas siguen siendo del mes activo
-// (tasks/allocations son mensuales); las fases y el presupuesto son del
-// proyecto completo, sin importar el mes.
+// "Gestionar el proyecto" vive aquí: identidad, presupuesto, equipo y sus
+// tareas, organizadas por fase en vez de por estado — un proyecto se piensa
+// en etapas (Descubrir → Definir → …), no en columnas de tablero. Todo eso
+// es del proyecto completo; lo único mensual son las horas repartidas
+// (allocations) y las tareas, que se filtran por el mes activo.
 export default function ProyectoDetallePage() {
   const { projectId } = useParams<{ projectId: string }>()
   const { activeMonthId } = useActiveMonthStore()
@@ -88,22 +85,20 @@ export default function ProyectoDetallePage() {
   const { myPerson } = useMyPerson(activeMonthId)
   const canWriteTasks = canManageTasks(profile?.role) && (!writesOwn || Boolean(myPerson))
 
-  const { data: project, isLoading } = usePortfolioProject(projectId ?? null)
-  const { data: totals } = usePortfolioTotals()
-  const { data: costs } = usePortfolioCosts()
+  const { data: project, isLoading } = useProject(projectId ?? null)
+  const { data: totals } = useProjectTotals()
+  const { data: costs } = useProjectCosts()
   const { data: phases } = usePhases(projectId ?? null)
   const { data: phaseTotals } = usePhaseTotals(projectId ?? null)
   const { data: phaseCosts } = usePhaseCosts()
   const { data: expenses } = useExpenses(projectId ?? null)
 
-  const { data: monthlyProjects } = useProjects(activeMonthId)
-  const monthlyProject = monthlyProjects?.find((p) => p.portfolio_project_id === projectId)
-  const activateMonth = useCreateProject(activeMonthId ?? "")
+  const { data: projects } = useProjects()
 
   const { data: tasks } = useTasks(activeMonthId)
   const projectTasks = useMemo(
-    () => (tasks ?? []).filter((t) => t.project_id === monthlyProject?.id),
-    [tasks, monthlyProject]
+    () => (tasks ?? []).filter((t) => t.project_id === projectId),
+    [tasks, projectId]
   )
   const deleteTask = useDeleteTask()
   useRealtimeTasks(activeMonthId)
@@ -114,17 +109,16 @@ export default function ProyectoDetallePage() {
     () => buildAssigneesByTask(taskAssignees ?? [], people ?? []),
     [taskAssignees, people]
   )
-  const { data: managers } = useProjectManagers(activeMonthId)
-  const { data: members } = useProjectMembers(activeMonthId)
-  const managerName = people?.find(
-    (p) => p.id === managers?.find((m) => m.project_id === monthlyProject?.id)?.person_id
-  )?.name
+  const { data: managers } = useProjectManagers()
+  const { data: members } = useProjectMembers()
+  const projectManager = managers?.find((m) => m.project_id === projectId)
+  const managerName = people?.find((p) => p.id === projectManager?.person_id)?.name
   const teamPeople = useMemo(() => {
     const ids = new Set(
-      (members ?? []).filter((m) => m.project_id === monthlyProject?.id).map((m) => m.person_id)
+      (members ?? []).filter((m) => m.project_id === projectId).map((m) => m.person_id)
     )
     return (people ?? []).filter((p) => ids.has(p.id))
-  }, [members, people, monthlyProject])
+  }, [members, people, projectId])
 
   const reorderPhases = useReorderPhases(projectId ?? "")
   const deletePhase = useDeletePhase(projectId ?? "")
@@ -154,8 +148,8 @@ export default function ProyectoDetallePage() {
     setTaskFormOpen(true)
   }
 
-  const totalsRow = totals?.find((t) => t.portfolio_project_id === projectId)
-  const costRow = costs?.find((c) => c.portfolio_project_id === projectId)
+  const totalsRow = totals?.find((t) => t.project_id === projectId)
+  const costRow = costs?.find((c) => c.project_id === projectId)
 
   const phaseCostById = useMemo(() => {
     const map = new Map<string, number>()
@@ -197,7 +191,7 @@ export default function ProyectoDetallePage() {
   if (!project) {
     return (
       <div className="flex flex-col items-start gap-3 py-12">
-        <p className="text-sm text-muted-foreground">Este proyecto ya no existe en el portafolio.</p>
+        <p className="text-sm text-muted-foreground">Este proyecto ya no existe.</p>
         <Button variant="outline" asChild>
           <Link to="/proyectos">
             <ArrowLeft /> Volver a proyectos
@@ -207,21 +201,19 @@ export default function ProyectoDetallePage() {
     )
   }
 
-  // Gestionable = gestor/admin, quien creó el proyecto, o quien figura como
-  // gerente/miembro de su equipo del mes activo — mismo criterio que la RLS
-  // de fases (can_manage_portfolio_project). Sin esto, cualquiera vería los
-  // botones de gestión aunque la base los fuera a rechazar.
+  // Gestionable = gestor/admin, quien creó el proyecto, o quien figura en su
+  // equipo — mismo criterio que la RLS (can_manage_project). Sin esto,
+  // cualquiera vería los botones de gestión aunque la base los rechazara.
   const canManageProject =
     canWrite ||
     project.created_by === profile?.id ||
     Boolean(
-      monthlyProject &&
-        myPerson &&
+      myPerson &&
         ((managers ?? []).some(
-          (m) => m.project_id === monthlyProject.id && m.person_id === myPerson.id
+          (m) => m.project_id === project.id && m.person_id === myPerson.id
         ) ||
           (members ?? []).some(
-            (m) => m.project_id === monthlyProject.id && m.person_id === myPerson.id
+            (m) => m.project_id === project.id && m.person_id === myPerson.id
           ))
     )
   const canManageTeamAndTasks = canManageProject && canWriteTasks
@@ -254,7 +246,7 @@ export default function ProyectoDetallePage() {
               )}
             </div>
           </div>
-          {canWrite && (
+          {canManageProject && (
             <Button className="hero-action shine-hover" onClick={() => setEditOpen(true)}>
               <Pencil /> Editar
             </Button>
@@ -325,69 +317,37 @@ export default function ProyectoDetallePage() {
         </Card>
       </div>
 
-      {/* ── Equipo del mes activo ──────────────────────────────────────── */}
+      {/* ── Equipo del proyecto ────────────────────────────────────────── */}
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Users className="size-4" /> Equipo de este mes
+              <Users className="size-4" /> Equipo
             </CardTitle>
             <CardDescription>
-              Quién puede recibir tareas de este proyecto en el mes activo. El presupuesto y las
-              fases de arriba son del proyecto completo; el equipo es por mes.
+              Quién puede recibir tareas de este proyecto. El equipo acompaña al proyecto mientras
+              dure — no hay que rearmarlo cada mes.
             </CardDescription>
           </div>
-          {monthlyProject && canManageTeamAndTasks && (
+          {canManageTeamAndTasks && (
             <Button variant="outline" size="sm" onClick={() => setTeamOpen(true)}>
               <Pencil /> Gestionar equipo
             </Button>
           )}
         </CardHeader>
         <CardContent>
-          {!activeMonthId ? (
-            <p className="text-sm text-muted-foreground">No hay un mes activo seleccionado.</p>
-          ) : !monthlyProject ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted px-3 py-2.5">
-              <p className="text-sm text-muted-foreground">
-                Este proyecto todavía no tiene actividad en el mes activo — no puede recibir
-                tareas hasta que se agregue.
-              </p>
-              {canCreateProjects(profile?.role) && (
-                <Button
-                  size="sm"
-                  disabled={activateMonth.isPending}
-                  onClick={() =>
-                    activateMonth.mutate({
-                      month_id: activeMonthId,
-                      name: project.name,
-                      color: project.color,
-                      status: project.status,
-                      category: project.category,
-                      description: project.description,
-                      portfolio_project_id: project.id,
-                    })
-                  }
-                >
-                  Agregar al mes activo
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-1.5 text-sm">
-              {managerName && (
-                <span className="text-muted-foreground">Gerente: {managerName}</span>
-              )}
-              {teamPeople.length > 0 ? (
-                teamPeople.map((person) => (
-                  <Badge key={person.id} variant="secondary">
-                    {person.name}
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-muted-foreground">Sin equipo asignado todavía.</span>
-              )}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5 text-sm">
+            {managerName && <span className="text-muted-foreground">Gerente: {managerName}</span>}
+            {teamPeople.length > 0 ? (
+              teamPeople.map((person) => (
+                <Badge key={person.id} variant="secondary">
+                  {person.name}
+                </Badge>
+              ))
+            ) : (
+              <span className="text-muted-foreground">Sin equipo asignado todavía.</span>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -403,7 +363,7 @@ export default function ProyectoDetallePage() {
           </div>
           {canManageProject && (
             <div className="flex items-center gap-2">
-              {monthlyProject && canManageTeamAndTasks && (
+              {canManageTeamAndTasks && (
                 <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
                   <FileSpreadsheet /> Importar Excel
                 </Button>
@@ -469,7 +429,7 @@ export default function ProyectoDetallePage() {
                       )}
                     </div>
                     <div className="flex items-center gap-1">
-                      {monthlyProject && canManageTeamAndTasks && (
+                      {canManageTeamAndTasks && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -539,27 +499,21 @@ export default function ProyectoDetallePage() {
                     )}
                   </div>
 
-                  {monthlyProject ? (
-                    phaseTasks.length > 0 ? (
-                      <div className="overflow-hidden rounded-lg border border-border">
-                        <TaskBacklogTable
-                          tasks={phaseTasks}
-                          allTasks={tasks ?? []}
-                          projects={monthlyProjects ?? []}
-                          assigneesByTask={assigneesByTask}
-                          canWrite={canManageTeamAndTasks}
-                          onOpenTask={openTask}
-                          onDeleteTask={setTaskToDelete}
-                        />
-                      </div>
-                    ) : (
-                      <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-                        Sin tareas en esta fase todavía.
-                      </p>
-                    )
+                  {phaseTasks.length > 0 ? (
+                    <div className="overflow-hidden rounded-lg border border-border">
+                      <TaskBacklogTable
+                        tasks={phaseTasks}
+                        allTasks={tasks ?? []}
+                        projects={projects ?? []}
+                        assigneesByTask={assigneesByTask}
+                        canWrite={canManageTeamAndTasks}
+                        onOpenTask={openTask}
+                        onDeleteTask={setTaskToDelete}
+                      />
+                    </div>
                   ) : (
                     <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-                      Agrega el proyecto al mes activo para poder crear tareas.
+                      Sin tareas en esta fase todavía.
                     </p>
                   )}
                 </div>
@@ -575,7 +529,7 @@ export default function ProyectoDetallePage() {
           )}
 
           {/* ── Sin fase ──────────────────────────────────────────────── */}
-          {monthlyProject && (unphasedTasks.length > 0 || (phases ?? []).length > 0) && (
+          {(unphasedTasks.length > 0 || (phases ?? []).length > 0) && (
             <div className="flex flex-col gap-3 rounded-xl border border-dashed border-border p-4">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-muted-foreground">Sin fase asignada</span>
@@ -590,7 +544,7 @@ export default function ProyectoDetallePage() {
                   <TaskBacklogTable
                     tasks={unphasedTasks}
                     allTasks={tasks ?? []}
-                    projects={monthlyProjects ?? []}
+                    projects={projects ?? []}
                     assigneesByTask={assigneesByTask}
                     canWrite={canManageTeamAndTasks}
                     onOpenTask={openTask}
@@ -674,31 +628,36 @@ export default function ProyectoDetallePage() {
         </Card>
       )}
 
-      <PortfolioFormDialog open={editOpen} onOpenChange={setEditOpen} project={project} />
+      {/* "Editar" y "Gestionar equipo" son el mismo formulario: detrás hay una
+          sola fila de `projects` que actualizar. */}
+      <ProjectFormDialog
+        open={editOpen || teamOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditOpen(false)
+            setTeamOpen(false)
+          }
+        }}
+        project={project}
+        people={people ?? []}
+        currentManager={projectManager}
+        currentMemberIds={teamPeople.map((p) => p.id)}
+      />
       <PhaseFormDialog
         open={phaseOpen}
         onOpenChange={setPhaseOpen}
-        portfolioProjectId={project.id}
+        projectId={project.id}
         phase={editingPhase}
         nextPosition={phases?.length ?? 0}
       />
       <ExpenseFormDialog
         open={expenseOpen}
         onOpenChange={setExpenseOpen}
-        portfolioProjectId={project.id}
+        projectId={project.id}
         phases={phases ?? []}
       />
-      {monthlyProject && activeMonthId && (
+      {activeMonthId && (
         <>
-          <ProjectFormDialog
-            open={teamOpen}
-            onOpenChange={setTeamOpen}
-            monthId={activeMonthId}
-            project={monthlyProject}
-            people={people ?? []}
-            currentManager={managers?.find((m) => m.project_id === monthlyProject.id)}
-            currentMemberIds={teamPeople.map((p) => p.id)}
-          />
           <TaskFormDialog
             open={taskFormOpen}
             onOpenChange={setTaskFormOpen}
@@ -707,17 +666,17 @@ export default function ProyectoDetallePage() {
             defaultStatus={"pendiente" as TaskStatus}
             defaultPhaseId={newTaskPhaseId}
             tasks={tasks ?? []}
-            projects={monthlyProjects ?? []}
+            projects={projects ?? []}
             people={people ?? []}
             readOnly={!canManageTeamAndTasks}
             defaultAssigneeIds={writesOwn && myPerson ? [myPerson.id] : []}
-            lockedProjectId={monthlyProject.id}
+            lockedProjectId={project.id}
           />
           <ImportTasksDialog
             open={importOpen}
             onOpenChange={setImportOpen}
             monthId={activeMonthId}
-            projectId={monthlyProject.id}
+            projectId={project.id}
             projectName={project.name}
             phases={phases ?? []}
             people={teamPeople}

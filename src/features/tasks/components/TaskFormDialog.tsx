@@ -49,7 +49,7 @@ import {
   useProjectManagers,
   useProjectMembers,
 } from "@/features/projects/hooks/useProjectsQueries"
-import { usePhasesForMonthlyProject } from "@/features/portfolio/hooks/usePortfolioQueries"
+import { usePhases } from "@/features/projects/hooks/useProjectBudgetQueries"
 import { useSessionStore } from "@/stores/sessionStore"
 import { canCreateProjects, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
 import { Separator } from "@/components/ui/separator"
@@ -152,11 +152,11 @@ export default function TaskFormDialog({
   const updateTask = useUpdateTask()
   const setAssignees = useSetTaskAssignees(monthId)
   const { data: taskAssignees } = useTaskAssignees(monthId)
-  const createProject = useCreateProject(monthId)
-  const { data: projectMembers } = useProjectMembers(monthId)
+  const createProject = useCreateProject()
+  const { data: projectMembers } = useProjectMembers()
   const profile = useSessionStore((s) => s.profile)
   const canAddProject = !readOnly && canCreateProjects(profile?.role)
-  const { data: projectManagers } = useProjectManagers(monthId)
+  const { data: projectManagers } = useProjectManagers()
 
   // Proyecto recién creado desde este diálogo. Se guarda aparte porque la
   // lista `projects` la refresca el padre de forma asíncrona: sin esto, el
@@ -231,7 +231,7 @@ export default function TaskFormDialog({
   // proyecto) se ve la lista completa, como antes.
   const selectedProjectId = form.watch("projectId")
   const currentAssigneeIds = form.watch("assignedPersonIds")
-  const { data: phasesForProject } = usePhasesForMonthlyProject(selectedProjectId || null)
+  const { data: phasesForProject } = usePhases(selectedProjectId || null)
   const projectMemberIds = new Set(
     (projectMembers ?? [])
       .filter((m) => m.project_id === selectedProjectId)
@@ -246,7 +246,6 @@ export default function TaskFormDialog({
     const name = newProjectName.trim()
     if (!name) return
     const created = await createProject.mutateAsync({
-      month_id: monthId,
       name,
       color: QUICK_PROJECT_COLOR,
       status: "activo",

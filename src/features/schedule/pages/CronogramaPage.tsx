@@ -47,7 +47,7 @@ export default function CronogramaPage() {
     [taskAssignees]
   )
   const { data: activities, isLoading: activitiesLoading } = useActivitiesForMonth(activeMonthId)
-  const { data: projects } = useProjects(activeMonthId)
+  const { data: projects } = useProjects()
   const { data: people } = usePeople(activeMonthId)
   const { myPerson } = useMyPerson(activeMonthId)
   useRealtimeTasks(activeMonthId)

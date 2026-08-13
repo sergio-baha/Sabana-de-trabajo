@@ -28,7 +28,7 @@ import type { Person } from "@/features/people/api/peopleApi"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
 import { isAdmin, isGestorOrAdmin } from "@/lib/roles"
-import RatesCard from "@/features/portfolio/components/RatesCard"
+import RatesCard from "@/features/projects/components/RatesCard"
 
 export default function PersonasPage() {
   const { activeMonthId } = useActiveMonthStore()

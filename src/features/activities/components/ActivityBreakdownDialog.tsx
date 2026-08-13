@@ -25,7 +25,7 @@ import {
   useDeleteActivity,
   useUpdateActivity,
 } from "@/features/activities/hooks/useActivitiesQueries"
-import { usePhasesForMonthlyProject } from "@/features/portfolio/hooks/usePortfolioQueries"
+import { usePhases } from "@/features/projects/hooks/useProjectBudgetQueries"
 import type { ActivityWithCell } from "@/features/activities/api/activitiesApi"
 
 interface ActivityBreakdownDialogProps {
@@ -71,10 +71,9 @@ export default function ActivityBreakdownDialog({
   const updateActivity = useUpdateActivity(monthId)
   const deleteActivity = useDeleteActivity(monthId)
 
-  // Las fases son del proyecto del portafolio, no de su fila mensual: el
-  // hook hace ese salto. Un proyecto sin portafolio (dato viejo sin
-  // enlazar) devuelve lista vacía y el selector queda solo con "Sin fase".
-  const { data: phases } = usePhasesForMonthlyProject(open ? projectId : null)
+  // Las fases son del proyecto completo, no de un mes. Un proyecto sin fases
+  // devuelve lista vacía y el selector queda solo con "Sin fase".
+  const { data: phases } = usePhases(open ? projectId : null)
   const phaseNameById = useMemo(() => {
     const map = new Map<string, string>()
     for (const phase of phases ?? []) map.set(phase.id, phase.name)

@@ -24,7 +24,7 @@ import { buildTaskInserts, parseTaskImportFile, type ImportedTaskRow } from "@/f
 import { STATUS_LABELS, PRIORITY_LABELS } from "@/features/tasks/lib/taskLabels"
 import { useBulkCreateTasks, useBulkSetTaskAssignees } from "@/features/tasks/hooks/useTasksQueries"
 import type { Task } from "@/features/tasks/api/tasksApi"
-import type { ProjectPhase } from "@/features/portfolio/api/portfolioApi"
+import type { ProjectPhase } from "@/features/projects/api/projectBudgetApi"
 import type { Person } from "@/features/people/api/peopleApi"
 
 interface ImportTasksDialogProps {

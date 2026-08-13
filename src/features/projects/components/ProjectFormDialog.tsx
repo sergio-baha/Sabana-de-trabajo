@@ -41,41 +41,69 @@ import {
 import type { Project, ProjectManager } from "@/features/projects/api/projectsApi"
 import type { Person } from "@/features/people/api/peopleApi"
 
-const schema = z.object({
-  name: z.string().min(1, "El nombre es obligatorio"),
-  color: z.string().min(1),
-  status: z.enum(["activo", "pausado", "finalizado", "archivado"]),
-  category: z.enum(["proyecto", "institucional"]),
-  managerId: z.string().optional(),
-  description: z.string().optional(),
-})
+// Los campos de presupuesto y fecha se manejan como texto y se convierten al
+// enviar: un `<input type="number">` vacío entrega "" y no null, y en zod un
+// coerce directo lo volvería 0 — que en presupuesto significa "cero pesos",
+// muy distinto de "sin presupuesto definido".
+const optionalMoney = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || (!Number.isNaN(Number(v)) && Number(v) >= 0), {
+    message: "Debe ser un número mayor o igual a cero",
+  })
+
+const schema = z
+  .object({
+    name: z.string().min(1, "El nombre es obligatorio"),
+    color: z.string().min(1),
+    status: z.enum(["activo", "pausado", "finalizado", "archivado"]),
+    category: z.enum(["proyecto", "institucional"]),
+    managerId: z.string(),
+    description: z.string(),
+    start_date: z.string(),
+    end_date: z.string(),
+    budget_amount: optionalMoney,
+    budget_hours: optionalMoney,
+  })
+  .refine((v) => !v.start_date || !v.end_date || v.end_date >= v.start_date, {
+    message: "La fecha de fin no puede ser anterior a la de inicio",
+    path: ["end_date"],
+  })
 
 type FormValues = z.infer<typeof schema>
+
+const toNumberOrNull = (value: string) => (value.trim() === "" ? null : Number(value))
+const toDateOrNull = (value: string) => (value.trim() === "" ? null : value)
 
 interface ProjectFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  monthId: string
   project?: Project | null
   people: Person[]
   currentManager?: ProjectManager
   currentMemberIds?: string[]
+  /** Recibe la fila guardada. Distribución lo usa para meter el proyecto
+   *  recién creado en la grilla del mes sin esperar a que tenga horas. */
+  onSaved?: (project: Project) => void
 }
 
+// Único formulario del proyecto: identidad, equipo y presupuesto. Antes había
+// dos (uno "del mes" y otro "del portafolio") porque el proyecto vivía en dos
+// tablas; ahora es una sola fila durable y un solo diálogo.
 export default function ProjectFormDialog({
   open,
   onOpenChange,
-  monthId,
   project,
   people,
   currentManager,
   currentMemberIds = [],
+  onSaved,
 }: ProjectFormDialogProps) {
   const isEdit = Boolean(project)
-  const createProject = useCreateProject(monthId)
-  const updateProject = useUpdateProject(monthId)
-  const setManager = useSetProjectManager(monthId)
-  const setMembers = useSetProjectMembers(monthId)
+  const createProject = useCreateProject()
+  const updateProject = useUpdateProject()
+  const setManager = useSetProjectManager()
+  const setMembers = useSetProjectMembers()
   // Colapsados por defecto al crear (nombre + miembros basta para arrancar);
   // abiertos al editar, para que los valores ya guardados no queden ocultos.
   const [advancedOpen, setAdvancedOpen] = useState(isEdit)
@@ -90,22 +118,29 @@ export default function ProjectFormDialog({
       category: "proyecto",
       managerId: "",
       description: "",
+      start_date: "",
+      end_date: "",
+      budget_amount: "",
+      budget_hours: "",
     },
   })
 
   useEffect(() => {
-    if (open) {
-      form.reset({
-        name: project?.name ?? "",
-        color: project?.color ?? "#3A5BA7",
-        status: project?.status ?? "activo",
-        category: project?.category ?? "proyecto",
-        managerId: currentManager?.person_id ?? "",
-        description: project?.description ?? "",
-      })
-      setMemberIds(currentMemberIds)
-      setAdvancedOpen(Boolean(project))
-    }
+    if (!open) return
+    form.reset({
+      name: project?.name ?? "",
+      color: project?.color ?? "#3A5BA7",
+      status: project?.status ?? "activo",
+      category: project?.category ?? "proyecto",
+      managerId: currentManager?.person_id ?? "",
+      description: project?.description ?? "",
+      start_date: project?.start_date ?? "",
+      end_date: project?.end_date ?? "",
+      budget_amount: project?.budget_amount?.toString() ?? "",
+      budget_hours: project?.budget_hours?.toString() ?? "",
+    })
+    setMemberIds(currentMemberIds)
+    setAdvancedOpen(Boolean(project))
   }, [open, project, currentManager, currentMemberIds, form])
 
   const submitting =
@@ -115,31 +150,38 @@ export default function ProjectFormDialog({
     setMembers.isPending
 
   const onSubmit = async (values: FormValues) => {
-    const { managerId, ...projectValues } = values
-    let projectId = project?.id
-
-    if (isEdit && project) {
-      await updateProject.mutateAsync({ id: project.id, patch: projectValues })
-    } else {
-      const created = await createProject.mutateAsync({ ...projectValues, month_id: monthId })
-      projectId = created.id
+    const patch = {
+      name: values.name,
+      color: values.color,
+      status: values.status,
+      category: values.category,
+      description: values.description || null,
+      start_date: toDateOrNull(values.start_date),
+      end_date: toDateOrNull(values.end_date),
+      budget_amount: toNumberOrNull(values.budget_amount),
+      budget_hours: toNumberOrNull(values.budget_hours),
     }
 
-    if (projectId) {
-      await setManager.mutateAsync({ projectId, personId: managerId || null })
-      await setMembers.mutateAsync({ projectId, personIds: memberIds })
-    }
+    const saved =
+      isEdit && project
+        ? await updateProject.mutateAsync({ id: project.id, patch })
+        : await createProject.mutateAsync(patch)
+
+    await setManager.mutateAsync({ projectId: saved.id, personId: values.managerId || null })
+    await setMembers.mutateAsync({ projectId: saved.id, personIds: memberIds })
+
+    onSaved?.(saved)
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90svh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar proyecto" : "Nuevo proyecto"}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "El color identifica al gerente responsable y pinta la columna en la grilla."
+              ? "El presupuesto es del proyecto completo: las horas de todos los meses suman contra el mismo techo."
               : "Ponle un nombre y suma al equipo que va a trabajar en él. El resto se puede ajustar después."}
           </DialogDescription>
         </DialogHeader>
@@ -168,8 +210,8 @@ export default function ProjectFormDialog({
                 placeholder="Agregar personas del equipo…"
               />
               <p className="text-xs text-muted-foreground">
-                Cualquier persona del mes activo, sin importar su rol. Podrás asignarles tareas de
-                este proyecto desde el tablero.
+                Cualquier persona, sin importar su rol. Podrás asignarles tareas de este proyecto
+                desde el tablero. El equipo acompaña al proyecto mientras dure, no solo un mes.
               </p>
             </div>
 
@@ -268,12 +310,81 @@ export default function ProjectFormDialog({
                       </Select>
                       <p className="text-xs text-muted-foreground">
                         "Tiempo institucional" agrupa capacitaciones, feedback u otros bloques que
-                        no son un proyecto del portafolio — Reportes puede excluirlos.
+                        no son un proyecto — Reportes puede excluirlos.
                       </p>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="start_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Inicio</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="end_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fin</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="budget_amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Presupuesto (COP)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1000"
+                            placeholder="Sin definir"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="budget_hours"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Techo de horas</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="0" step="1" placeholder="Sin definir" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Dejar un presupuesto vacío no es lo mismo que ponerlo en cero: vacío significa
+                  que no hay techo y no se muestra barra de consumo.
+                </p>
+
                 <FormField
                   control={form.control}
                   name="description"

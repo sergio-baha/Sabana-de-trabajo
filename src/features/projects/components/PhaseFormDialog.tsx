@@ -30,9 +30,9 @@ import {
 import {
   useCreatePhase,
   useUpdatePhase,
-} from "@/features/portfolio/hooks/usePortfolioQueries"
-import { PHASE_STATUS_OPTIONS } from "@/features/portfolio/lib/portfolioLabels"
-import type { ProjectPhase } from "@/features/portfolio/api/portfolioApi"
+} from "@/features/projects/hooks/useProjectBudgetQueries"
+import { PHASE_STATUS_OPTIONS } from "@/features/projects/lib/projectLabels"
+import type { ProjectPhase } from "@/features/projects/api/projectBudgetApi"
 
 const optionalNumber = z
   .string()
@@ -63,7 +63,7 @@ const toDateOrNull = (value: string) => (value.trim() === "" ? null : value)
 interface PhaseFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  portfolioProjectId: string
+  projectId: string
   phase?: ProjectPhase | null
   /** Posición que tomará una fase nueva: va al final de la lista. */
   nextPosition: number
@@ -72,13 +72,13 @@ interface PhaseFormDialogProps {
 export default function PhaseFormDialog({
   open,
   onOpenChange,
-  portfolioProjectId,
+  projectId,
   phase,
   nextPosition,
 }: PhaseFormDialogProps) {
   const isEdit = Boolean(phase)
-  const createPhase = useCreatePhase(portfolioProjectId)
-  const updatePhase = useUpdatePhase(portfolioProjectId)
+  const createPhase = useCreatePhase(projectId)
+  const updatePhase = useUpdatePhase(projectId)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -121,7 +121,7 @@ export default function PhaseFormDialog({
     } else {
       await createPhase.mutateAsync({
         ...patch,
-        portfolio_project_id: portfolioProjectId,
+        project_id: projectId,
         position: nextPosition,
       })
     }
