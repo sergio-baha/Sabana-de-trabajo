@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectLabel,
   SelectTrigger,
@@ -269,28 +270,40 @@ export default function ProjectFormDialog({
                               proyectos y casi siempre la respuesta a esta
                               pregunta. Los encabezados solo aparecen cuando
                               hay de los dos grupos. */}
+                          {/* Cada encabezado va dentro de su SelectGroup: un
+                              SelectLabel suelto revienta en Radix, que lo lee
+                              del contexto del grupo. Con un solo grupo no se
+                              pone encabezado — sería ruido. */}
                           <SelectContent>
                             <SelectItem value="none">Sin asignar</SelectItem>
-                            {owners.length > 0 && rest.length > 0 && (
-                              <SelectLabel className="text-eyebrow text-muted-foreground">
-                                Gestores
-                              </SelectLabel>
+                            {owners.length > 0 && (
+                              <SelectGroup>
+                                {rest.length > 0 && (
+                                  <SelectLabel className="text-eyebrow text-muted-foreground">
+                                    Gestores
+                                  </SelectLabel>
+                                )}
+                                {owners.map((person) => (
+                                  <SelectItem key={person.id} value={person.id}>
+                                    {person.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             )}
-                            {owners.map((person) => (
-                              <SelectItem key={person.id} value={person.id}>
-                                {person.name}
-                              </SelectItem>
-                            ))}
-                            {owners.length > 0 && rest.length > 0 && (
-                              <SelectLabel className="text-eyebrow text-muted-foreground">
-                                Equipo
-                              </SelectLabel>
+                            {rest.length > 0 && (
+                              <SelectGroup>
+                                {owners.length > 0 && (
+                                  <SelectLabel className="text-eyebrow text-muted-foreground">
+                                    Equipo
+                                  </SelectLabel>
+                                )}
+                                {rest.map((person) => (
+                                  <SelectItem key={person.id} value={person.id}>
+                                    {person.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             )}
-                            {rest.map((person) => (
-                              <SelectItem key={person.id} value={person.id}>
-                                {person.name}
-                              </SelectItem>
-                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
