@@ -12,6 +12,8 @@ interface TaskCardProps {
   assigneeNames: string[]
   /** Nombre del mes, solo en la vista que mezcla varios. */
   monthLabel?: string | null
+  /** La entregaron y me toca revisarla: se pinta en mi columna "Por hacer". */
+  awaitingMyReview?: boolean
   draggable: boolean
   isDragging: boolean
   onOpen: () => void
@@ -38,6 +40,7 @@ export default function TaskCard({
   projectColor,
   assigneeNames,
   monthLabel,
+  awaitingMyReview = false,
   draggable,
   isDragging,
   onOpen,
@@ -75,9 +78,17 @@ export default function TaskCard({
         // que estos dos destaquen de verdad.
         task.status === "completada" &&
           "border-l-4 border-l-success bg-success-muted/25",
-        task.status === "bloqueada" && "border-l-4 border-l-danger bg-danger-muted/25"
+        task.status === "bloqueada" && "border-l-4 border-l-danger bg-danger-muted/25",
+        // Entregada y esperando MI revisión: filo naranja, para que no se
+        // confunda con una tarea propia dentro de la misma columna.
+        awaitingMyReview && "border-l-4 border-l-primary bg-accent/40"
       )}
     >
+      {awaitingMyReview && (
+        <Badge className="w-fit border-transparent bg-primary text-primary-foreground">
+          Por revisar
+        </Badge>
+      )}
       <div className="flex items-start gap-2">
         <span
           className={cn("mt-1.5 size-2 shrink-0 rounded-full", WORK_ITEM_DOT[task.work_item_type])}

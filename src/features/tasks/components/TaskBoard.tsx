@@ -17,6 +17,13 @@ interface TaskBoardProps {
   assigneesByTask: Map<string, string[]>
   /** Nombres de mes por id. Presente solo en la vista sin filtro de mes. */
   monthNameById?: Map<string, string>
+  /**
+   * Tareas entregadas que ESTE usuario tiene que revisar (es gerente del
+   * proyecto). Se pintan en "Por hacer" en vez de "En revisión": para quien
+   * revisa, revisar es su pendiente. Quien la entregó la sigue viendo en
+   * "En revisión", que es lo que le pasa a él: está esperando.
+   */
+  awaitingMyReview?: Set<string>
   canWrite: boolean
   onOpenTask: (task: Task) => void
   onNewTask: (status: TaskStatus) => void
@@ -36,6 +43,7 @@ export default function TaskBoard({
   projects,
   assigneesByTask,
   monthNameById,
+  awaitingMyReview,
   canWrite,
   onOpenTask,
   onNewTask,
@@ -50,23 +58,39 @@ export default function TaskBoard({
     return map
   }, [projects])
 
+  // En qué columna se pinta cada tarjeta PARA QUIEN MIRA: una entrega que me
+  // toca revisar va a mi "Por hacer". Es lo único que cambia por usuario —
+  // el estado en la base sigue siendo uno solo ('en_revision').
   const byColumn = useMemo(() => {
     const map = new Map<TaskStatus, Task[]>()
     for (const status of BOARD_COLUMNS) map.set(status, [])
-    for (const task of tasks) map.get(task.status)?.push(task)
+    for (const task of tasks) {
+      const column = awaitingMyReview?.has(task.id) ? "pendiente" : task.status
+      map.get(column)?.push(task)
+    }
     for (const list of map.values()) list.sort((a, b) => a.board_order - b.board_order)
     return map
-  }, [tasks])
+  }, [tasks, awaitingMyReview])
 
   const endDrag = () => {
     setDraggingId(null)
     setDropTarget(null)
   }
 
-  const handleDrop = (status: TaskStatus) => {
+  const handleDrop = (column: TaskStatus) => {
     if (!draggingId) return
     const dragged = tasks.find((t) => t.id === draggingId)
-    const beforeId = dropTarget?.status === status ? dropTarget.beforeId : null
+    const beforeId = dropTarget?.status === column ? dropTarget.beforeId : null
+
+    // Una tarjeta que estoy revisando vive en "Por hacer" pero su estado es
+    // 'en_revision'. Dejarla ahí (o en "En revisión") no la mueve: solo
+    // sacarla de esa bandeja significa algo — a "Completada" es aprobar, a
+    // cualquier otra columna es devolverla a quien la entregó.
+    const isReviewCard = awaitingMyReview?.has(draggingId) ?? false
+    const status: TaskStatus =
+      isReviewCard && (column === "pendiente" || column === "en_revision")
+        ? "en_revision"
+        : column
 
     // Soltar la tarjeta exactamente donde ya estaba no genera un UPDATE.
     if (dragged && dragged.status === status && beforeId === dragged.id) {
@@ -74,7 +98,7 @@ export default function TaskBoard({
       return
     }
 
-    const boardOrder = orderForDrop(tasks, status, draggingId, beforeId)
+    const boardOrder = orderForDrop(tasks, column, draggingId, beforeId)
     moveTask.mutate({ id: draggingId, status, boardOrder })
     endDrag()
   }
@@ -142,6 +166,7 @@ export default function TaskBoard({
                       projectColor={project?.color ?? "var(--muted-foreground)"}
                       assigneeNames={assigneesByTask.get(task.id) ?? []}
                       monthLabel={monthNameById?.get(task.month_id)}
+                      awaitingMyReview={awaitingMyReview?.has(task.id)}
                       draggable={canWrite}
                       isDragging={draggingId === task.id}
                       onOpen={() => onOpenTask(task)}

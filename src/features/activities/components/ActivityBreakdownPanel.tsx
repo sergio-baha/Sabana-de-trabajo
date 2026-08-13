@@ -127,7 +127,9 @@ export default function ActivityBreakdownPanel({
       <p className="text-sm text-muted-foreground">
         En qué se van las horas de esta celda. Al desglosarla, las horas de la grilla pasan a ser
         la suma de estas actividades:{" "}
-        <span className="font-medium text-foreground">{total} h</span>.
+        <span className="font-medium text-foreground">{total} h</span>. Cada actividad le llega a
+        esta persona como una tarea en su tablero y en su cronograma — ponle fecha para que
+        aparezca ubicada en el tiempo.
       </p>
 
       <ScrollArea className="max-h-64">
@@ -135,6 +137,7 @@ export default function ActivityBreakdownPanel({
           {activities.length === 0 && (
             <p className="text-sm text-muted-foreground">
               Sin actividades todavía — las horas de esta celda se editan directo en la grilla.
+              Agrega una para encargarle un trabajo concreto.
             </p>
           )}
           {activities.map((activity) => (

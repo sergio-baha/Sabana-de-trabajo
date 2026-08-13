@@ -247,6 +247,16 @@ Vive en `src/features/tasks/` y se apoya en la tabla `tasks`.
 En revisión → Bloqueada → Completada. Las tarjetas se arrastran entre
 columnas y dentro de una misma columna; una línea marca dónde se insertará.
 
+**La columna depende de quién mira.** Una tarea entregada (`en_revision`) se
+pinta en la columna **Por hacer del gerente del proyecto**, con el distintivo
+"Por revisar": para quien revisa, revisar es su pendiente. Quien la entregó la
+sigue viendo en "En revisión" — que es lo que le pasa a él, está esperando. El
+estado en la base es uno solo; lo único que cambia por usuario es en qué
+columna se dibuja (`awaitingMyReview` en `TareasPage`). Al arrastrarla, el
+tablero traduce: sacarla a "Completada" es aprobar, a cualquier otra columna es
+devolverla (y suma `returned_count`); dejarla en "Por hacer" o "En revisión" no
+la mueve.
+
 **Backlog** — la misma información como lista ordenada por prioridad, para
 planificar sin arrastrar. El estado se cambia desde el select de cada fila,
 lo que equivale a mover la tarjeta de columna (y la manda al final de la
@@ -254,6 +264,24 @@ columna destino, que es donde se espera encontrarla).
 
 Ambas comparten la barra de filtros: búsqueda por texto (título, descripción
 o etiqueta), proyecto, persona y tipo de work item.
+
+### 6.2.1 De actividad de la sábana a tarea
+
+Las actividades que Gestor/Administrador desglosan en una celda de
+Distribución **son** el encargo de trabajo: al crearlas, un trigger
+(`activity_syncs_task`) genera la tarea equivalente, asignada a la persona de
+esa celda, con la descripción como título, las horas como `estimated_hours` y
+la fecha de la actividad como `start_date`/`due_date` — así aparece en su
+tablero y en su cronograma sin que nadie la vuelva a escribir. Una actividad
+sin fecha genera la tarea igual; el Gantt la lista en su bloque "sin fechas".
+
+La actividad manda y la tarea es su cara operativa: editar la actividad
+sincroniza título, horas y fecha; borrarla borra la tarea **solo si nadie la
+trabajó** (sigue en `pendiente` y sin comentarios) — si ya se movió, la tarea
+sobrevive con `activities.task_id` en null, para no borrarle el trabajo a
+nadie. El estado NO se sincroniza al revés: mover la tarjeta no cambia las
+horas repartidas. Las horas del mes son la planeación; el tablero es la
+ejecución.
 
 ### 6.3 Decisiones de implementación
 
