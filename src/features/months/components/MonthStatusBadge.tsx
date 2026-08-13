@@ -13,6 +13,19 @@ const CLASSES: Record<MonthStatus, string> = {
   archivado: "border-transparent bg-muted text-muted-foreground",
 }
 
-export default function MonthStatusBadge({ status }: { status: MonthStatus }) {
+interface MonthStatusBadgeProps {
+  status: MonthStatus
+  /** `months.released_at`. Sin liberar, el mes solo lo ve quien lo prepara. */
+  releasedAt?: string | null
+}
+
+// "En preparación" gana al estado: mientras el mes no esté liberado, lo único
+// que importa saber de un vistazo es que el equipo todavía no lo ve.
+export default function MonthStatusBadge({ status, releasedAt }: MonthStatusBadgeProps) {
+  if (releasedAt === null) {
+    return (
+      <Badge className="border-transparent bg-accent text-accent-foreground">En preparación</Badge>
+    )
+  }
   return <Badge className={CLASSES[status]}>{LABELS[status]}</Badge>
 }

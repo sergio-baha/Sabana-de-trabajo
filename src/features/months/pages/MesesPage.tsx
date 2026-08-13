@@ -1,5 +1,15 @@
 import { useState } from "react"
-import { CalendarRange, Copy, History, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import {
+  CalendarRange,
+  Copy,
+  EyeOff,
+  History,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Send,
+  Trash2,
+} from "lucide-react"
 import PageHeader from "@/components/shared/PageHeader"
 import { Button } from "@/components/ui/button"
 import {
@@ -41,6 +51,7 @@ export default function MesesPage() {
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [duplicateSourceId, setDuplicateSourceId] = useState<string | undefined>()
   const [monthToDelete, setMonthToDelete] = useState<Month | null>(null)
+  const [monthToRelease, setMonthToRelease] = useState<Month | null>(null)
   const [snapshotsMonth, setSnapshotsMonth] = useState<Month | null>(null)
 
   // Un solo permiso para todo el módulo: administrar meses es del
@@ -149,7 +160,7 @@ export default function MesesPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <MonthStatusBadge status={month.status} />
+                      <MonthStatusBadge status={month.status} releasedAt={month.released_at} />
                     </TableCell>
                     <TableCell>{month.default_hours} h</TableCell>
                     <TableCell>
@@ -163,6 +174,24 @@ export default function MesesPage() {
                           <DropdownMenuItem onClick={() => setActiveMonthId(month.id)}>
                             Marcar como activo
                           </DropdownMenuItem>
+                          {/* Liberar es el acto que le muestra el mes al
+                              equipo: mientras no ocurra, los analistas no ven
+                              ni el mes ni sus tareas. Es manual a propósito —
+                              el Administrador decide cuándo la sábana está
+                              lista para trabajarse. */}
+                          {canWrite && (
+                            <DropdownMenuItem onClick={() => setMonthToRelease(month)}>
+                              {month.released_at ? (
+                                <>
+                                  <EyeOff /> Volver a preparación
+                                </>
+                              ) : (
+                                <>
+                                  <Send /> Liberar al equipo
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          )}
                           {canWrite && (
                             <DropdownMenuItem onClick={() => openDuplicate(month.id)}>
                               <Copy /> Duplicar
@@ -232,6 +261,33 @@ export default function MesesPage() {
           if (activeMonthId === monthToDelete.id) setActiveMonthId(null)
         }}
       />
+      <ConfirmDialog
+        open={Boolean(monthToRelease)}
+        onOpenChange={(open) => !open && setMonthToRelease(null)}
+        destructive={Boolean(monthToRelease?.released_at)}
+        confirmLabel={monthToRelease?.released_at ? "Volver a preparación" : "Liberar"}
+        title={
+          monthToRelease?.released_at
+            ? `Volver "${monthToRelease?.name}" a preparación`
+            : `Liberar "${monthToRelease?.name}" al equipo`
+        }
+        description={
+          monthToRelease?.released_at
+            ? "El mes deja de verse para los analistas: no verán sus tareas ni sus horas hasta que lo vuelvas a liberar. El trabajo ya hecho no se pierde."
+            : "Los analistas verán este mes, sus tareas y sus horas. Hazlo cuando la distribución y las actividades estén cargadas: es lo que le da luz verde al equipo."
+        }
+        onConfirm={async () => {
+          if (!monthToRelease) return
+          await updateMonth.mutateAsync({
+            id: monthToRelease.id,
+            // El servidor sella la fecha y el autor (trigger month_seal_release);
+            // acá solo importa si va con marca o sin marca.
+            patch: { released_at: monthToRelease.released_at ? null : new Date().toISOString() },
+          })
+          setMonthToRelease(null)
+        }}
+      />
+
       {snapshotsMonth && (
         <SnapshotsDialog
           open

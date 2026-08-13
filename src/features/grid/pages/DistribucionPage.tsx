@@ -6,6 +6,7 @@ import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
   Eraser,
+  EyeOff,
   Grid3x3,
   Lock,
   MoreHorizontal,
@@ -575,6 +576,21 @@ export default function DistribucionPage() {
           </div>
         }
       />
+
+      {/* Mientras el mes no esté liberado, el equipo no lo ve: es la ventana
+          para armar la sábana sin que nadie trabaje sobre algo que va a
+          cambiar. Solo lo ven quienes lo preparan (Gestor/Administrador), que
+          son los únicos que pueden estar aquí con el mes sin liberar. */}
+      {activeMonth?.released_at === null && (
+        <div className="animate-fade-in flex items-start gap-3 rounded-xl border border-border bg-accent/60 p-3.5 text-sm">
+          <EyeOff className="mt-0.5 size-4 shrink-0 text-primary" />
+          <span>
+            <strong>{activeMonth?.name}</strong> está en preparación: el equipo todavía no lo ve.
+            Reparte las horas y carga las actividades; cuando esté listo, el administrador lo
+            libera desde Meses.
+          </span>
+        </div>
+      )}
 
       {monthLocked && !isAdmin(profile?.role) && (
         <div className="animate-fade-in flex items-start gap-3 rounded-xl border border-border bg-muted/60 p-3.5 text-sm">

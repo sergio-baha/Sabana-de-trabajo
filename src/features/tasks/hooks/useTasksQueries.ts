@@ -8,6 +8,7 @@ import {
   listTaskAssignees,
   moveTask,
   setTaskAssignees,
+  submitTaskForReview,
   updateTask,
   listTasks,
   type Task,
@@ -128,6 +129,30 @@ interface MoveVars {
   id: string
   status: TaskStatus
   boardOrder: number
+}
+
+interface SubmitVars {
+  taskId: string
+  hours: number | null
+  note: string | null
+}
+
+// Entrega a revisión con reporte de horas reales. Sin optimismo: el servidor
+// puede rechazarla (falta el reporte, no es tu tarea) y mostrar la tarjeta ya
+// entregada para después devolverla sería peor que esperar el ida y vuelta.
+export function useSubmitTaskForReview() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ taskId, hours, note }: SubmitVars) =>
+      submitTaskForReview(taskId, hours, note),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tasksKeys.root })
+      toast.success("Tarea entregada a revisión")
+    },
+    onError: (error) =>
+      toast.error("No se pudo entregar la tarea", { description: error.message }),
+  })
 }
 
 // Arrastrar una tarjeta tiene que sentirse instantáneo: la tarjeta se pinta

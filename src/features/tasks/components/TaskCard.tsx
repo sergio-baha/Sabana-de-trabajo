@@ -128,8 +128,31 @@ export default function TaskCard({
           <Badge variant="outline" className="px-1.5 py-0 text-[11px]">
             P{task.priority}
           </Badge>
+          {/* Planeadas vs reales: en cuanto hay reporte, la comparación se
+              lee en la tarjeta, que es donde se mira el trabajo. */}
           {task.estimated_hours !== null && (
-            <span className="text-[11px] text-muted-foreground">{task.estimated_hours} h</span>
+            <span className="text-[11px] text-muted-foreground">
+              {task.estimated_hours} h
+              {(task.completed_hours ?? 0) > 0 && (
+                <span
+                  className={cn(
+                    "font-medium",
+                    (task.completed_hours ?? 0) > task.estimated_hours
+                      ? "text-danger"
+                      : "text-success"
+                  )}
+                  title="Horas reales reportadas"
+                >
+                  {" "}
+                  · {task.completed_hours} reales
+                </span>
+              )}
+            </span>
+          )}
+          {task.estimated_hours === null && (task.completed_hours ?? 0) > 0 && (
+            <span className="text-[11px] text-muted-foreground" title="Horas reales reportadas">
+              {task.completed_hours} h reales
+            </span>
           )}
           {task.due_date && (
             <span

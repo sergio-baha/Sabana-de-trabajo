@@ -390,6 +390,8 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          released_at: string | null
+          released_by: string | null
           source_month_id: string | null
           status: Database["public"]["Enums"]["month_status"]
           updated_at: string
@@ -402,6 +404,8 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          released_at?: string | null
+          released_by?: string | null
           source_month_id?: string | null
           status?: Database["public"]["Enums"]["month_status"]
           updated_at?: string
@@ -414,6 +418,8 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          released_at?: string | null
+          released_by?: string | null
           source_month_id?: string | null
           status?: Database["public"]["Enums"]["month_status"]
           updated_at?: string
@@ -1536,6 +1542,12 @@ export type Database = {
       seed_month_people: {
         Args: { p_month_id: string }
         Returns: number
+      }
+      is_month_released: { Args: { p_month_id: string }; Returns: boolean }
+      task_requires_time_report: { Args: { p_task_id: string }; Returns: boolean }
+      submit_task_for_review: {
+        Args: { p_hours?: number; p_note?: string; p_task_id: string }
+        Returns: undefined
       }
       seed_default_project_phases: {
         Args: { p_portfolio_id: string }

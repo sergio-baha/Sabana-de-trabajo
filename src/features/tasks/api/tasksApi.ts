@@ -184,3 +184,21 @@ export async function moveTask(
 ): Promise<Task> {
   return updateTask(id, { status, board_order: boardOrder })
 }
+
+// Entregar a revisión es reportar las horas reales Y cambiar el estado, en un
+// solo acto: si fueran dos pasos, una entrega podría quedar sin su reporte. Lo
+// resuelve el RPC `submit_task_for_review` — el trigger del circuito rechaza
+// un `en_revision` que no venga por ahí cuando el reporte es obligatorio (ver
+// supabase/migrations/*_horas_reales_al_entregar.sql).
+export async function submitTaskForReview(
+  taskId: string,
+  hours: number | null,
+  note: string | null
+): Promise<void> {
+  const { error } = await supabase.rpc("submit_task_for_review", {
+    p_task_id: taskId,
+    p_hours: hours ?? undefined,
+    p_note: note ?? undefined,
+  })
+  if (error) throw error
+}

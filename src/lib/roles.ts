@@ -56,6 +56,16 @@ export const canCreateProjects = (role: AppRole | undefined | null) =>
 export const canLogOwnTime = (role: AppRole | undefined | null) =>
   isGestorOrAdmin(role) || isAnalistaTecnologia(role)
 
+// Entregar a revisión exige decir las horas reales. Solo se le pide a quien
+// recibió el encargo: un Analista (a secas) sobre una tarea que no creó él.
+// Espejo de `task_requires_time_report()` en la base — allí es la barrera, acá
+// es para saber si hay que pedir el dato en pantalla.
+export const requiresTimeReport = (
+  role: AppRole | undefined | null,
+  taskCreatedBy: string | null | undefined,
+  profileId: string | undefined
+) => role === "analista" && Boolean(profileId) && taskCreatedBy !== profileId
+
 export const roleLabel: Record<AppRole, string> = {
   administrador: "Administrador",
   gestor: "Gestor",

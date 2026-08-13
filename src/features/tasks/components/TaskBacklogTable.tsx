@@ -46,6 +46,8 @@ interface TaskBacklogTableProps {
   assigneesByTask: Map<string, string[]>
   /** Nombres de mes por id. Presente solo en la vista sin filtro de mes. */
   monthNameById?: Map<string, string>
+  /** Ver TaskBoard: si maneja la entrega, la fila no cambia el estado. */
+  onRequestReview?: (task: Task) => boolean
   canWrite: boolean
   onOpenTask: (task: Task) => void
   onDeleteTask: (task: Task) => void
@@ -60,6 +62,7 @@ export default function TaskBacklogTable({
   projects,
   assigneesByTask,
   monthNameById,
+  onRequestReview,
   canWrite,
   onOpenTask,
   onDeleteTask,
@@ -82,6 +85,8 @@ export default function TaskBacklogTable({
 
   const changeStatus = (task: Task, status: TaskStatus) => {
     if (status === task.status) return
+    // Entregar pasa por el diálogo de horas reales — igual que en el tablero.
+    if (status === "en_revision" && onRequestReview?.(task)) return
     // Cambiar de estado desde la lista manda la tarjeta al final de su nueva
     // columna del tablero, que es donde el usuario esperaría encontrarla.
     moveTask.mutate({ id: task.id, status, boardOrder: nextBoardOrder(allTasks, status) })

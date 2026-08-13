@@ -24,6 +24,12 @@ interface TaskBoardProps {
    * "En revisión", que es lo que le pasa a él: está esperando.
    */
   awaitingMyReview?: Set<string>
+  /**
+   * Entregar a revisión no es un movimiento más: hay que reportar las horas
+   * reales. Si esto devuelve `true`, el tablero no mueve la tarjeta — abre el
+   * diálogo de entrega y el estado lo cambia el RPC.
+   */
+  onRequestReview?: (task: Task) => boolean
   canWrite: boolean
   onOpenTask: (task: Task) => void
   onNewTask: (status: TaskStatus) => void
@@ -44,6 +50,7 @@ export default function TaskBoard({
   assigneesByTask,
   monthNameById,
   awaitingMyReview,
+  onRequestReview,
   canWrite,
   onOpenTask,
   onNewTask,
@@ -96,6 +103,14 @@ export default function TaskBoard({
     if (dragged && dragged.status === status && beforeId === dragged.id) {
       endDrag()
       return
+    }
+
+    // Entregar pasa por el diálogo de horas reales, no por el UPDATE directo.
+    if (dragged && status === "en_revision" && dragged.status !== "en_revision") {
+      if (onRequestReview?.(dragged)) {
+        endDrag()
+        return
+      }
     }
 
     const boardOrder = orderForDrop(tasks, column, draggingId, beforeId)

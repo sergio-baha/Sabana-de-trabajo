@@ -175,6 +175,17 @@ Es el único módulo del ciclo de vida del mes y es exclusivo del
 Administrador: los demás roles **eligen** el mes en el selector del
 encabezado y trabajan dentro de él, pero no lo crean ni lo cierran.
 
+**Liberación.** Un mes nace *en preparación* (`months.released_at` en null):
+lo ven el Administrador y los Gestores, que reparten las horas y cargan las
+actividades, pero **ningún analista** — ni el mes en su selector, ni sus
+tareas, ni sus horas (lo aplican las políticas de `months`, `tasks`,
+`activities` y `allocations` vía `is_month_released`). Cuando la sábana está
+lista, el Administrador la **libera al equipo** desde el menú del mes. Es
+manual a propósito: es la luz verde. Se puede volver a preparación si se
+liberó antes de tiempo. La fecha y el autor los sella el servidor
+(`month_seal_release`); los meses que ya existían quedaron liberados en la
+migración, para no esconderle a nadie su trabajo en curso.
+
 ### 5.6 Proyectos (`/proyectos`)
 
 CRUD del portafolio del mes: nombre, color (identifica la columna en la
@@ -282,6 +293,27 @@ sobrevive con `activities.task_id` en null, para no borrarle el trabajo a
 nadie. El estado NO se sincroniza al revés: mover la tarjeta no cambia las
 horas repartidas. Las horas del mes son la planeación; el tablero es la
 ejecución.
+
+### 6.2.2 Entregar exige horas reales
+
+La sábana reparte horas **planeadas**; sin el dato real no hay contra qué
+compararlas. Se piden en la entrega, que es cuando la persona acaba el trabajo
+y lo tiene fresco: mover una tarjeta a *En revisión* abre el diálogo de
+entrega, y el cambio de estado lo hace el RPC `submit_task_for_review` junto
+con el reporte — un solo acto, para que ninguna entrega quede sin su número.
+El trigger del circuito rechaza un `en_revision` que llegue por otra vía
+cuando el reporte es obligatorio.
+
+Cada entrega deja su fila en `task_time_reports` (`round` 1 = entrega inicial,
+2+ = cada reproceso tras una devolución), así que un trabajo devuelto reporta
+**las horas de esa vuelta** y se ve cuánto costó de más el reproceso, en vez de
+pisar un único número. `tasks.completed_hours` guarda el acumulado y es lo que
+el tablero y el backlog muestran junto a las planeadas.
+
+**Quién reporta:** el Analista (a secas) sobre tareas que **no creó él**
+(`task_requires_time_report`). Lo que uno se pone a sí mismo no es un encargo
+que haya que medir contra un plan; el Analista de Tecnología queda fuera, igual
+que del circuito de revisión, y Gestor/Administrador cierran directo.
 
 ### 6.3 Decisiones de implementación
 

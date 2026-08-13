@@ -18,6 +18,7 @@ import PageHeader from "@/components/shared/PageHeader"
 import TaskBoard from "@/features/tasks/components/TaskBoard"
 import TaskBacklogTable from "@/features/tasks/components/TaskBacklogTable"
 import TaskFormDialog from "@/features/tasks/components/TaskFormDialog"
+import SubmitReviewDialog from "@/features/tasks/components/SubmitReviewDialog"
 import { useDeleteTask, useTaskAssignees, useTasks } from "@/features/tasks/hooks/useTasksQueries"
 import { useRealtimeTasks } from "@/features/tasks/hooks/useRealtimeTasks"
 import { STATUS_LABELS, WORK_ITEM_OPTIONS } from "@/features/tasks/lib/taskLabels"
@@ -29,7 +30,12 @@ import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canManageTasks, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
+import {
+  canManageTasks,
+  isAnalistaTecnologia,
+  requiresTimeReport,
+  writesOwnWorkOnly,
+} from "@/lib/roles"
 import type { TaskStatus } from "@/types/database.types"
 
 const ALL = "all"
@@ -112,6 +118,18 @@ export default function TareasPage() {
       )
     })
   }, [tasks, search, projectFilter, personFilter, typeFilter, assigneeIdsByTask])
+
+  // Entregar a revisión abre el diálogo de horas reales en vez de mover la
+  // tarjeta. Devuelve `true` cuando se hace cargo, para que el tablero (o la
+  // fila del backlog) no dispare además el UPDATE de estado.
+  const [taskToSubmit, setTaskToSubmit] = useState<Task | null>(null)
+  const handleRequestReview = (task: Task) => {
+    // Un gestor que mueve algo a revisión no está entregando trabajo propio:
+    // que la tarjeta se mueva y ya.
+    if (!writesOwn) return false
+    setTaskToSubmit(task)
+    return true
+  }
 
   // Lo que ESTE usuario tiene que revisar: entregas de los proyectos que
   // gerencia. El tablero las pinta en su columna "Por hacer" — para quien
@@ -275,6 +293,7 @@ export default function TareasPage() {
               assigneesByTask={assigneesByTask}
               monthNameById={monthNameById}
               awaitingMyReview={awaitingMyReview}
+              onRequestReview={handleRequestReview}
               canWrite={canWrite}
               onOpenTask={openTask}
               onNewTask={openNewTask}
@@ -289,6 +308,7 @@ export default function TareasPage() {
                   projects={projects ?? []}
                   assigneesByTask={assigneesByTask}
                   monthNameById={monthNameById}
+                  onRequestReview={handleRequestReview}
                   canWrite={canWrite}
                   onOpenTask={openTask}
                   onDeleteTask={setTaskToDelete}
@@ -299,6 +319,11 @@ export default function TareasPage() {
         </Tabs>
       )}
 
+      <SubmitReviewDialog
+        task={taskToSubmit}
+        onOpenChange={(open) => !open && setTaskToSubmit(null)}
+        requiresHours={requiresTimeReport(profile?.role, taskToSubmit?.created_by, profile?.id)}
+      />
       <TaskFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
