@@ -48,6 +48,7 @@ import {
   PHASE_STATUS_LABEL,
 } from "@/features/projects/lib/projectLabels"
 import TaskBacklogTable from "@/features/tasks/components/TaskBacklogTable"
+import { useTaskReviewFlow } from "@/features/tasks/hooks/useTaskReviewFlow"
 import TaskFormDialog from "@/features/tasks/components/TaskFormDialog"
 import ImportTasksDialog from "@/features/tasks/components/ImportTasksDialog"
 import ProjectFormDialog from "@/features/projects/components/ProjectFormDialog"
@@ -119,6 +120,10 @@ export default function ProyectoDetallePage() {
     )
     return (people ?? []).filter((p) => ids.has(p.id))
   }, [members, people, projectId])
+
+  // Mismo circuito que en Tareas: entregar pide horas reales y devolver pide
+  // el motivo, se mueva la tarjeta desde donde se mueva.
+  const { handleRequestReview, handleRequestReturn, dialogs: reviewDialogs } = useTaskReviewFlow()
 
   const reorderPhases = useReorderPhases(projectId ?? "")
   const deletePhase = useDeletePhase(projectId ?? "")
@@ -509,6 +514,8 @@ export default function ProyectoDetallePage() {
                         allTasks={tasks ?? []}
                         projects={projects ?? []}
                         assigneesByTask={assigneesByTask}
+                        onRequestReview={handleRequestReview}
+                        onRequestReturn={handleRequestReturn}
                         canWrite={canManageTeamAndTasks}
                         onOpenTask={openTask}
                         onDeleteTask={setTaskToDelete}
@@ -549,6 +556,8 @@ export default function ProyectoDetallePage() {
                     allTasks={tasks ?? []}
                     projects={projects ?? []}
                     assigneesByTask={assigneesByTask}
+                    onRequestReview={handleRequestReview}
+                    onRequestReturn={handleRequestReturn}
                     canWrite={canManageTeamAndTasks}
                     onOpenTask={openTask}
                     onDeleteTask={setTaskToDelete}
@@ -687,6 +696,8 @@ export default function ProyectoDetallePage() {
           />
         </>
       )}
+
+      {reviewDialogs}
 
       <ConfirmDialog
         open={Boolean(phaseToDelete)}

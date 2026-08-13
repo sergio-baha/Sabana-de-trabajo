@@ -190,6 +190,23 @@ export async function moveTask(
 // resuelve el RPC `submit_task_for_review` — el trigger del circuito rechaza
 // un `en_revision` que no venga por ahí cuando el reporte es obligatorio (ver
 // supabase/migrations/*_horas_reales_al_entregar.sql).
+// Devolver una entrega es explicar qué corregir Y cambiar el estado. Mismo
+// criterio que la entrega: un solo acto, para que ninguna devolución quede sin
+// motivo. El comentario entra al hilo de la tarea, que es donde el analista lo
+// va a buscar.
+export async function returnTaskForRework(
+  taskId: string,
+  status: TaskStatus,
+  comment: string
+): Promise<void> {
+  const { error } = await supabase.rpc("return_task_for_rework", {
+    p_task_id: taskId,
+    p_status: status,
+    p_comment: comment,
+  })
+  if (error) throw error
+}
+
 export async function submitTaskForReview(
   taskId: string,
   hours: number | null,

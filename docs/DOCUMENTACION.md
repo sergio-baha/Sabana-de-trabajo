@@ -315,6 +315,36 @@ el tablero y el backlog muestran junto a las planeadas.
 que haya que medir contra un plan; el Analista de Tecnología queda fuera, igual
 que del circuito de revisión, y Gestor/Administrador cierran directo.
 
+### 6.2.3 Devolver exige motivo
+
+Sacar una entrega de revisión sin cerrarla es **devolverla**, y eso pasa por el
+RPC `return_task_for_rework`: el motivo entra como comentario de la tarea y el
+estado cambia en el mismo acto (el trigger rechaza la devolución que llegue por
+otra vía). Sin explicación, el analista adivina — y encima el reproceso se le
+va a medir en horas.
+
+Excepción: que **quien entregó** retire su propia entrega no es una devolución
+y no pide motivo; no hay a quién explicarle nada.
+
+### 6.2.4 Quién ve qué tarea
+
+`tasks_select_scoped` recorta por rol, no por mes:
+
+| Rol | Ve |
+|---|---|
+| Administrador | todo |
+| Gestor | las tareas de los proyectos que **gerencia**, más las que creó y las que tiene asignadas |
+| Analista | solo lo asignado a él y lo que él creó, y solo si el mes está liberado |
+
+Ser **miembro** de un proyecto ya no abre el trabajo ajeno: la pertenencia
+sirve para asignar, no para mirar.
+
+Dentro de eso, el tablero del Gestor abre en **"Mis tareas"** (lo que creó, lo
+que tiene asignado y lo que le entregaron para revisar). "Todo lo de mis
+proyectos" está a un clic, pero no es el punto de partida: el tablero es para
+trabajar, no para supervisar. El Analista no ve ese filtro — la base ya solo le
+manda lo suyo.
+
 ### 6.3 Decisiones de implementación
 
 - **Arrastre nativo HTML5** (`dragstart`/`dragover`/`drop`) en vez de una

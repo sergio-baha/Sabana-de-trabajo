@@ -30,6 +30,11 @@ interface TaskBoardProps {
    * diálogo de entrega y el estado lo cambia el RPC.
    */
   onRequestReview?: (task: Task) => boolean
+  /**
+   * Devolver una entrega tampoco es un movimiento más: hay que decir qué
+   * corregir. Si devuelve `true`, el tablero deja que el diálogo lo resuelva.
+   */
+  onRequestReturn?: (task: Task, status: TaskStatus) => boolean
   canWrite: boolean
   onOpenTask: (task: Task) => void
   onNewTask: (status: TaskStatus) => void
@@ -51,6 +56,7 @@ export default function TaskBoard({
   monthNameById,
   awaitingMyReview,
   onRequestReview,
+  onRequestReturn,
   canWrite,
   onOpenTask,
   onNewTask,
@@ -108,6 +114,20 @@ export default function TaskBoard({
     // Entregar pasa por el diálogo de horas reales, no por el UPDATE directo.
     if (dragged && status === "en_revision" && dragged.status !== "en_revision") {
       if (onRequestReview?.(dragged)) {
+        endDrag()
+        return
+      }
+    }
+
+    // Sacar una entrega de revisión sin cerrarla es devolverla: pasa por el
+    // diálogo del motivo.
+    if (
+      dragged &&
+      dragged.status === "en_revision" &&
+      status !== "en_revision" &&
+      status !== "completada"
+    ) {
+      if (onRequestReturn?.(dragged, status)) {
         endDrag()
         return
       }

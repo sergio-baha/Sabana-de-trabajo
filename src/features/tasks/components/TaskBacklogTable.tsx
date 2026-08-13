@@ -48,6 +48,8 @@ interface TaskBacklogTableProps {
   monthNameById?: Map<string, string>
   /** Ver TaskBoard: si maneja la entrega, la fila no cambia el estado. */
   onRequestReview?: (task: Task) => boolean
+  /** Idem para la devolución, que exige explicar qué corregir. */
+  onRequestReturn?: (task: Task, status: TaskStatus) => boolean
   canWrite: boolean
   onOpenTask: (task: Task) => void
   onDeleteTask: (task: Task) => void
@@ -63,6 +65,7 @@ export default function TaskBacklogTable({
   assigneesByTask,
   monthNameById,
   onRequestReview,
+  onRequestReturn,
   canWrite,
   onOpenTask,
   onDeleteTask,
@@ -87,6 +90,9 @@ export default function TaskBacklogTable({
     if (status === task.status) return
     // Entregar pasa por el diálogo de horas reales — igual que en el tablero.
     if (status === "en_revision" && onRequestReview?.(task)) return
+    // Sacarla de revisión sin cerrarla es devolverla: pide el motivo.
+    if (task.status === "en_revision" && status !== "completada" && onRequestReturn?.(task, status))
+      return
     // Cambiar de estado desde la lista manda la tarjeta al final de su nueva
     // columna del tablero, que es donde el usuario esperaría encontrarla.
     moveTask.mutate({ id: task.id, status, boardOrder: nextBoardOrder(allTasks, status) })

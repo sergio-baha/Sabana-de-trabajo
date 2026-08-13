@@ -1549,6 +1549,15 @@ export type Database = {
         Args: { p_hours?: number; p_note?: string; p_task_id: string }
         Returns: undefined
       }
+      is_project_manager: { Args: { p_project_id: string }; Returns: boolean }
+      return_task_for_rework: {
+        Args: {
+          p_comment: string
+          p_status: Database["public"]["Enums"]["task_status"]
+          p_task_id: string
+        }
+        Returns: undefined
+      }
       seed_default_project_phases: {
         Args: { p_portfolio_id: string }
         Returns: undefined

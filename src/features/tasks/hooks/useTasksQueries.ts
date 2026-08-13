@@ -7,6 +7,7 @@ import {
   deleteTask,
   listTaskAssignees,
   moveTask,
+  returnTaskForRework,
   setTaskAssignees,
   submitTaskForReview,
   updateTask,
@@ -135,6 +136,30 @@ interface SubmitVars {
   taskId: string
   hours: number | null
   note: string | null
+}
+
+interface ReturnVars {
+  taskId: string
+  status: TaskStatus
+  comment: string
+}
+
+// Devolución con motivo. Sin optimismo, por lo mismo que la entrega: el
+// servidor puede rechazarla y mover la tarjeta antes de tiempo confundiría.
+export function useReturnTaskForRework() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ taskId, status, comment }: ReturnVars) =>
+      returnTaskForRework(taskId, status, comment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tasksKeys.root })
+      queryClient.invalidateQueries({ queryKey: ["task_comments"] })
+      toast.success("Tarea devuelta con tus comentarios")
+    },
+    onError: (error) =>
+      toast.error("No se pudo devolver la tarea", { description: error.message }),
+  })
 }
 
 // Entrega a revisión con reporte de horas reales. Sin optimismo: el servidor

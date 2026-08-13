@@ -18,7 +18,7 @@ import PageHeader from "@/components/shared/PageHeader"
 import TaskBoard from "@/features/tasks/components/TaskBoard"
 import TaskBacklogTable from "@/features/tasks/components/TaskBacklogTable"
 import TaskFormDialog from "@/features/tasks/components/TaskFormDialog"
-import SubmitReviewDialog from "@/features/tasks/components/SubmitReviewDialog"
+import { useTaskReviewFlow } from "@/features/tasks/hooks/useTaskReviewFlow"
 import { useDeleteTask, useTaskAssignees, useTasks } from "@/features/tasks/hooks/useTasksQueries"
 import { useRealtimeTasks } from "@/features/tasks/hooks/useRealtimeTasks"
 import { STATUS_LABELS, WORK_ITEM_OPTIONS } from "@/features/tasks/lib/taskLabels"
@@ -30,15 +30,15 @@ import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import {
-  canManageTasks,
-  isAnalistaTecnologia,
-  requiresTimeReport,
-  writesOwnWorkOnly,
-} from "@/lib/roles"
+import { canManageTasks, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
 import type { TaskStatus } from "@/types/database.types"
 
 const ALL = "all"
+
+// Alcance del tablero. Solo tiene sentido para quien ve trabajo ajeno (Gestor
+// y Administrador): un Analista ya recibe únicamente lo suyo desde la base.
+const MINE = "mine"
+const EVERYTHING = "everything"
 
 export default function TareasPage() {
   const { activeMonthId } = useActiveMonthStore()
@@ -76,6 +76,10 @@ export default function TareasPage() {
   // (no podría asignársela a sí mismo), así que no se ofrece la acción.
   const canWrite = canManageTasks(profile?.role) && (!writesOwn || Boolean(myPerson))
 
+  // Entregar y devolver no son movimientos comunes: cada uno abre su diálogo
+  // (horas reales / motivo). El hook trae los handlers y los diálogos.
+  const { handleRequestReview, handleRequestReturn, dialogs: reviewDialogs } = useTaskReviewFlow()
+
   // Solo se pasa en modo "todos los meses": es lo que le dice a las vistas
   // que pinten la etiqueta, y evita ruido cuando el mes ya es el del filtro.
   const monthNameById = useMemo(() => {
@@ -95,6 +99,10 @@ export default function TareasPage() {
   )
 
   const [search, setSearch] = useState("")
+  // El gestor abre en "Mis tareas": lo suyo y lo que le entregaron para
+  // revisar. Ver todo lo de sus proyectos es un clic, pero no el punto de
+  // partida — el tablero es para trabajar, no para supervisar.
+  const [scope, setScope] = useState(restrictedToSelf ? EVERYTHING : MINE)
   const [projectFilter, setProjectFilter] = useState(ALL)
   const [personFilter, setPersonFilter] = useState(ALL)
   const [typeFilter, setTypeFilter] = useState(ALL)
@@ -102,34 +110,6 @@ export default function TareasPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>("pendiente")
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null)
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return (tasks ?? []).filter((task) => {
-      if (projectFilter !== ALL && task.project_id !== projectFilter) return false
-      if (personFilter !== ALL && !(assigneeIdsByTask.get(task.id) ?? []).includes(personFilter))
-        return false
-      if (typeFilter !== ALL && task.work_item_type !== typeFilter) return false
-      if (!q) return true
-      return (
-        task.title.toLowerCase().includes(q) ||
-        (task.description ?? "").toLowerCase().includes(q) ||
-        task.tags.some((tag) => tag.toLowerCase().includes(q))
-      )
-    })
-  }, [tasks, search, projectFilter, personFilter, typeFilter, assigneeIdsByTask])
-
-  // Entregar a revisión abre el diálogo de horas reales en vez de mover la
-  // tarjeta. Devuelve `true` cuando se hace cargo, para que el tablero (o la
-  // fila del backlog) no dispare además el UPDATE de estado.
-  const [taskToSubmit, setTaskToSubmit] = useState<Task | null>(null)
-  const handleRequestReview = (task: Task) => {
-    // Un gestor que mueve algo a revisión no está entregando trabajo propio:
-    // que la tarjeta se mueva y ya.
-    if (!writesOwn) return false
-    setTaskToSubmit(task)
-    return true
-  }
 
   // Lo que ESTE usuario tiene que revisar: entregas de los proyectos que
   // gerencia. El tablero las pinta en su columna "Por hacer" — para quien
@@ -157,6 +137,45 @@ export default function TareasPage() {
         .map((task) => task.id)
     )
   }, [tasks, people, managers, profile?.id])
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return (tasks ?? []).filter((task) => {
+      // "Mis tareas" para un gestor: lo que él creó, lo que le asignaron y lo
+      // que le entregaron para revisar. RLS ya recortó el universo a sus
+      // proyectos; esto es el corte de todos los días dentro de eso, para que
+      // el tablero abra con su trabajo y no con el de todo el equipo.
+      if (scope === MINE) {
+        const mine =
+          task.created_by === profile?.id ||
+          awaitingMyReview.has(task.id) ||
+          (myPerson ? (assigneeIdsByTask.get(task.id) ?? []).includes(myPerson.id) : false)
+        if (!mine) return false
+      }
+      if (projectFilter !== ALL && task.project_id !== projectFilter) return false
+      if (personFilter !== ALL && !(assigneeIdsByTask.get(task.id) ?? []).includes(personFilter))
+        return false
+      if (typeFilter !== ALL && task.work_item_type !== typeFilter) return false
+      if (!q) return true
+      return (
+        task.title.toLowerCase().includes(q) ||
+        (task.description ?? "").toLowerCase().includes(q) ||
+        task.tags.some((tag) => tag.toLowerCase().includes(q))
+      )
+    })
+  }, [
+    tasks,
+    search,
+    scope,
+    projectFilter,
+    personFilter,
+    typeFilter,
+    assigneeIdsByTask,
+    awaitingMyReview,
+    myPerson,
+    profile?.id,
+  ])
+
 
   const counters = useMemo(() => {
     const total = filtered.length
@@ -229,6 +248,18 @@ export default function TareasPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        {/* Un analista no lo necesita: la base ya solo le manda lo suyo. */}
+        {!restrictedToSelf && (
+          <Select value={scope} onValueChange={setScope}>
+            <SelectTrigger className="w-52">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={MINE}>Mis tareas</SelectItem>
+              <SelectItem value={EVERYTHING}>Todo lo de mis proyectos</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
         <Select value={projectFilter} onValueChange={setProjectFilter}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Proyecto" />
@@ -294,6 +325,7 @@ export default function TareasPage() {
               monthNameById={monthNameById}
               awaitingMyReview={awaitingMyReview}
               onRequestReview={handleRequestReview}
+              onRequestReturn={handleRequestReturn}
               canWrite={canWrite}
               onOpenTask={openTask}
               onNewTask={openNewTask}
@@ -309,6 +341,7 @@ export default function TareasPage() {
                   assigneesByTask={assigneesByTask}
                   monthNameById={monthNameById}
                   onRequestReview={handleRequestReview}
+                  onRequestReturn={handleRequestReturn}
                   canWrite={canWrite}
                   onOpenTask={openTask}
                   onDeleteTask={setTaskToDelete}
@@ -319,11 +352,7 @@ export default function TareasPage() {
         </Tabs>
       )}
 
-      <SubmitReviewDialog
-        task={taskToSubmit}
-        onOpenChange={(open) => !open && setTaskToSubmit(null)}
-        requiresHours={requiresTimeReport(profile?.role, taskToSubmit?.created_by, profile?.id)}
-      />
+      {reviewDialogs}
       <TaskFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
