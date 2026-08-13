@@ -225,6 +225,15 @@ Pertenecer a un proyecto tampoco se declara aparte: repartirle horas a alguien
 en Distribución lo suma al equipo del proyecto
 (`allocation_implies_membership`).
 
+**Quién ocupa columna en la grilla.** Solo el Analista: Gestor y Administrador
+dirigen el trabajo, no lo ejecutan, así que su tiempo no se reparte en la
+sábana ni suma capacidad en el Dashboard — si sumara, el equipo aparecería con
+cientos de horas libres que nadie va a trabajar. El Analista de Tecnología
+también queda fuera (gestiona su propio trabajo). El criterio vive en
+`usePlanningExclusions`, que usan la grilla y el Dashboard, para que no puedan
+contradecirse. Una fila sin cuenta vinculada no se excluye: es roster viejo
+cargado a mano y esconderla ocultaría sus horas sin explicación.
+
 ### 5.8 Reportes (`/reportes`)
 
 Resumen ejecutivo con gráficos (horas por proyecto, por gerente, ranking de
