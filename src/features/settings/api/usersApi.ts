@@ -17,6 +17,33 @@ export async function updateProfileJobTitle(id: string, jobTitle: string): Promi
   if (error) throw error
 }
 
+export async function updateProfileName(id: string, fullName: string): Promise<void> {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ full_name: fullName.trim() })
+    .eq("id", id)
+  if (error) throw error
+}
+
+// El correo y la contraseña viven en `auth.users`, que el navegador no puede
+// tocar: van por RPC con SECURITY DEFINER, que comprueba que quien llama sea
+// administrador (ver *_admin_gestion_de_cuentas.sql).
+export async function updateUserEmail(id: string, email: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_update_user_email", {
+    p_user_id: id,
+    p_email: email.trim(),
+  })
+  if (error) throw error
+}
+
+export async function resetUserPassword(id: string, password: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_reset_user_password", {
+    p_user_id: id,
+    p_password: password,
+  })
+  if (error) throw error
+}
+
 export async function setProfileActive(id: string, isActive: boolean): Promise<void> {
   const { error } = await supabase.from("profiles").update({ is_active: isActive }).eq("id", id)
   if (error) throw error

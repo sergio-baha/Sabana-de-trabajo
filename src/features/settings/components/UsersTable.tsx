@@ -1,3 +1,7 @@
+import { useState } from "react"
+import { KeyRound } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import ResetPasswordDialog from "@/features/settings/components/ResetPasswordDialog"
 import {
   Table,
   TableBody,
@@ -21,7 +25,9 @@ import { useProfiles } from "@/hooks/useProfiles"
 import {
   useSetProfileActive,
   useUpdateProfileJobTitle,
+  useUpdateProfileName,
   useUpdateProfileRole,
+  useUpdateUserEmail,
 } from "@/features/settings/hooks/useUsersQueries"
 import { useSessionStore } from "@/stores/sessionStore"
 import { ASSIGNABLE_ROLES, roleLabel } from "@/lib/roles"
@@ -33,14 +39,22 @@ export default function UsersTable() {
   const updateRole = useUpdateProfileRole()
   const setActive = useSetProfileActive()
   const updateJobTitle = useUpdateProfileJobTitle()
+  const updateName = useUpdateProfileName()
+  const updateEmail = useUpdateUserEmail()
+  const [userToReset, setUserToReset] = useState<{
+    id: string
+    full_name: string
+    email: string
+  } | null>(null)
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Usuarios</CardTitle>
         <CardDescription>
-          Cargo, rol y estado de cada cuenta. Activar una cuenta la suma sola al equipo de los
-          meses abiertos; desactivarla la retira sin borrar su historial.
+          Nombre, correo de acceso, cargo, rol y estado. Los campos se guardan al salir de
+          ellos. Activar una cuenta la suma sola al equipo de los meses abiertos; desactivarla
+          la retira sin borrar su historial.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -59,6 +73,7 @@ export default function UsersTable() {
                 <TableHead>Cargo</TableHead>
                 <TableHead>Rol</TableHead>
                 <TableHead>Activo</TableHead>
+                <TableHead>Acceso</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -66,8 +81,46 @@ export default function UsersTable() {
                 const isSelf = p.id === profile?.id
                 return (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.full_name}</TableCell>
-                    <TableCell className="text-muted-foreground">{p.email}</TableCell>
+                    {/* Nombre y correo se editan en línea, como el cargo. El
+                        nombre es una columna de `profiles`; el correo es el de
+                        acceso y va por RPC, porque vive en auth.users. */}
+                    <TableCell>
+                      <Input
+                        defaultValue={p.full_name}
+                        aria-label={`Nombre de ${p.full_name}`}
+                        className="h-8 w-48 font-medium"
+                        onBlur={(e) => {
+                          const next = e.target.value.trim()
+                          if (!next || next === p.full_name) {
+                            e.target.value = p.full_name
+                            return
+                          }
+                          updateName.mutate({ id: p.id, fullName: next })
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur()
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="email"
+                        defaultValue={p.email}
+                        aria-label={`Correo de ${p.full_name}`}
+                        className="h-8 w-56"
+                        onBlur={(e) => {
+                          const next = e.target.value.trim().toLowerCase()
+                          if (!next || next === p.email) {
+                            e.target.value = p.email
+                            return
+                          }
+                          updateEmail.mutate({ id: p.id, email: next })
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur()
+                        }}
+                      />
+                    </TableCell>
                     {/* El cargo vive en la cuenta y baja solo al roster de los
                         meses abiertos. Se guarda al salir del campo, sin
                         botón: es un dato que se escribe una vez y no vuelve a
@@ -113,6 +166,15 @@ export default function UsersTable() {
                         onCheckedChange={(checked) => setActive.mutate({ id: p.id, isActive: checked })}
                       />
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setUserToReset(p)}
+                      >
+                        <KeyRound /> Contraseña
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 )
               })}
@@ -120,6 +182,11 @@ export default function UsersTable() {
           </Table>
         )}
       </CardContent>
+
+      <ResetPasswordDialog
+        user={userToReset}
+        onOpenChange={(open) => !open && setUserToReset(null)}
+      />
     </Card>
   )
 }

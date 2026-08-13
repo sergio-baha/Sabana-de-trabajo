@@ -1553,6 +1553,14 @@ export type Database = {
         Returns: undefined
       }
       is_project_manager: { Args: { p_project_id: string }; Returns: boolean }
+      admin_update_user_email: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: undefined
+      }
+      admin_reset_user_password: {
+        Args: { p_password: string; p_user_id: string }
+        Returns: undefined
+      }
       return_task_for_rework: {
         Args: {
           p_comment: string
