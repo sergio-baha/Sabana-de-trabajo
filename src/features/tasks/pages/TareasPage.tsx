@@ -27,6 +27,7 @@ import type { Task } from "@/features/tasks/api/tasksApi"
 import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
 import { useManagedProjectIds } from "@/features/projects/hooks/useManagedProjects"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
+import { usePeopleByRole } from "@/features/people/hooks/usePeopleByRole"
 import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
@@ -69,6 +70,7 @@ export default function TareasPage() {
   const { data: taskAssignees } = useTaskAssignees(activeMonthId, { allMonths: ignoresMonths })
   const { data: months } = useMonths()
   const managedProjectIds = useManagedProjectIds()
+  const peopleByRole = usePeopleByRole(people)
 
   // El estado del mes NO limita las tareas: cerrar o archivar un mes congela
   // las horas, no el trabajo. Ver *_tasks_ignore_month_lock.sql.
@@ -277,7 +279,8 @@ export default function TareasPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>Todas las personas</SelectItem>
-              {(people ?? []).map((person) => (
+              {/* Gestores arriba: son los dueños de los proyectos. */}
+              {peopleByRole.ordered.map((person) => (
                 <SelectItem key={person.id} value={person.id}>
                   {person.name}
                 </SelectItem>

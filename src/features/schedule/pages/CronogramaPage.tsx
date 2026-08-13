@@ -26,6 +26,7 @@ import {
 } from "@/features/activities/hooks/useActivitiesQueries"
 import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
+import { usePeopleByRole } from "@/features/people/hooks/usePeopleByRole"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
 import {
@@ -53,6 +54,7 @@ export default function CronogramaPage() {
   useRealtimeTasks(activeMonthId)
   useRealtimeActivities(activeMonthId)
 
+  const peopleByRole = usePeopleByRole(people)
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
 
@@ -129,7 +131,8 @@ export default function CronogramaPage() {
                 <SelectValue placeholder="Elige una persona" />
               </SelectTrigger>
               <SelectContent>
-                {(people ?? []).map((person) => (
+                {/* Gestores primero, como en el resto de los selectores. */}
+                {peopleByRole.ordered.map((person) => (
                   <SelectItem key={person.id} value={person.id}>
                     {person.name}
                     {myPerson?.id === person.id ? " (yo)" : ""}

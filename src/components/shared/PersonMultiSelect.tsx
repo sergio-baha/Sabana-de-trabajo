@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { usePeopleByRole } from "@/features/people/hooks/usePeopleByRole"
 import type { Person } from "@/features/people/api/peopleApi"
 
 interface PersonMultiSelectProps {
@@ -19,6 +20,9 @@ interface PersonMultiSelectProps {
 // cualquiera puede sumarse a un proyecto o a una tarea, sin importar si hoy
 // es analista, gestor o administrador. Compartido entre Proyectos (equipo
 // del proyecto) y Tareas (varias personas asignadas a una misma tarea).
+//
+// Sí se ORDENA por rol: los gestores arriba, bajo su encabezado, porque son
+// los dueños de los proyectos y la respuesta más probable al abrir la lista.
 export function PersonMultiSelect({
   people,
   value,
@@ -28,6 +32,17 @@ export function PersonMultiSelect({
 }: PersonMultiSelectProps) {
   const [open, setOpen] = useState(false)
   const selected = people.filter((p) => value.includes(p.id))
+  const { owners, rest } = usePeopleByRole(people)
+
+  const renderPerson = (person: Person) => (
+    <label
+      key={person.id}
+      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+    >
+      <Checkbox checked={value.includes(person.id)} onCheckedChange={() => toggle(person.id)} />
+      {person.name}
+    </label>
+  )
 
   const toggle = (personId: string) => {
     onChange(
@@ -57,18 +72,16 @@ export function PersonMultiSelect({
                   No hay personas en el mes activo.
                 </p>
               )}
-              {people.map((person) => (
-                <label
-                  key={person.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-                >
-                  <Checkbox
-                    checked={value.includes(person.id)}
-                    onCheckedChange={() => toggle(person.id)}
-                  />
-                  {person.name}
-                </label>
-              ))}
+              {/* Los encabezados solo aparecen cuando hay de los dos grupos:
+                  con un solo grupo serían ruido. */}
+              {owners.length > 0 && rest.length > 0 && (
+                <p className="text-eyebrow px-2 pt-1 pb-0.5 text-muted-foreground">Gestores</p>
+              )}
+              {owners.map(renderPerson)}
+              {owners.length > 0 && rest.length > 0 && (
+                <p className="text-eyebrow px-2 pt-2 pb-0.5 text-muted-foreground">Equipo</p>
+              )}
+              {rest.map(renderPerson)}
             </div>
           </ScrollArea>
         </PopoverContent>

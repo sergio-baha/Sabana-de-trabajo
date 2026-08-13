@@ -18,6 +18,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -40,6 +41,7 @@ import {
 } from "@/features/projects/hooks/useProjectsQueries"
 import type { Project, ProjectManager } from "@/features/projects/api/projectsApi"
 import type { Person } from "@/features/people/api/peopleApi"
+import { usePeopleByRole } from "@/features/people/hooks/usePeopleByRole"
 import { useSessionStore } from "@/stores/sessionStore"
 import { canSeeCosts } from "@/lib/roles"
 
@@ -109,6 +111,8 @@ export default function ProjectFormDialog({
   // El Analista puede crear proyectos (válvula de escape del diálogo de
   // tareas), pero el dinero no es asunto suyo: no ve el presupuesto.
   const canSeeCost = canSeeCosts(useSessionStore((s) => s.profile)?.role)
+  // Gerente responsable: los gestores encabezan la lista.
+  const { owners, rest } = usePeopleByRole(people)
   // Colapsados por defecto al crear (nombre + miembros basta para arrancar);
   // abiertos al editar, para que los valores ya guardados no queden ocultos.
   const [advancedOpen, setAdvancedOpen] = useState(isEdit)
@@ -261,9 +265,28 @@ export default function ProjectFormDialog({
                               <SelectValue placeholder="Sin asignar" />
                             </SelectTrigger>
                           </FormControl>
+                          {/* Los gestores primero: son los dueños de los
+                              proyectos y casi siempre la respuesta a esta
+                              pregunta. Los encabezados solo aparecen cuando
+                              hay de los dos grupos. */}
                           <SelectContent>
                             <SelectItem value="none">Sin asignar</SelectItem>
-                            {people.map((person) => (
+                            {owners.length > 0 && rest.length > 0 && (
+                              <SelectLabel className="text-eyebrow text-muted-foreground">
+                                Gestores
+                              </SelectLabel>
+                            )}
+                            {owners.map((person) => (
+                              <SelectItem key={person.id} value={person.id}>
+                                {person.name}
+                              </SelectItem>
+                            ))}
+                            {owners.length > 0 && rest.length > 0 && (
+                              <SelectLabel className="text-eyebrow text-muted-foreground">
+                                Equipo
+                              </SelectLabel>
+                            )}
+                            {rest.map((person) => (
                               <SelectItem key={person.id} value={person.id}>
                                 {person.name}
                               </SelectItem>
