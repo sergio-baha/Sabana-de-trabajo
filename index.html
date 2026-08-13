@@ -9,14 +9,17 @@
       name="description"
       content="Distribución de Trabajo — administración de la asignación mensual de horas por proyecto."
     />
+    <meta name="theme-color" content="#EC671A" />
     <script>
       // Aplica el tema guardado antes del primer paint para evitar flash.
+      // Marca la clase `.dark` (Tailwind) y `data-theme` (sistema Experia).
       try {
         var saved = localStorage.getItem("sabana-theme");
         var dark = saved
           ? saved === "dark"
           : window.matchMedia("(prefers-color-scheme: dark)").matches;
         document.documentElement.classList.toggle("dark", dark);
+        if (dark) document.documentElement.setAttribute("data-theme", "dark");
       } catch (e) {}
     </script>
   </head>

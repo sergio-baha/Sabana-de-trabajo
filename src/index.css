@@ -3,30 +3,36 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
-@custom-variant dark (&:is(.dark *));
+/* El modo oscuro se marca de las dos formas: la clase `.dark` que ya usaba
+   esta app y el atributo `data-theme="dark"` de Experia. Así el mismo script
+   de arranque y las mismas utilidades sirven en las dos plataformas. */
+@custom-variant dark (&:where(.dark, [data-theme="dark"], .dark *, [data-theme="dark"] *));
 
 /*
- * ── Línea gráfica CEINFES ──────────────────────────────────────────────
- * Tokens verificados contra el CSS de producción de ceinfes.com
- * (_next/static/css), no aproximados:
- *   Morado Formación     #5E4F9C  (PANTONE 3574 C) — primario
- *   Azul Pensamiento     #3A5BA7  (PANTONE 7455 C) — secundario
- *   Verde Transformación #024B4E  (PANTONE 7722 C) — superficies profundas
- *   Naranja Evolución    #EC671A                   — acento/CTA
- *   Amarillo             #FFCF53                   — paso en gradientes cálidos
- *   Magenta de paso      #C0538A                   — transición morado→naranja
- * Tipografía corporativa: Inter variable.
+ * ── Sistema de diseño Experia · CEINFES ────────────────────────────────
+ * Esta app comparte sistema visual con Experia (ver Experia-Design-System.md
+ * en la raíz). Los tokens de abajo son los MISMOS valores de producción de
+ * Experia, mapeados sobre los nombres que consume shadcn:
  *
- * Tres rasgos son la firma visual del sitio y se replican tal cual:
- *   1. Sombras TEÑIDAS de verde petróleo rgba(2,75,78,…) — nunca gris/negro
- *      neutro — muy difusas y con spread negativo grande.
- *   2. Radios generosos (1–3rem): superficies suaves, no cajas duras.
- *   3. Eyebrows en mayúscula con tracking muy abierto (.1–.2em) contra
- *      titulares grandes con tracking cerrado (-.025em).
+ *   Naranja Evolución  #EC671A — primario de marca, constante
+ *   Morado Formación   #5E4F9C — acento secundario
+ *   Superficies claras #F9FAFB fondo / #FFFFFF tarjeta / #E5E7EB borde
+ *   Superficies oscuras #15141D fondo / #1C1B28 tarjeta / #2B2A3B borde
+ *   Tipografía          Inter variable, interlineado 1.55
  *
- * Los colores de estado de la grilla (success/warning/danger) son un set
- * semántico aparte, deliberadamente distinto de los tonos de marca para que
- * "faltan horas" nunca se confunda con el naranja institucional.
+ * Tres reglas que vienen del sistema y no se negocian:
+ *   1. Ningún componente lleva hex propio: todo color que cambie con el tema
+ *      va como var(--token). Es lo que hace que el modo oscuro funcione sin
+ *      tocar un solo componente.
+ *   2. Acentos PLANOS. Experia pasó sus degradados a color sólido y conservó
+ *      los nombres (--gradient-*) para no romper los usos. Aquí igual: las
+ *      variables siguen existiendo y resuelven a un color.
+ *   3. `--card` no significa "blanco": es "superficie de tarjeta", y en modo
+ *      oscuro vale #1C1B28.
+ *
+ * Los estados de la grilla (success/warning/danger) usan los semánticos de
+ * Experia (#0D9488 / #F59E0B / #EF4444), deliberadamente distintos del
+ * naranja institucional para que "faltan horas" no se confunda con la marca.
  */
 @theme inline {
     --font-heading: var(--font-sans);
@@ -62,13 +68,15 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
+    /* Radios de Experia (§6): 8 / 12 / 16 / 24 px. Los intermedios se
+       interpolan para cubrir la escala que ya usaban los componentes. */
+    --radius-sm: 8px;
+    --radius-md: 10px;
+    --radius-lg: 12px;
+    --radius-xl: 14px;
+    --radius-2xl: 16px;
+    --radius-3xl: 20px;
+    --radius-4xl: 24px;
 
     /* Marca CEINFES */
     --color-brand-purple: var(--brand-purple);
@@ -78,6 +86,17 @@
     --color-brand-orange: var(--brand-orange);
     --color-brand-yellow: var(--brand-yellow);
     --color-brand-magenta: var(--brand-magenta);
+
+    /* Paleta de gráficas de Experia (§5) — ocho tonos en orden fijo,
+       validados como conjunto contra las dos superficies de la app. */
+    --color-viz-1: var(--viz-1);
+    --color-viz-2: var(--viz-2);
+    --color-viz-3: var(--viz-3);
+    --color-viz-4: var(--viz-4);
+    --color-viz-5: var(--viz-5);
+    --color-viz-6: var(--viz-6);
+    --color-viz-7: var(--viz-7);
+    --color-viz-8: var(--viz-8);
 
     /* Estados de asignación de horas (grilla) */
     --color-success: var(--success);
@@ -100,210 +119,233 @@
 }
 
 :root {
-    /* Base blanca tibia, como el sitio (bg-white con acentos crema #f5f0e8),
-       no el gris azulado que traía por defecto. */
-    --background: oklch(0.988 0.004 75);
-    --foreground: oklch(0.24 0.02 60);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.24 0.02 60);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.24 0.02 60);
+    /* ── Tokens crudos de Experia (§2). Son la fuente; los nombres de shadcn
+       de más abajo solo los referencian. ─────────────────────────────── */
+    --orange: #ec671a;
+    --orange-light: #f59e33;
+    --orange-pale: #fddbbc;
+    --orange-bg: #fef0e6;
+    --orange-50: #fff8f2;
 
-    /* Naranja Evolución #EC671A — en ceinfes.com la clase `.from-primary`
-       resuelve a este color, así que el primario de la marca es el naranja
-       (no el morado, que es acento).
-       El texto encima va en tinta oscura, no blanca: sobre este naranja el
-       blanco da 3.2:1 (falla WCAG AA para texto normal) mientras que la
-       tinta oscura da 5.5:1. Así se conserva el color de marca exacto sin
-       perder legibilidad. */
-    --primary: oklch(0.665 0.184 41.6);
-    --primary-foreground: oklch(0.2 0.03 265);
+    --accent-rgb: 94, 79, 156; /* el acento va en RGB para poder hacer alpha */
+    --purple: #5e4f9c;
+    --purple-deep: #45397a;
+    --purple-light: #8a7fbd;
+    --purple-bg: rgba(var(--accent-rgb), 0.1);
+    --grad-mid: #c0538a;
 
-    /* Morado Formación #5E4F9C como acento secundario */
-    --secondary: oklch(0.451 0.129 302.4);
-    --secondary-foreground: oklch(0.985 0 0);
+    --ink: #1a1a2e; /* `--dark` en Experia; aquí `--ink` para no chocar con .dark */
+    --text: #2d2d44;
+    --text-sec: #4a4a5e;
+    --text-muted: #6b7280;
+    --subtle: #9ca3af;
 
-    --muted: oklch(0.965 0.005 60);
-    --muted-foreground: oklch(0.505 0.02 50);
-    --accent: oklch(0.955 0.025 62);
-    --accent-foreground: oklch(0.38 0.11 44);
+    --surface-border: #e5e7eb;
+    --bg-alt: #f3f4f6;
+    --bg-app: #f9fafb;
+    --surface: #ffffff;
 
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.918 0.006 60);
-    --input: oklch(0.918 0.006 60);
-    --ring: oklch(0.665 0.184 41.6 / 45%);
+    /* Tintes semánticos (se remapean en oscuro) */
+    --success-bg: #f0fdfa;
+    --success-bg-strong: #ccfbf1;
+    --success-border: #5eead4;
+    --error-bg: #fef2f2;
+    --error-bg-strong: #fee2e2;
+    --info-bg: #eff6ff;
+    --warn-bg: #fffbeb;
+    --violet-bg: #edeaf7;
 
-    /* Paleta de gráficos: arranca en el naranja de marca y se aleja en tono
-       (Naranja → Morado → Azul → Verde → Magenta) para que series vecinas
-       sean distinguibles, incluida visión con deficiencia de color. */
-    --chart-1: oklch(0.665 0.184 41.6);
-    --chart-2: oklch(0.451 0.129 302.4);
-    --chart-3: oklch(0.448 0.118 265.3);
-    --chart-4: oklch(0.336 0.05 194.8);
-    --chart-5: oklch(0.55 0.15 350.9);
+    /* ── Mapeo a los nombres de shadcn ──────────────────────────────── */
+    --background: var(--bg-app);
+    --foreground: var(--ink);
+    --card: var(--surface);
+    --card-foreground: var(--ink);
+    --popover: var(--surface);
+    --popover-foreground: var(--ink);
 
-    /* Radio generoso, como el sitio (usa 1–3rem según la jerarquía) */
-    --radius: 1rem;
+    /* Naranja Evolución: primario de marca. Encima va texto blanco, como en
+       Experia — el naranja se usa como FONDO de acción, nunca como color de
+       texto pequeño (§4). */
+    --primary: var(--orange);
+    --primary-foreground: #ffffff;
 
-    /* Sidebar claro sobre crema tibio (#f5f0e8 del sitio), con el naranja
-       marcando el elemento activo. ceinfes.com es blanco-dominante y usa el
-       naranja como acento (bg-naranjaEvolucion 34 usos, text-naranjaEvolucion
-       94, frente a 5 del verde): un sidebar verde oscuro dominaba la vista y
-       leía como una app "verde", que es lo contrario a la marca. */
-    --sidebar: oklch(0.975 0.008 75);
-    --sidebar-foreground: oklch(0.3 0.025 55);
-    --sidebar-primary: oklch(0.665 0.184 41.6);
-    --sidebar-primary-foreground: oklch(0.2 0.03 265);
-    /* Estado activo/hover: tinte naranja con tinta naranja oscura (4.5:1) */
-    --sidebar-accent: oklch(0.93 0.05 62);
-    --sidebar-accent-foreground: oklch(0.47 0.15 45);
-    --sidebar-border: oklch(0.9 0.012 70);
-    --sidebar-ring: oklch(0.665 0.184 41.6 / 45%);
+    /* `secondary` = el botón neutro de Experia (fondo --bg-alt), no el
+       morado: el morado es acento y vive en --purple / --gradient-brand. */
+    --secondary: var(--bg-alt);
+    --secondary-foreground: var(--text);
 
-    /* Tokens crudos de marca */
-    --brand-purple: #5e4f9c;
-    --brand-purple-deep: #45397a;
+    --muted: var(--bg-alt);
+    --muted-foreground: var(--text-muted);
+    /* Superficie de hover/estado activo: tinte naranja con tinta naranja
+       oscura (#B84E00 = 4.5:1, el mismo del modo de alto contraste). */
+    --accent: var(--orange-bg);
+    --accent-foreground: #b84e00;
+
+    --destructive: #ef4444;
+    --border: var(--surface-border);
+    --input: var(--surface-border);
+    --ring: var(--orange);
+
+    /* Radio base: --r-md de Experia (12px) */
+    --radius: 12px;
+
+    /* Paleta de gráficas de Experia, en orden fijo (§5). No reordenar ni
+       sustituir tonos sueltos: está validada como conjunto. */
+    --viz-1: #2a78d6;
+    --viz-2: #eb6834;
+    --viz-3: #1baf7a;
+    --viz-4: #eda100;
+    --viz-5: #e87ba4;
+    --viz-6: #008300;
+    --viz-7: #4a3aa7;
+    --viz-8: #e34948;
+
+    --chart-1: var(--viz-1);
+    --chart-2: var(--viz-2);
+    --chart-3: var(--viz-3);
+    --chart-4: var(--viz-4);
+    --chart-5: var(--viz-5);
+
+    /* Sidebar: superficie de tarjeta con borde a la derecha, como el de
+       Experia (§10) — blanco sobre el gris de la app, no un panel de color. */
+    --sidebar: var(--surface);
+    --sidebar-foreground: var(--text);
+    --sidebar-primary: var(--orange);
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: var(--orange-bg);
+    --sidebar-accent-foreground: #b84e00;
+    --sidebar-border: var(--surface-border);
+    --sidebar-ring: var(--orange);
+
+    /* Tokens crudos de marca (documentos, filete tricolor, gráficos) */
+    --brand-purple: var(--purple);
+    --brand-purple-deep: var(--purple-deep);
     --brand-blue: #3a5ba7;
     --brand-green: #024b4e;
-    --brand-orange: #ec671a;
+    --brand-orange: var(--orange);
     --brand-yellow: #ffcf53;
-    --brand-magenta: #c0538a;
+    --brand-magenta: var(--grad-mid);
 
-    /* Gradientes de marca — la firma visual CEINFES.
-       Orientado con el naranja al frente: es el color primario del sitio,
-       así que es el que debe dominar la lectura. */
-    --gradient-brand: linear-gradient(
-        125deg,
-        var(--brand-orange) 0%,
-        var(--brand-magenta) 45%,
-        var(--brand-purple) 80%,
-        var(--brand-purple-deep) 100%
-    );
-    /* Cálido con paso por el amarillo, como los bloques destacados del sitio */
-    --gradient-orange: linear-gradient(135deg, #ec671a 0%, #ffcf53 100%);
-    --gradient-deep: linear-gradient(140deg, #012f31 0%, var(--brand-green) 55%, #0d5f5b 100%);
-    /* Gradiente para superficies grandes con texto blanco encima: recorre
-       naranja → magenta → morado profundo, pero arrancando en un naranja
-       quemado (#B84E00, 5.1:1 con blanco) en vez del naranja puro (3.2:1),
-       para que el texto sea legible en todo el recorrido. */
-    --gradient-hero: linear-gradient(125deg, #b84e00 0%, #a8410b 22%, #8a3a62 62%, #45397a 100%);
-    --gradient-soft: linear-gradient(
-        135deg,
-        rgba(94, 79, 156, 0.09) 0%,
-        rgba(236, 103, 26, 0.09) 100%
-    );
+    /* Acentos PLANOS. Conservan los nombres --gradient-* de siempre para no
+       romper los usos existentes; si algún día se quieren degradados, se
+       cambian aquí y los toma toda la app (misma decisión que Experia §2). */
+    --gradient-brand: var(--purple);
+    --gradient-orange: var(--orange);
+    --gradient-deep: var(--brand-green);
+    --gradient-hero: var(--orange);
+    --gradient-soft: var(--orange-bg);
 
-    /* Estados de asignación de horas */
-    --success: oklch(0.6 0.16 149);
-    --success-foreground: oklch(0.985 0 0);
-    --success-muted: oklch(0.94 0.05 149);
-    --warning: oklch(0.75 0.16 85);
-    --warning-foreground: oklch(0.2 0.04 85);
-    --warning-muted: oklch(0.94 0.07 90);
-    --danger: oklch(0.577 0.245 27.325);
-    --danger-foreground: oklch(0.985 0 0);
-    --danger-muted: oklch(0.93 0.06 27);
+    /* Estados de asignación de horas — semánticos de Experia */
+    --success: #0d9488;
+    --success-foreground: #ffffff;
+    --success-muted: var(--success-bg-strong);
+    --warning: #f59e0b;
+    --warning-foreground: var(--ink);
+    --warning-muted: #fef3c7;
+    --danger: #ef4444;
+    --danger-foreground: #ffffff;
+    --danger-muted: var(--error-bg-strong);
 
-    /* Sombras teñidas de Verde Transformación, difusas y con spread negativo
-       grande — copiadas de los valores de producción de ceinfes.com. Es lo
-       que hace que las superficies "floten" en vez de verse recortadas. */
-    --sh-sm: 0 2px 8px -4px rgba(2, 75, 78, 0.1);
-    --sh-md: 0 12px 40px -20px rgba(2, 75, 78, 0.14);
-    --sh-lg: 0 16px 48px -20px rgba(2, 75, 78, 0.16);
-    --sh-xl: 0 24px 80px -20px rgba(2, 75, 78, 0.18);
-    --sh-purple: 0 20px 48px -18px rgba(94, 79, 156, 0.32);
-    --sh-orange: 0 20px 48px -18px rgba(254, 80, 0, 0.18);
+    /* Sombras de Experia (§6): dos capas, tinte #1A1A2E, sin spread negativo
+       grande. Son más cortas y más "de papel" que las anteriores. */
+    --sh-sm: 0 1px 2px rgba(26, 26, 46, 0.04), 0 1px 3px rgba(26, 26, 46, 0.06);
+    --sh-md: 0 2px 4px rgba(26, 26, 46, 0.04), 0 6px 16px rgba(26, 26, 46, 0.08);
+    --sh-lg: 0 4px 8px rgba(26, 26, 46, 0.05), 0 12px 32px rgba(26, 26, 46, 0.1);
+    --sh-xl: 0 8px 16px rgba(26, 26, 46, 0.06), 0 24px 56px rgba(26, 26, 46, 0.16);
+    --sh-orange: 0 8px 24px -8px rgba(236, 103, 26, 0.45);
+    --sh-purple: 0 8px 24px -8px rgba(var(--accent-rgb), 0.4);
 
-    /* Curvas de animación */
+    /* Curvas de animación (§6) */
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.dark {
-    /* Superficies neutras cálidas (tinte de marca), no azul frío */
-    --background: oklch(0.165 0.008 55);
-    --foreground: oklch(0.93 0.005 60);
-    --card: oklch(0.215 0.01 52);
-    --card-foreground: oklch(0.93 0.005 60);
-    --popover: oklch(0.215 0.01 52);
-    --popover-foreground: oklch(0.93 0.005 60);
+/*
+ * Modo oscuro (§3): no es un filtro ni una inversión, es el remapeo manual de
+ * las mismas variables. Superficies gris-violeta desaturado (tinte de marca)
+ * escalonadas parejo — un azul marino frío choca con el naranja — y texto
+ * off-white, nunca blanco puro.
+ */
+.dark,
+[data-theme="dark"] {
+    color-scheme: dark;
 
-    /* Naranja algo más claro sobre oscuro, para no perder saturación */
-    --primary: oklch(0.72 0.17 45);
-    --primary-foreground: oklch(0.16 0.02 45);
+    --ink: #e7e7ef;
+    --text: #d2d2dd;
+    --text-sec: #ababbc;
+    --text-muted: #9090a2;
+    --subtle: #61617a;
 
-    --secondary: oklch(0.68 0.12 302.4);
-    --secondary-foreground: oklch(0.145 0 0);
+    --surface-border: #2b2a3b;
+    --bg-alt: #211f2d;
+    --bg-app: #15141d;
+    --surface: #1c1b28;
 
-    --muted: oklch(0.27 0.015 55);
-    --muted-foreground: oklch(0.7 0.016 55);
-    --accent: oklch(0.31 0.035 50);
-    --accent-foreground: oklch(0.93 0.02 60);
+    /* Tintes de acento, más sutiles sobre oscuro */
+    --orange-bg: rgba(236, 103, 26, 0.12);
+    --orange-50: rgba(236, 103, 26, 0.07);
+    --orange-pale: rgba(236, 103, 26, 0.36);
+    --purple-bg: rgba(var(--accent-rgb), 0.2);
 
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.72 0.17 45 / 45%);
+    --success-bg: rgba(13, 148, 136, 0.13);
+    --success-bg-strong: rgba(13, 148, 136, 0.22);
+    --success-border: rgba(45, 212, 191, 0.34);
+    --error-bg: rgba(239, 68, 68, 0.11);
+    --error-bg-strong: rgba(239, 68, 68, 0.19);
+    --info-bg: rgba(59, 130, 246, 0.13);
+    --warn-bg: rgba(245, 158, 11, 0.13);
+    --violet-bg: rgba(139, 92, 246, 0.18);
 
-    --chart-1: oklch(0.72 0.16 41.6);
-    --chart-2: oklch(0.68 0.12 302.4);
-    --chart-3: oklch(0.62 0.1 265.3);
-    --chart-4: oklch(0.55 0.06 194.8);
-    --chart-5: oklch(0.68 0.14 350.9);
+    /* El naranja de marca no cambia; sí lo hace la tinta sobre los tintes */
+    --accent-foreground: var(--orange-light);
+    --sidebar-accent-foreground: var(--orange-light);
 
-    /* En oscuro el sidebar es un neutro cálido (no verde), con el naranja
-       marcando el activo — misma jerarquía que en claro. */
-    --sidebar: oklch(0.205 0.014 55);
-    --sidebar-foreground: oklch(0.92 0.008 60);
-    --sidebar-primary: oklch(0.72 0.17 45);
-    --sidebar-primary-foreground: oklch(0.16 0.02 45);
-    --sidebar-accent: oklch(0.31 0.045 50);
-    --sidebar-accent-foreground: oklch(0.87 0.09 62);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.72 0.17 45 / 45%);
+    /* El morado sí se aclara: #5E4F9C sobre #15141D queda demasiado apagado */
+    --purple: #8577c2;
+    --purple-deep: #6558a8;
+    --accent-rgb: 133, 119, 194;
 
-    --brand-purple: #8577c2;
-    --brand-purple-deep: #6558a8;
     --brand-blue: #6d8bd0;
     --brand-green: #1f7a7e;
-    --brand-orange: #f0894f;
     --brand-yellow: #ffd977;
     --brand-magenta: #d477a6;
 
-    --gradient-soft: linear-gradient(
-        135deg,
-        rgba(133, 119, 194, 0.14) 0%,
-        rgba(240, 137, 79, 0.12) 100%
-    );
+    /* Paleta de gráficas en oscuro: su propio paso, no un filtro del claro */
+    --viz-1: #3987e5;
+    --viz-2: #d95926;
+    --viz-3: #199e70;
+    --viz-4: #c98500;
+    --viz-5: #d55181;
+    --viz-6: #008300;
+    --viz-7: #9085e9;
+    --viz-8: #e66767;
 
-    --success: oklch(0.68 0.15 149);
-    --success-foreground: oklch(0.145 0 0);
-    --success-muted: oklch(0.3 0.06 149);
-    --warning: oklch(0.78 0.15 85);
-    --warning-foreground: oklch(0.145 0 0);
-    --warning-muted: oklch(0.32 0.06 90);
-    --danger: oklch(0.704 0.191 22.216);
-    --danger-foreground: oklch(0.145 0 0);
-    --danger-muted: oklch(0.33 0.08 27);
+    --success: #2dd4bf;
+    --success-foreground: #0b1f1e;
+    --success-muted: var(--success-bg-strong);
+    --warning: #f59e0b;
+    --warning-foreground: #1a1a2e;
+    --warning-muted: var(--warn-bg);
+    --danger: #ef4444;
+    --danger-foreground: #ffffff;
+    --danger-muted: var(--error-bg-strong);
 
-    /* Sobre oscuro el tinte verde no se lee: se mantiene la misma difusión y
-       spread negativo, pero en negro suave para no generar halos. */
-    --sh-sm: 0 2px 8px -4px rgba(0, 0, 0, 0.4);
-    --sh-md: 0 12px 40px -20px rgba(0, 0, 0, 0.55);
-    --sh-lg: 0 16px 48px -20px rgba(0, 0, 0, 0.6);
-    --sh-xl: 0 24px 80px -20px rgba(0, 0, 0, 0.65);
-    --sh-purple: 0 20px 48px -18px rgba(133, 119, 194, 0.4);
-    --sh-orange: 0 20px 48px -18px rgba(240, 137, 79, 0.35);
-
+    /* Sombras un punto más suaves, para evitar halos duros */
+    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.26);
+    --sh-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.34);
+    --sh-lg: 0 4px 8px rgba(0, 0, 0, 0.34), 0 12px 32px rgba(0, 0, 0, 0.44);
+    --sh-xl: 0 8px 16px rgba(0, 0, 0, 0.4), 0 24px 56px rgba(0, 0, 0, 0.54);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
     }
   body {
     @apply bg-background text-foreground;
+    /* Interlineado 1.55 y suavizado, como Experia (§1) */
+    line-height: 1.55;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -311,6 +353,59 @@
     }
   html {
     @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+    }
+  /* Títulos ligeramente compactos */
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
+    }
+}
+
+/* Anillo de foco de doble contorno (§8): visible sobre cualquier fondo, sea
+   claro, oscuro o una superficie de color. Reemplaza el `outline-ring/50`
+   que traía shadcn, que se perdía sobre superficies de marca. */
+:focus {
+    outline: none;
+}
+:focus-visible {
+    outline: 2px solid var(--orange);
+    outline-offset: 3px;
+    border-radius: 4px;
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.85), 0 0 0 7px var(--orange);
+}
+.dark :focus-visible,
+[data-theme="dark"] :focus-visible {
+    box-shadow: 0 0 0 5px rgba(18, 18, 32, 0.9), 0 0 0 7px var(--orange);
+}
+
+/* Enlace de salto: oculto hasta recibir foco (§8) */
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 12px;
+    z-index: 10000;
+    padding: 10px 20px;
+    background: var(--orange);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 0 0 12px 12px;
+    box-shadow: var(--sh-lg);
+    transition: top 0.15s var(--ease);
+    white-space: nowrap;
+}
+.skip-link:focus {
+    top: 0;
+}
+
+/* Táctil (§8): objetivos cómodos en móvil y sin destello azul al tocar */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+@media (max-width: 767px) {
+    button,
+    a[role="button"] {
+        min-height: 40px;
     }
 }
 
@@ -340,11 +435,6 @@
 @keyframes sabana-shimmer {
     from { background-position: -200% 0; }
     to   { background-position: 200% 0; }
-}
-@keyframes sabana-gradient-shift {
-    0%   { background-position: 0% 50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
 }
 @keyframes sabana-bar-grow {
     from { transform: scaleX(0); }
@@ -379,15 +469,18 @@
  * tracking muy abierto, contra titulares grandes con tracking cerrado.
  * Ese contraste es buena parte de lo que hace que se vea editorial.
  */
+/* Etiqueta de Experia (§1): 11px / 700 / mayúsculas / tracking .8px, en
+   color de apoyo. Es el mismo objeto `lbl` que usan sus formularios. */
 .text-eyebrow {
-    font-size: 0.6875rem;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
     line-height: 1.2;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.8px;
 }
+/* Cifra destacada / titular: tracking cerrado y line-height 1.1 */
 .text-display {
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
     line-height: 1.1;
 }
 
@@ -411,29 +504,46 @@
     border-color: color-mix(in oklch, var(--primary) 28%, var(--border));
 }
 
-/* Texto con el gradiente de marca (títulos de sección destacados) */
+/* Texto acentuado. En Experia (§7) `.gradient-text` es color plano: el
+   recorte de texto sobre un degradado se lee peor y no sobrevive al cambio
+   de tema. */
 .text-gradient-brand {
-    background: var(--gradient-brand);
-    background-size: 180% 180%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: sabana-gradient-shift 9s var(--ease) infinite;
+    color: var(--orange);
 }
 
-/* Panel destacado (hero del dashboard): gradiente cálido de marca, con
-   suficiente profundidad para que el texto blanco se lea en todo el ancho. */
+/* Panel de marca (columna del login): color sólido con texto blanco. */
 .surface-brand {
-    background: var(--gradient-hero);
-    background-size: 160% 160%;
-    animation: sabana-gradient-shift 14s var(--ease) infinite;
+    background: var(--purple);
     color: #fff;
 }
 .surface-brand-accent {
-    background: var(--gradient-brand);
-    background-size: 200% 200%;
-    animation: sabana-gradient-shift 12s var(--ease) infinite;
+    background: var(--orange);
     color: #fff;
+}
+
+/* Filete tricolor de marca, proporción 6:2:1 (§13). Es el sello gráfico que
+   abre los encabezados y los documentos de CEINFES. */
+.brand-rule {
+    display: flex;
+    height: 4px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+.brand-rule::before,
+.brand-rule::after {
+    content: "";
+}
+.brand-rule::before {
+    flex: 6;
+    background: var(--orange);
+}
+.brand-rule::after {
+    flex: 2;
+    background: var(--purple);
+}
+.brand-rule > span {
+    flex: 1;
+    background: var(--brand-green);
 }
 
 /* Barra superior. Sólida y no "vidrio": es sticky, así que TODO el
@@ -460,26 +570,11 @@
 
 /* =====================================================================
    CAPA DE ESTILO — movimiento y superficies
-   Segundo set de animaciones, pensado para las piezas "de vitrina" (landing,
-   hero, menús) donde sí se busca llamar la atención. Las de arriba son las
-   de trabajo diario (entradas de página y tarjetas) y se dejan cortas a
-   propósito para que la app siga sintiéndose rápida.
+   Set corto de entradas y microinteracciones. Experia no tiene fondos
+   ambientales ni destellos: las superficies son planas y el movimiento se
+   reserva para entradas y estados (§6, §7).
    ===================================================================== */
 
-/* Deriva lenta de los halos de color del fondo. El recorrido es amplio pero
-   la duración larga: se percibe como "el fondo está vivo", no como algo que
-   se mueve. */
-@keyframes sabana-aurora {
-    0%,
-    100% { transform: translate3d(0, 0, 0) scale(1); }
-    33%  { transform: translate3d(7%, -9%, 0) scale(1.14); }
-    66%  { transform: translate3d(-6%, 7%, 0) scale(0.92); }
-}
-/* Destello diagonal que cruza una superficie (botones primarios, chips) */
-@keyframes sabana-shine {
-    from { transform: translateX(-140%) skewX(-18deg); }
-    to   { transform: translateX(260%) skewX(-18deg); }
-}
 @keyframes sabana-glow {
     0%, 100% { opacity: 0.4; }
     50%      { opacity: 0.85; }
@@ -493,42 +588,6 @@
 @keyframes sabana-marquee {
     from { transform: translateX(0); }
     to   { transform: translateX(-50%); }
-}
-/* Fondo ambiental: mancha de color muy difuminada que deriva sola. Se usa en
-   la landing y en los heroes; siempre con aria-hidden y pointer-events-none
-   desde el marcado. */
-.aurora-blob {
-    position: absolute;
-    border-radius: 9999px;
-    filter: blur(72px);
-    animation: sabana-aurora 22s var(--ease) infinite;
-    will-change: transform;
-}
-.aurora-blob-slow {
-    animation-duration: 34s;
-    animation-direction: reverse;
-}
-
-/* Malla de puntos: da textura al fondo sin competir con el contenido.
-   La máscara radial la desvanece hacia los bordes para que no se vea como
-   un patrón pegado encima. */
-.bg-dots {
-    background-image: radial-gradient(
-        color-mix(in oklch, var(--foreground) 16%, transparent) 1px,
-        transparent 1px
-    );
-    background-size: 22px 22px;
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 20%, transparent 75%);
-    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 20%, transparent 75%);
-}
-/* Rejilla fina, para superficies oscuras/con gradiente (hero de la landing) */
-.bg-grid {
-    background-image:
-        linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
-    background-size: 56px 56px;
-    mask-image: radial-gradient(ellipse 70% 70% at 50% 30%, #000 10%, transparent 70%);
-    -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 30%, #000 10%, transparent 70%);
 }
 
 /* Entrada escalonada con desenfoque — misma convención que .stagger-item:
@@ -557,39 +616,12 @@
     animation-play-state: paused;
 }
 
-/* Destello al pasar el mouse. Requiere position:relative y overflow:hidden
-   en el elemento (los botones ya los traen). */
-.shine-hover {
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
-}
-.shine-hover::after {
-    content: "";
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 45%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.38),
-        transparent
-    );
-    transform: translateX(-140%) skewX(-18deg);
-    pointer-events: none;
-}
-.shine-hover:hover::after {
-    animation: sabana-shine 0.85s var(--ease-out);
-}
-
-/* Borde con gradiente de marca: se pinta con dos capas de background y
-   `padding-box`/`border-box`, así el interior conserva el color de la
-   superficie y solo el contorno lleva el gradiente. */
-.border-gradient {
-    border: 1px solid transparent;
-    background:
-        linear-gradient(var(--card), var(--card)) padding-box,
-        var(--gradient-brand) border-box;
+/* Microinteracción de presión de Experia (§7): el botón se hunde al hacer
+   clic. Sustituye al destello diagonal que cruzaba los botones — Experia
+   resuelve el hover con elevación y brillo, no con brillos que pasan. */
+.btn-press:active:not(:disabled) {
+    transform: translateY(0) scale(0.97) !important;
+    transition-duration: 0.08s;
 }
 
 /* ── Menús y superficies flotantes ──────────────────────────────────────
@@ -690,64 +722,68 @@
 [data-sidebar="menu-button"][data-active="true"] svg {
     color: var(--sidebar-primary);
 }
-/* Lavado de color en la parte alta del panel: da profundidad detrás del logo
-   sin teñir toda la superficie (el sidebar es claro a propósito y el naranja
-   es acento, no fondo). */
-[data-slot="sidebar-inner"] {
-    background-image: radial-gradient(
-        120% 45% at 0% 0%,
-        color-mix(in oklch, var(--primary) 14%, transparent) 0%,
-        transparent 60%
-    );
-}
+/* El panel es una superficie plana (--sidebar = superficie de tarjeta), sin
+   lavado de color: en Experia el sidebar es blanco con borde derecho y el
+   color entra solo por el ítem activo. */
 
-/* Etiqueta de grupo con el tratamiento editorial del resto de la app */
+/* Etiqueta de grupo con el tratamiento de etiqueta del sistema */
 [data-sidebar="group-label"] {
-    font-size: 0.625rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.7px;
     text-transform: uppercase;
-    opacity: 0.65;
+    color: var(--muted-foreground);
 }
 
-/* ── Botones ───────────────────────────────────────────────────────────
-   El primario pasa de plano a gradiente cálido con sombra teñida: es el
-   único elemento de la interfaz con ese tratamiento, así que la acción
-   principal de cada pantalla se identifica de inmediato. */
-[data-slot="button"][data-variant="default"] {
-    background-image: var(--gradient-orange);
-    background-size: 160% 160%;
-    background-position: 0% 50%;
-    box-shadow: var(--sh-orange);
+/* ── Botones (§11.1) ───────────────────────────────────────────────────
+   Naranja plano con sombra de color para el primario; el hover eleva 1.5px
+   y sube el brillo un 5%. Es exactamente el `Btn` de Experia, resuelto con
+   CSS en vez de estado de React. */
+[data-slot="button"] {
     transition:
-        background-position 0.45s var(--ease-out),
-        box-shadow 0.3s var(--ease),
-        transform 0.2s var(--ease-out);
+        transform 0.2s var(--ease-out),
+        box-shadow 0.2s var(--ease-out),
+        background-color 0.2s var(--ease-out),
+        color 0.2s var(--ease),
+        border-color 0.2s var(--ease),
+        filter 0.2s var(--ease-out);
 }
-[data-slot="button"][data-variant="default"]:hover {
-    background-position: 100% 50%;
-    box-shadow:
-        var(--sh-orange),
-        0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
+[data-slot="button"]:active:not(:disabled) {
+    transform: translateY(0) scale(0.97);
+    transition-duration: 0.08s;
+}
+[data-slot="button"][data-variant="default"] {
+    box-shadow: var(--sh-orange);
+}
+[data-slot="button"][data-variant="default"]:hover:not(:disabled),
+[data-slot="button"][data-variant="destructive"]:hover:not(:disabled) {
+    transform: translateY(-1.5px);
+    filter: brightness(1.05);
+    box-shadow: 0 10px 28px -8px rgba(236, 103, 26, 0.55);
+}
+[data-slot="button"][data-variant="destructive"]:hover:not(:disabled) {
+    box-shadow: var(--sh-md);
 }
 [data-slot="button"][data-variant="default"]:disabled {
     box-shadow: none;
 }
-/* Escape para los botones primarios que van encima de una superficie de
-   marca (el hero del dashboard): ahí el gradiente naranja sobre naranja
-   desaparece, y el botón necesita su propio fondo translúcido. No se puede
-   resolver con un :not() sobre las clases porque la variante default ya
-   trae `bg-primary` en su propia lista. */
+/* `btn-plain` sigue existiendo para los botones sobre superficies de color:
+   les quita la sombra naranja, que ahí no separa nada. */
 [data-slot="button"].btn-plain {
-    background-image: none;
     box-shadow: none;
 }
-[data-slot="button"][data-variant="outline"],
-[data-slot="button"][data-variant="ghost"] {
-    transition:
-        background-color 0.2s var(--ease),
-        color 0.2s var(--ease),
-        border-color 0.2s var(--ease);
+
+/* ── Formularios (§11.7) ──────────────────────────────────────────────
+   Borde de 1.5px, no 1px: es lo que hace que un campo se lea como campo
+   sobre una superficie clara sin necesidad de sombra ni relleno gris. */
+[data-slot="input"],
+[data-slot="textarea"],
+[data-slot="select-trigger"] {
+    border-width: 1.5px;
+}
+input[type="checkbox"],
+input[type="radio"] {
+    accent-color: var(--orange);
 }
 
 /* ── Tarjetas y tablas ────────────────────────────────────────────────── */
@@ -756,37 +792,49 @@
         box-shadow 0.3s var(--ease-out),
         border-color 0.3s var(--ease);
 }
-[data-slot="table"] thead th {
-    letter-spacing: 0.04em;
-}
 
-/* ── Barras de desplazamiento ──────────────────────────────────────────
-   Las nativas de Windows son anchas y grises; con el resto de la interfaz
-   redondeada quedaban fuera de tono. */
+/* ── Barras de desplazamiento (§7) ─────────────────────────────────── */
 * {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklch, var(--foreground) 22%, transparent) transparent;
+    scrollbar-color: var(--subtle) transparent;
 }
 ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
 }
 ::-webkit-scrollbar-track {
     background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-    border: 3px solid transparent;
-    border-radius: 9999px;
-    background-clip: content-box;
-    background-color: color-mix(in oklch, var(--foreground) 20%, transparent);
+    background: #d1d5db;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background-color: color-mix(in oklch, var(--primary) 55%, transparent);
+    background: var(--subtle);
+    background-clip: padding-box;
+}
+.dark ::-webkit-scrollbar-thumb,
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: #34334a;
+    background-clip: padding-box;
+}
+.dark ::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: #423f5c;
+    background-clip: padding-box;
 }
 
 /* Selección de texto con el color de marca */
 ::selection {
-    background: color-mix(in oklch, var(--primary) 28%, transparent);
+    background: var(--orange-pale);
+    color: var(--ink);
+}
+.dark ::selection,
+[data-theme="dark"] ::selection {
+    background: rgba(236, 103, 26, 0.38);
+    color: #fff;
 }
 
 /* Respeta la preferencia del sistema: sin movimiento, sin animaciones. */
@@ -800,6 +848,7 @@
     }
     .card-lift:hover,
     .hover-glow:hover,
+    [data-slot="button"]:hover:not(:disabled),
     [data-sidebar="menu-button"]:hover:not([data-active="true"]) {
         transform: none;
     }
@@ -807,9 +856,6 @@
        acorta la duración: el texto debe verse nítido desde el primer frame. */
     .reveal {
         filter: none;
-    }
-    .shine-hover::after {
-        display: none;
     }
     /* Sin la animación, la cinta se quedaría desplazada a -50%: se anula el
        recorrido y queda como una fila estática que empieza en su inicio. */
@@ -857,100 +903,47 @@
    una sola pieza y no una colección de tablas sueltas.
    ===================================================================== */
 
-/* Fondo ambiental de página: dos manchas de color muy difuminadas detrás
-   del contenido.
- *
- * Dos detalles que no son opcionales acá:
- *   1. `isolation: isolate` — el contenedor de página vive dentro de
- *      SidebarInset, que tiene `bg-background` opaco. Sin un contexto de
- *      apilamiento propio, un hijo en `z-index: -1` se pinta DETRÁS de ese
- *      fondo (y del de <body>) y no se ve nada. Aislando, el -1 queda
- *      acotado a esta caja: debajo del contenido, encima del fondo.
- *   2. `absolute` y no `fixed` — `.page-enter` termina con
- *      `transform: translateY(0)` por el `animation-fill-mode: both`, y
- *      cualquier transform convierte al elemento en bloque contenedor de
- *      sus descendientes fijos. Un `fixed` acá no sería relativo al
- *      viewport de todos modos, así que se usa absolute, que sí es
- *      predecible. El desborde lateral lo recorta el `overflow-x-clip`
- *      del contenedor raíz.
- */
+/* `page-aurora` era el fondo ambiental de manchas difuminadas. En el sistema
+   de Experia el fondo de la app es plano (--bg) y el color entra por los
+   acentos, no por el fondo. Se conserva la clase —la aplica AppShell— solo
+   como contexto de apilamiento, sin pintar nada. */
 .page-aurora {
     position: relative;
     isolation: isolate;
 }
-.page-aurora::before,
-.page-aurora::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    border-radius: 9999px;
-    filter: blur(90px);
-    pointer-events: none;
-    opacity: 0.55;
-}
-.page-aurora::before {
-    top: -9rem;
-    right: -7rem;
-    width: 30rem;
-    height: 30rem;
-    background: radial-gradient(circle, color-mix(in oklch, var(--primary) 45%, transparent), transparent 68%);
-    animation: sabana-aurora 26s var(--ease) infinite;
-}
-.page-aurora::after {
-    top: 45%;
-    left: -9rem;
-    width: 26rem;
-    height: 26rem;
-    background: radial-gradient(circle, color-mix(in oklch, var(--secondary) 42%, transparent), transparent 68%);
-    animation: sabana-aurora 34s var(--ease) infinite reverse;
-}
-.dark .page-aurora::before,
-.dark .page-aurora::after {
-    opacity: 0.32;
-}
 
-/* Encabezado de página: la banda de marca que abre cada módulo. El
-   gradiente se desplaza muy lento — a 18s el movimiento se percibe como
-   profundidad, no como una animación pidiendo atención. */
+/* Encabezado de módulo: tarjeta de superficie con el filete tricolor de
+   marca arriba. Sustituye la banda con degradado naranja→morado: Experia
+   abre sus páginas con título oscuro sobre superficie clara, y el color de
+   marca aparece como acento (el filete, el ícono, las acciones). */
 .page-hero {
     position: relative;
-    isolation: isolate;
     overflow: hidden;
-    border-radius: var(--radius-3xl);
-    padding: 1.5rem;
-    color: #fff;
-    background: var(--gradient-hero);
-    background-size: 170% 170%;
-    box-shadow: var(--sh-xl);
-    animation: sabana-gradient-shift 18s var(--ease) infinite;
+    border-radius: var(--radius-2xl);
+    padding: 1.25rem 1.5rem 1.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: var(--sh-sm);
 }
-/* Rejilla fina sobre el gradiente: le da textura para que la banda no se
-   lea como un rectángulo de color plano. */
-.page-hero::after {
+/* Filete 6:2:1 pegado al borde superior */
+.page-hero::before {
     content: "";
     position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image:
-        linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-    background-size: 44px 44px;
-    mask-image: radial-gradient(ellipse 70% 90% at 85% 10%, #000, transparent 70%);
-    -webkit-mask-image: radial-gradient(ellipse 70% 90% at 85% 10%, #000, transparent 70%);
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: linear-gradient(
+        to right,
+        var(--orange) 0 66.6%,
+        var(--purple) 66.6% 88.8%,
+        var(--brand-green) 88.8% 100%
+    );
 }
-/* Botón sobre el hero: el gradiente naranja del primario desaparecería
-   contra el fondo de marca, así que acá va vidrio sobre el gradiente. */
+/* `hero-action` marcaba los botones sobre el hero de color con un fondo de
+   vidrio. Con el encabezado en superficie clara ya no hace falta: el botón
+   primario naranja se lee perfecto sobre ella. Se deja como no-op para no
+   romper el marcado que aún la nombre. */
 .hero-action {
-    background: rgba(255, 255, 255, 0.16) !important;
-    background-image: none !important;
-    box-shadow: none !important;
-    color: #fff !important;
-    backdrop-filter: blur(8px);
-    border-color: rgba(255, 255, 255, 0.22) !important;
-}
-.hero-action:hover {
-    background: rgba(255, 255, 255, 0.26) !important;
+    /* sin estilo propio: el botón usa su variante normal */
 }
 
 /* Superficie de sección: la caja estándar para agrupar contenido. Se
@@ -994,10 +987,11 @@
     background-color: color-mix(in oklch, var(--primary) 6%, transparent);
     box-shadow: inset 3px 0 0 0 var(--primary);
 }
+/* Encabezado de tabla de Experia (§1): 10.5px / 800 / tracking .7px */
 [data-slot="table"] thead th {
-    font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.7px;
     text-transform: uppercase;
     color: var(--muted-foreground);
 }

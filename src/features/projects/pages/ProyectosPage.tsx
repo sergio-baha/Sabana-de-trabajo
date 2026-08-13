@@ -189,7 +189,7 @@ export default function ProyectosPage() {
         ]}
         actions={
           canCreate && (
-            <Button className="hero-action shine-hover" onClick={() => setFormOpen(true)}>
+            <Button className="btn-press" onClick={() => setFormOpen(true)}>
               <Plus /> Nuevo proyecto
             </Button>
           )

@@ -52,7 +52,7 @@ export default function KpiCard({
           )}
           style={
             tone === "brand"
-              ? { background: "var(--gradient-brand)", boxShadow: "var(--sh-purple)" }
+              ? { background: "var(--purple)", boxShadow: "var(--sh-purple)" }
               : undefined
           }
         >
@@ -60,7 +60,8 @@ export default function KpiCard({
         </div>
         <div className="flex min-w-0 flex-col">
           <span className="text-eyebrow truncate text-muted-foreground">{label}</span>
-          <span className="text-display text-2xl font-semibold">
+          {/* Cifra destacada del sistema: 22–30px, peso 900 */}
+          <span className="text-display text-2xl font-black">
             <AnimatedNumber value={value} decimals={decimals} suffix={suffix} />
           </span>
           {hint && <span className="truncate text-xs text-muted-foreground">{hint}</span>}

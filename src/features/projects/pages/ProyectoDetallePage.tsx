@@ -232,28 +232,31 @@ export default function ProyectoDetallePage() {
           <div className="flex min-w-0 items-start gap-4">
             <div
               aria-hidden
-              className="hidden size-12 shrink-0 place-content-center rounded-2xl bg-white/15 backdrop-blur-sm sm:grid"
+              className="hidden size-12 shrink-0 place-content-center rounded-xl bg-muted sm:grid"
             >
-              <span className="size-4 rounded-full ring-2 ring-white/50" style={{ backgroundColor: project.color }} />
+              <span
+                className="size-4 rounded-full ring-2 ring-border"
+                style={{ backgroundColor: project.color }}
+              />
             </div>
             <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-eyebrow text-white/70">
+              <span className="text-eyebrow text-muted-foreground">
                 {project.category === "institucional" ? "Tiempo institucional" : "Proyecto"}
               </span>
-              <h1 className="text-display text-2xl font-semibold sm:text-3xl">{project.name}</h1>
+              <h1 className="text-display text-xl font-extrabold sm:text-2xl">{project.name}</h1>
               {project.description && (
-                <p className="max-w-2xl text-sm text-white/75">{project.description}</p>
+                <p className="max-w-2xl text-sm text-muted-foreground">{project.description}</p>
               )}
             </div>
           </div>
           {canManageProject && (
-            <Button className="hero-action shine-hover" onClick={() => setEditOpen(true)}>
+            <Button className="btn-press" onClick={() => setEditOpen(true)}>
               <Pencil /> Editar
             </Button>
           )}
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/15 pt-4">
+        <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-border pt-4">
           {[
             { label: totalsRow?.months_count === 1 ? "Mes" : "Meses", value: totalsRow?.months_count ?? 0 },
             { label: "Personas", value: totalsRow?.people_count ?? 0 },
@@ -266,10 +269,10 @@ export default function ProyectoDetallePage() {
               className="reveal flex flex-col"
               style={{ "--i": index } as CSSProperties}
             >
-              <span className="text-display text-xl font-semibold tabular-nums">
+              <span className="text-display text-2xl font-black tabular-nums">
                 <AnimatedNumber value={stat.value} suffix={stat.suffix} />
               </span>
-              <span className="text-eyebrow text-white/65">{stat.label}</span>
+              <span className="text-eyebrow text-muted-foreground">{stat.label}</span>
             </div>
           ))}
         </div>

@@ -97,35 +97,14 @@ export default function LoginPage() {
           Solo desde lg: en móvil el teclado se come la pantalla y el único
           objetivo es entrar, así que el formulario ocupa todo el ancho. */}
       <section className="surface-brand relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-12">
-        {/* Capas de fondo, de atrás hacia adelante: rejilla fina, dos halos
-            que derivan y un velo oscuro abajo para que el texto del pie se
-            lea sobre cualquier posición del gradiente. */}
-        <div aria-hidden className="bg-grid pointer-events-none absolute inset-0" />
-        <div
-          aria-hidden
-          className="aurora-blob pointer-events-none -top-24 -left-16 size-[32rem] opacity-40"
-          style={{ background: "var(--gradient-orange)" }}
-        />
-        <div
-          aria-hidden
-          className="aurora-blob aurora-blob-slow pointer-events-none right-[-8rem] bottom-[-6rem] size-[30rem] opacity-30"
-          style={{ background: "var(--gradient-brand)" }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/35 to-transparent"
-        />
-
+        {/* Superficie de marca plana (Morado Formación). El color entra por el
+            fondo sólido y los acentos, no por halos difuminados. */}
         <div className="relative flex items-center gap-3">
-          <div className="relative">
-            <div
-              aria-hidden
-              className="animate-glow absolute inset-0 rounded-2xl blur-lg"
-              style={{ background: "var(--gradient-orange)" }}
-            />
-            <div className="relative flex size-11 items-center justify-center rounded-2xl border border-white/25 bg-white/15 text-base font-bold backdrop-blur-sm">
-              DT
-            </div>
+          <div
+            className="flex size-11 items-center justify-center rounded-xl bg-white/15 text-base font-bold"
+            style={{ boxShadow: "var(--sh-orange)" }}
+          >
+            DT
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold">Distribución de Trabajo</span>
@@ -195,25 +174,17 @@ export default function LoginPage() {
 
       {/* ── Acceso ──────────────────────────────────────────────────────── */}
       <section className="relative flex items-center justify-center overflow-hidden bg-background p-6">
-        <div
-          aria-hidden
-          className="aurora-blob pointer-events-none -top-32 -right-24 size-[26rem] opacity-25 lg:opacity-15"
-          style={{ background: "var(--gradient-brand)" }}
-        />
-        <div
-          aria-hidden
-          className="aurora-blob aurora-blob-slow pointer-events-none bottom-[-8rem] left-[-6rem] size-[24rem] opacity-20 lg:opacity-10"
-          style={{ background: "var(--gradient-orange)" }}
-        />
-        <div aria-hidden className="bg-dots pointer-events-none absolute inset-0 opacity-40" />
-
-        <Card className="animate-scale-in relative w-full max-w-sm border-gradient shadow-brand-xl">
+        <Card className="animate-scale-in relative w-full max-w-sm shadow-brand-xl">
+          {/* Filete tricolor de marca sobre la tarjeta de acceso */}
+          <div aria-hidden className="brand-rule absolute inset-x-4 top-0">
+            <span />
+          </div>
           <CardHeader>
             {/* En móvil el panel de marca no existe: el logo aquí es lo único
                 que identifica a la aplicación, así que solo aparece ahí. */}
             <div
               className="mb-1 flex size-11 items-center justify-center rounded-xl text-base font-bold text-white lg:hidden"
-              style={{ background: "var(--gradient-brand)", boxShadow: "var(--sh-purple)" }}
+              style={{ background: "var(--purple)", boxShadow: "var(--sh-purple)" }}
             >
               DT
             </div>
@@ -266,7 +237,7 @@ export default function LoginPage() {
                   type="submit"
                   size="lg"
                   disabled={submitting}
-                  className="shine-hover group mt-2 w-full"
+                  className="group mt-2 w-full"
                 >
                   {submitting ? "Ingresando…" : "Ingresar"}
                   {!submitting && (

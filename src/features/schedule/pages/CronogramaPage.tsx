@@ -125,7 +125,7 @@ export default function CronogramaPage() {
         actions={
           !restrictedToSelf && (
             <Select value={personId ?? ""} onValueChange={setSelectedPersonId}>
-              <SelectTrigger className="hero-action w-56">
+              <SelectTrigger className="w-56">
                 <SelectValue placeholder="Elige una persona" />
               </SelectTrigger>
               <SelectContent>

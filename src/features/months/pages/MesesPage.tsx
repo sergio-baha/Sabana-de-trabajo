@@ -91,11 +91,11 @@ export default function MesesPage() {
         actions={
           canWrite && (
             <>
-              <Button variant="outline" className="hero-action" onClick={openCreate}>
+              <Button variant="outline" className="btn-press" onClick={openCreate}>
                 <Plus /> Mes en blanco
               </Button>
               <Button
-                className="hero-action shine-hover"
+                className="btn-press"
                 onClick={() => openDuplicate(activeMonthId ?? undefined)}
               >
                 <Copy /> Duplicar mes

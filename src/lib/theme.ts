@@ -30,8 +30,15 @@ export const getSavedTheme = (): Theme => {
   }
 }
 
+// El tema vive en el DOM, no en React (mismo mecanismo que Experia §15). Se
+// marca de las dos formas — la clase `.dark` que usa Tailwind y el atributo
+// `data-theme` del sistema de diseño — para que las reglas escritas con
+// cualquiera de las dos convenciones apliquen igual.
 export const applyTheme = (theme: Theme) => {
-  document.documentElement.classList.toggle("dark", theme === "dark")
+  const root = document.documentElement
+  root.classList.toggle("dark", theme === "dark")
+  if (theme === "dark") root.setAttribute("data-theme", "dark")
+  else root.removeAttribute("data-theme")
   safeSet(THEME_KEY, theme)
 }
 

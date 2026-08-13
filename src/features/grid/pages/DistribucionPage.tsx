@@ -503,20 +503,22 @@ export default function DistribucionPage() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+            {/* Píldoras del sistema (§11.9): borde de 1.5px sobre superficie,
+                texto de apoyo y el punto de color como portador del estado. */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <span className="flex items-center gap-1.5 rounded-full border-[1.5px] border-border bg-card px-2.5 py-1">
                 <span className="size-2 rounded-full bg-success" /> Exacto
               </span>
-              <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+              <span className="flex items-center gap-1.5 rounded-full border-[1.5px] border-border bg-card px-2.5 py-1">
                 <span className="size-2 rounded-full bg-warning" /> Faltan horas
               </span>
-              <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+              <span className="flex items-center gap-1.5 rounded-full border-[1.5px] border-border bg-card px-2.5 py-1">
                 <span className="size-2 rounded-full bg-danger" /> De más
               </span>
             </div>
             {canEdit && (
               <Button
-                className="hero-action shine-hover"
+                className="btn-press"
                 onClick={() => {
                   setEditingProject(null)
                   setProjectFormOpen(true)

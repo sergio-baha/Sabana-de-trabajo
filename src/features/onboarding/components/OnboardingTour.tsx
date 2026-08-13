@@ -226,7 +226,7 @@ export default function OnboardingTour() {
             )}
             <Button
               size="sm"
-              className="shine-hover"
+              className="btn-press"
               onClick={() => (isLast ? finish() : setStep(step + 1))}
             >
               {isLast ? "Empezar a trabajar" : "Siguiente"}

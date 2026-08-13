@@ -482,10 +482,13 @@ debe sobrevivir al borrado de la fila original.
    importa.
 5. **Permisos**: la política RLS es la regla; el chequeo en `lib/roles.ts`
    es solo para no mostrar botones que fallarían.
-6. **Colores**: variables CSS de `src/index.css`. La paleta de marca CEINFES
-   (morado, azul, verde, naranja) y los colores de estado semánticos
-   (`success` / `warning` / `danger`) son sets distintos y no deben
-   mezclarse.
+6. **Colores**: variables CSS de `src/index.css`, que implementa el sistema
+   de diseño de Experia (ver `Experia-Design-System.md` en la raíz). Nunca
+   un hex dentro de un componente: todo color que cambie con el tema va como
+   `var(--token)`. La paleta de marca CEINFES (naranja, morado, azul, verde)
+   y los colores de estado semánticos (`success` / `warning` / `danger`) son
+   sets distintos y no deben mezclarse. Para gráficas, usar `--viz-1..8` en
+   ese orden.
 
 ## 12. Despliegue
 

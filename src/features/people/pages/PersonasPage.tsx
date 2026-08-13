@@ -72,7 +72,7 @@ export default function PersonasPage() {
         actions={
           canWrite && (
             <Button
-              className="hero-action shine-hover"
+              className="btn-press"
               onClick={() => {
                 setEditingPerson(null)
                 setFormOpen(true)

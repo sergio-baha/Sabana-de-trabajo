@@ -95,22 +95,22 @@ export default function AppShell() {
     // propósito — `hidden` en un eje obliga al otro a `auto`, lo que
     // convertiría el contenedor en un scroller y rompería el header sticky.
     <SidebarProvider className="overflow-x-clip">
+      {/* Enlace de salto (Experia §8): oculto hasta recibir foco, permite
+          saltarse la navegación con el teclado. */}
+      <a href="#main-content" className="skip-link">
+        Ir al contenido principal
+      </a>
       <Sidebar collapsible="icon">
         <SidebarHeader className="relative">
           {/* En modo ícono el rail mide 48px: se quita el padding lateral y
               el gap para que el logo quede centrado y no desplazado. */}
           <div className="flex items-center gap-2.5 px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
             <div className="relative shrink-0">
-              {/* Resplandor detrás del logo, en la misma capa que el logo y
-                  desenfocado: es lo que hace que la marca "encienda". */}
+              {/* Marca en color sólido con su sombra de color: el sistema no
+                  usa degradados ni resplandores (ver Experia §2). */}
               <div
-                aria-hidden
-                className="animate-glow absolute inset-0 rounded-xl blur-md"
-                style={{ background: "var(--gradient-brand)" }}
-              />
-              <div
-                className="relative flex size-9 items-center justify-center rounded-xl text-sm font-bold tracking-tight text-white"
-                style={{ background: "var(--gradient-brand)", boxShadow: "var(--sh-orange)" }}
+                className="flex size-9 items-center justify-center rounded-xl text-sm font-bold tracking-tight text-white"
+                style={{ background: "var(--orange)", boxShadow: "var(--sh-orange)" }}
               >
                 DT
               </div>
@@ -174,7 +174,7 @@ export default function AppShell() {
                         avatar de la app, así que carga la identidad. */}
                     <AvatarFallback
                       className="text-xs font-semibold text-white"
-                      style={{ background: "var(--gradient-brand)" }}
+                      style={{ background: "var(--purple)" }}
                     >
                       {initialsFor(profile.full_name)}
                     </AvatarFallback>
@@ -241,12 +241,12 @@ export default function AppShell() {
           se corre por debajo y el menú queda encima. */}
       <SidebarInset className="min-w-0">
         <header className="app-header sticky top-0 z-30 flex h-15 shrink-0 items-center gap-3 border-b border-border px-4">
-          {/* Filo de gradiente sobre el borde inferior: separa el header del
+          {/* Filo de marca sobre el borde inferior: separa el header del
               contenido con color de marca en vez de una línea gris más. */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 -bottom-px h-px opacity-70"
-            style={{ background: "var(--gradient-brand)" }}
+            style={{ background: "var(--orange)" }}
           />
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
@@ -291,6 +291,7 @@ export default function AppShell() {
             `page-aurora` pinta las manchas de color del fondo detrás de todo
             el contenido (z-index negativo, position fixed). */}
         <main
+          id="main-content"
           key={location.pathname}
           className="page-enter page-aurora relative flex flex-1 flex-col gap-4 p-4 md:p-6"
         >

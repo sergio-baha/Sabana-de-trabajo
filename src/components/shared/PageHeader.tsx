@@ -43,30 +43,35 @@ export default function PageHeader({
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-4">
+          {/* Ícono del módulo en un cuadro de tinte naranja: es el acento de
+              marca del encabezado, ahora que la banda es superficie clara. */}
           <div
             aria-hidden
-            className="hidden size-12 shrink-0 place-content-center rounded-2xl bg-white/15 backdrop-blur-sm sm:grid"
+            className="hidden size-12 shrink-0 place-content-center rounded-xl bg-accent text-primary sm:grid"
           >
             <Icon className="size-6" />
           </div>
           <div className="flex min-w-0 flex-col gap-1">
-            <span className="text-eyebrow text-white/70">{eyebrow}</span>
-            <h1 className="text-display truncate text-2xl font-semibold sm:text-3xl">{title}</h1>
-            {description && <p className="max-w-2xl text-sm text-white/75">{description}</p>}
+            <span className="text-eyebrow text-muted-foreground">{eyebrow}</span>
+            <h1 className="text-display truncate text-xl font-extrabold sm:text-2xl">{title}</h1>
+            {description && (
+              <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>
+            )}
           </div>
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
       </div>
 
       {stats && stats.length > 0 && (
-        <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/15 pt-4">
+        <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-border pt-4">
           {stats.map((stat, index) => (
             <div
               key={stat.label}
               className="reveal flex flex-col"
               style={{ "--i": index } as CSSProperties}
             >
-              <span className="text-display text-xl font-semibold tabular-nums">
+              {/* Cifra destacada de Experia: 22–30px, peso 900 */}
+              <span className="text-display text-2xl font-black tabular-nums">
                 {typeof stat.value === "number" ? (
                   <AnimatedNumber
                     value={stat.value}
@@ -77,7 +82,7 @@ export default function PageHeader({
                   stat.value
                 )}
               </span>
-              <span className="text-eyebrow text-white/65">{stat.label}</span>
+              <span className="text-eyebrow text-muted-foreground">{stat.label}</span>
             </div>
           ))}
         </div>

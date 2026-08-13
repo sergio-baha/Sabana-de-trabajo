@@ -112,14 +112,14 @@ export default function ReportesPage() {
           <>
             <Button
               variant="outline"
-              className="hero-action"
+              className="btn-press"
               onClick={handleExportExcel}
               disabled={isLoading || exporting !== null}
             >
               <FileSpreadsheet /> {exporting === "excel" ? "Exportando…" : "Excel"}
             </Button>
             <Button
-              className="hero-action shine-hover"
+              className="btn-press"
               onClick={handleExportPdf}
               disabled={isLoading || exporting !== null}
             >

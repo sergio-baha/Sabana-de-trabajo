@@ -154,7 +154,7 @@ export default function TareasPage() {
         ]}
         actions={
           canWrite && (
-            <Button className="hero-action shine-hover" onClick={() => openNewTask("pendiente")}>
+            <Button className="btn-press" onClick={() => openNewTask("pendiente")}>
               <Plus /> Nueva tarea
             </Button>
           )

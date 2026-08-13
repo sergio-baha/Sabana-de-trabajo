@@ -247,8 +247,27 @@ Ver [`DOCUMENTACION.md`](DOCUMENTACION.md#7-módulo-cronograma).
 
 ### Tema
 
-Paleta CEINFES + colores de estado semánticos (verde/amarillo/rojo,
-independientes de los tonos de marca) como variables CSS en `src/index.css`,
-con soporte claro/oscuro vía la clase `.dark` en `<html>`. La grilla mapea
+Esta app comparte sistema de diseño con **Experia** (la otra plataforma de
+CEINFES). La referencia completa está en
+[`Experia-Design-System.md`](../Experia-Design-System.md) en la raíz del
+repo, y `src/index.css` implementa sus tokens con los nombres que consume
+shadcn: naranja `#EC671A` como primario, morado `#5E4F9C` como acento,
+superficies `#F9FAFB`/`#FFFFFF` en claro y `#15141D`/`#1C1B28` en oscuro,
+radios 8–24 px, sombras de dos capas con tinte `#1A1A2E`, paleta de gráficas
+`--viz-1..8` y anillo de foco naranja de doble contorno.
+
+Dos reglas del sistema que hay que respetar al escribir componentes:
+
+1. **Ningún hex en un componente.** Todo color que cambie con el tema va como
+   `var(--token)`; es lo que hace que el modo oscuro funcione sin tocar los
+   componentes.
+2. **Acentos planos.** Las variables `--gradient-*` existen por compatibilidad
+   pero resuelven a color sólido, igual que en Experia. Si algún día se
+   quieren degradados, se cambian ahí y los toma toda la app.
+
+Los colores de estado (`success`/`warning`/`danger`) son un set semántico
+aparte de los tonos de marca y no deben mezclarse. El tema claro/oscuro se
+marca en `<html>` con la clase `.dark` **y** el atributo `data-theme`, y se
+aplica antes del primer paint con el script de `index.html`. La grilla mapea
 sus propias variables `--rdg-*` a las mismas variables de tema en vez de
 usar las clases `.rdg-light`/`.rdg-dark` del paquete.
