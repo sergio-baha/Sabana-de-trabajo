@@ -96,10 +96,6 @@ export const router = createBrowserRouter([
                 lazy: lazyPage(() => import("@/features/grid/pages/DistribucionPage")),
               },
               {
-                path: "meses",
-                lazy: lazyPage(() => import("@/features/months/pages/MesesPage")),
-              },
-              {
                 path: "proyectos",
                 lazy: lazyPage(() => import("@/features/projects/pages/ProyectosPage")),
               },
@@ -120,6 +116,13 @@ export const router = createBrowserRouter([
           {
             element: <RoleRoute allow={["administrador"]} />,
             children: [
+              // Administrar los meses (crear, duplicar, cerrar, archivar) es
+              // solo del Administrador; los demás roles trabajan dentro del
+              // mes activo que eligen en el selector del encabezado.
+              {
+                path: "meses",
+                lazy: lazyPage(() => import("@/features/months/pages/MesesPage")),
+              },
               {
                 path: "historial",
                 lazy: lazyPage(() => import("@/features/history/pages/HistorialPage")),

@@ -131,7 +131,10 @@ export const SETUP_ITEMS: NavItem[] = [
     to: "/meses",
     label: "Meses",
     icon: CalendarRange,
-    allow: TEAM_WIDE_ROLES,
+    // Solo Administrador: el ciclo de vida del mes (crear, duplicar, cerrar,
+    // archivar) es suyo. Los demás roles trabajan dentro del mes activo, que
+    // eligen con el selector del encabezado.
+    allow: ["administrador"],
     description:
       "Cada mes es una planificación aparte. Duplicar un mes copia personas, proyectos, equipos y tareas, así no se arranca de cero cada vez. Atajo: el selector de mes del encabezado tiene “Gestionar meses” al final de la lista.",
     tips: [

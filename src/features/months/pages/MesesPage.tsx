@@ -27,7 +27,7 @@ import { useDeleteMonth, useMonths, useUpdateMonth } from "@/features/months/hoo
 import type { Month } from "@/features/months/api/monthsApi"
 import { useSessionStore } from "@/stores/sessionStore"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
-import { isAdmin, isGestorOrAdmin } from "@/lib/roles"
+import { canManageMonths } from "@/lib/roles"
 
 export default function MesesPage() {
   const profile = useSessionStore((s) => s.profile)
@@ -43,8 +43,10 @@ export default function MesesPage() {
   const [monthToDelete, setMonthToDelete] = useState<Month | null>(null)
   const [snapshotsMonth, setSnapshotsMonth] = useState<Month | null>(null)
 
-  const canWrite = isGestorOrAdmin(profile?.role)
-  const canArchive = isAdmin(profile?.role)
+  // Un solo permiso para todo el módulo: administrar meses es del
+  // Administrador y solo él llega hasta acá (RoleRoute). El chequeo se
+  // conserva porque la página no debe asumir cómo la enrutaron.
+  const canWrite = canManageMonths(profile?.role)
 
   const openCreate = () => {
     setEditingMonth(null)
@@ -161,9 +163,11 @@ export default function MesesPage() {
                           <DropdownMenuItem onClick={() => setActiveMonthId(month.id)}>
                             Marcar como activo
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openDuplicate(month.id)}>
-                            <Copy /> Duplicar
-                          </DropdownMenuItem>
+                          {canWrite && (
+                            <DropdownMenuItem onClick={() => openDuplicate(month.id)}>
+                              <Copy /> Duplicar
+                            </DropdownMenuItem>
+                          )}
                           {canWrite && (
                             <DropdownMenuItem onClick={() => setSnapshotsMonth(month)}>
                               <History /> Versiones
@@ -179,12 +183,12 @@ export default function MesesPage() {
                               {month.status === "abierto" ? "Cerrar mes" : "Reabrir mes"}
                             </DropdownMenuItem>
                           )}
-                          {canArchive && (
+                          {canWrite && (
                             <DropdownMenuItem onClick={() => toggleArchived(month)}>
                               {month.status === "archivado" ? "Restaurar de archivo" : "Archivar"}
                             </DropdownMenuItem>
                           )}
-                          {canArchive && (
+                          {canWrite && (
                             <DropdownMenuItem
                               variant="destructive"
                               onClick={() => setMonthToDelete(month)}

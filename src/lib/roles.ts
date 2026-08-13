@@ -12,6 +12,13 @@ export const canEditHours = (role: AppRole | undefined | null) => isGestorOrAdmi
 
 export const canManageUsers = (role: AppRole | undefined | null) => isAdmin(role)
 
+// El ciclo de vida del mes (crear, duplicar, editar, abrir/cerrar, archivar,
+// versionar) es tarea exclusiva del Administrador. Ojo con la distinción: un
+// Gestor sigue trabajando DENTRO de un mes abierto —horas, personas,
+// proyectos, tareas—, lo que no hace es administrar el mes en sí. Espejo de
+// las políticas de `months` en supabase/migrations/*_meses_solo_admin.sql.
+export const canManageMonths = (role: AppRole | undefined | null) => isAdmin(role)
+
 // El Analista de Tecnología no se distingue por *cuánto* puede hacer sino
 // por *sobre qué*: solo su propio trabajo. Las políticas RLS acotan lo que
 // lee y escribe a las filas donde figura como responsable, así que la UI no

@@ -12,7 +12,7 @@ import {
 import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
-import { TEAM_WIDE_ROLES } from "@/lib/roles"
+import { canManageMonths } from "@/lib/roles"
 
 // Valor centinela: no es un mes, es la acción "ir a gestionar los meses".
 // Mismo patrón que el "+ Crear proyecto nuevo" del diálogo de tareas.
@@ -31,7 +31,10 @@ export default function MonthSwitcher() {
   const profile = useSessionStore((s) => s.profile)
   const navigate = useNavigate()
 
-  const canManageMonths = Boolean(profile && TEAM_WIDE_ROLES.includes(profile.role))
+  // El atajo a la gestión de meses solo tiene sentido para quien puede
+  // gestionarlos: el Administrador. Los demás usan este selector para
+  // *elegir* el mes en el que trabajan, que es todo lo que necesitan.
+  const showManageShortcut = canManageMonths(profile?.role)
 
   useEffect(() => {
     if (!activeMonthId && months && months.length > 0) {
@@ -66,7 +69,7 @@ export default function MonthSwitcher() {
             {month.name}
           </SelectItem>
         ))}
-        {canManageMonths && (
+        {showManageShortcut && (
           <>
             <SelectSeparator />
             <SelectItem value={MANAGE_MONTHS} className="text-primary">

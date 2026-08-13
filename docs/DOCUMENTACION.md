@@ -165,11 +165,15 @@ DevOps Boards. Detalle completo en la [sección 6](#6-módulo-tareas).
 El trabajo de una persona sobre el eje del tiempo, en dos pestañas.
 Detalle completo en la [sección 7](#7-módulo-cronograma).
 
-### 5.5 Gestión de meses (`/meses`)
+### 5.5 Gestión de meses (`/meses`) — solo Administrador
 
 Crear, duplicar, cerrar, archivar y eliminar meses. Duplicar copia personas,
 proyectos, gerentes, tareas y la distribución de horas del mes de origen.
 Cada mes admite **snapshots**: checkpoints restaurables de su estado.
+
+Es el único módulo del ciclo de vida del mes y es exclusivo del
+Administrador: los demás roles **eligen** el mes en el selector del
+encabezado y trabajan dentro de él, pero no lo crean ni lo cierran.
 
 ### 5.6 Proyectos (`/proyectos`)
 
@@ -356,10 +360,13 @@ auditoría como cualquier otro cambio.
 
 ### 8.1 Los cuatro roles
 
-- **Administrador** — todo, incluida gestión de usuarios, auditoría, y
-  escritura sobre meses cerrados o archivados.
-- **Gestor** — edita horas, tareas, proyectos, personas y meses **mientras
-  el mes esté abierto**; no administra usuarios.
+- **Administrador** — todo, incluida gestión de usuarios, auditoría,
+  escritura sobre meses cerrados o archivados y **la administración de los
+  meses**: crear, duplicar, editar, abrir/cerrar, archivar y eliminar. El
+  módulo *Meses* solo lo ve él.
+- **Gestor** — edita horas, tareas, proyectos y personas **mientras el mes
+  esté abierto**; no administra usuarios **ni los meses** (trabaja dentro
+  del mes que elige en el selector del encabezado).
 - **Analista** — consulta, filtra, busca y comenta; no edita horas. **Sí**
   gestiona sus propias tareas (ver abajo).
 - **Analista de Tecnología** — ver abajo.

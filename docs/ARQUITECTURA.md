@@ -158,7 +158,8 @@ de relacionar una cuenta (`profiles`) con las filas del roster de un mes
 | Tabla | Lectura | Escritura |
 |---|---|---|
 | `profiles` | cualquier autenticado | propio perfil (columnas no privilegiadas) o admin; `role`/`is_active` solo admin (trigger `guard_profile_privileged_columns`) |
-| `months` | cualquier autenticado | crear/cerrar: gestor+admin; archivar/eliminar: solo admin (trigger `guard_month_status_transition`) |
+| `months` | cualquier autenticado | **solo admin** — crear, editar, duplicar (`create_month_from_previous`), cambiar de estado (trigger `guard_month_status_transition`) y eliminar. El gestor sigue escribiendo *dentro* de un mes abierto vía `can_write_month()`, pero no administra el mes |
+| `month_snapshots` | solo admin | crear/restaurar vía RPC, solo admin |
 | `project_managers` | cualquier autenticado | `can_write_month()` — admin siempre, gestor solo si el mes está abierto |
 | `projects` | cualquier autenticado | crear: `can_write_month()` o cualquier analista con el mes abierto (válvula de escape del diálogo de tarea); editar/eliminar: solo `can_write_month()` |
 | `people` | cualquier autenticado; analista de tecnología solo su propia fila | `can_write_month()` |
