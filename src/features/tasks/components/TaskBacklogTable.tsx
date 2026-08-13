@@ -35,6 +35,9 @@ import {
 import { nextBoardOrder, type Task } from "@/features/tasks/api/tasksApi"
 import { useMoveTask } from "@/features/tasks/hooks/useTasksQueries"
 import type { Project } from "@/features/projects/api/projectsApi"
+import { useManagedProjectIds } from "@/features/projects/hooks/useManagedProjects"
+import { useSessionStore } from "@/stores/sessionStore"
+import { canDeleteTask } from "@/lib/roles"
 import type { TaskStatus } from "@/types/database.types"
 
 interface TaskBacklogTableProps {
@@ -71,6 +74,8 @@ export default function TaskBacklogTable({
   onDeleteTask,
 }: TaskBacklogTableProps) {
   const moveTask = useMoveTask()
+  const profile = useSessionStore((s) => s.profile)
+  const managedProjectIds = useManagedProjectIds()
 
   const projectById = useMemo(() => {
     const map = new Map<string, Project>()
@@ -206,9 +211,19 @@ export default function TaskBacklogTable({
                       <DropdownMenuItem onClick={() => onOpenTask(task)}>
                         <Pencil /> Editar
                       </DropdownMenuItem>
-                      <DropdownMenuItem variant="destructive" onClick={() => onDeleteTask(task)}>
-                        <Trash2 /> Eliminar
-                      </DropdownMenuItem>
+                      {/* Borrar es de quien la creó (y del gestor en sus
+                          proyectos): tener la tarea asignada no alcanza. Si se
+                          ofreciera igual, RLS la rechazaría al confirmar. */}
+                      {canDeleteTask(
+                        profile?.role,
+                        task.created_by,
+                        profile?.id,
+                        managedProjectIds.has(task.project_id)
+                      ) && (
+                        <DropdownMenuItem variant="destructive" onClick={() => onDeleteTask(task)}>
+                          <Trash2 /> Eliminar
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

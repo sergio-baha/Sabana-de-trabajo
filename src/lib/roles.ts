@@ -66,6 +66,22 @@ export const requiresTimeReport = (
   profileId: string | undefined
 ) => role === "analista" && Boolean(profileId) && taskCreatedBy !== profileId
 
+// Borrar una tarea: manda la autoría, con el alcance del rol encima. El
+// Administrador borra cualquiera, el Gestor lo suyo y lo de los proyectos que
+// gerencia, el Analista solo lo que él creó. Tener la tarea asignada no
+// habilita el borrado — se entrega o se comenta, no se hace desaparecer.
+// Espejo de `tasks_delete_write` (ver *_borrado_de_tareas_por_dueno.sql).
+export const canDeleteTask = (
+  role: AppRole | undefined | null,
+  taskCreatedBy: string | null | undefined,
+  profileId: string | undefined,
+  managesProject: boolean
+) => {
+  if (isAdmin(role)) return true
+  if (profileId && taskCreatedBy === profileId) return true
+  return role === "gestor" && managesProject
+}
+
 export const roleLabel: Record<AppRole, string> = {
   administrador: "Administrador",
   gestor: "Gestor",

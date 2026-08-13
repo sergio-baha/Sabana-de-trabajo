@@ -24,7 +24,8 @@ import { useRealtimeTasks } from "@/features/tasks/hooks/useRealtimeTasks"
 import { STATUS_LABELS, WORK_ITEM_OPTIONS } from "@/features/tasks/lib/taskLabels"
 import { buildAssigneeIdsByTask, buildAssigneesByTask } from "@/features/tasks/lib/taskAssignees"
 import type { Task } from "@/features/tasks/api/tasksApi"
-import { useProjectManagers, useProjects } from "@/features/projects/hooks/useProjectsQueries"
+import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
+import { useManagedProjectIds } from "@/features/projects/hooks/useManagedProjects"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
@@ -67,7 +68,7 @@ export default function TareasPage() {
   const { data: people } = usePeople(activeMonthId)
   const { data: taskAssignees } = useTaskAssignees(activeMonthId, { allMonths: ignoresMonths })
   const { data: months } = useMonths()
-  const { data: managers } = useProjectManagers()
+  const managedProjectIds = useManagedProjectIds()
 
   // El estado del mes NO limita las tareas: cerrar o archivar un mes congela
   // las horas, no el trabajo. Ver *_tasks_ignore_month_lock.sql.
@@ -119,24 +120,18 @@ export default function TareasPage() {
   // Se excluye lo que uno mismo entregó: nadie se revisa a sí mismo (la base
   // aplica el mismo criterio en task_requires_review).
   const awaitingMyReview = useMemo(() => {
-    const myPersonIds = new Set(
-      (people ?? []).filter((p) => p.profile_id === profile?.id).map((p) => p.id)
-    )
-    const myProjectIds = new Set(
-      (managers ?? []).filter((m) => myPersonIds.has(m.person_id)).map((m) => m.project_id)
-    )
-    if (myProjectIds.size === 0) return new Set<string>()
+    if (managedProjectIds.size === 0) return new Set<string>()
     return new Set(
       (tasks ?? [])
         .filter(
           (task) =>
             task.status === "en_revision" &&
-            myProjectIds.has(task.project_id) &&
+            managedProjectIds.has(task.project_id) &&
             task.submitted_by !== profile?.id
         )
         .map((task) => task.id)
     )
-  }, [tasks, people, managers, profile?.id])
+  }, [tasks, managedProjectIds, profile?.id])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()

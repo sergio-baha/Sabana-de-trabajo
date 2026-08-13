@@ -339,6 +339,13 @@ y no pide motivo; no hay a quién explicarle nada.
 Ser **miembro** de un proyecto ya no abre el trabajo ajeno: la pertenencia
 sirve para asignar, no para mirar.
 
+Y para **borrar** manda la autoría, con el alcance del rol encima
+(`tasks_delete_write`): el Analista borra lo que él creó, el Gestor lo suyo y
+lo de los proyectos que gerencia, el Administrador cualquiera. Tener la tarea
+asignada no habilita el borrado — se entrega o se comenta, no se hace
+desaparecer. La opción "Eliminar" solo aparece donde va a funcionar
+(`canDeleteTask`).
+
 Dentro de eso, el tablero del Gestor abre en **"Mis tareas"** (lo que creó, lo
 que tiene asignado y lo que le entregaron para revisar). "Todo lo de mis
 proyectos" está a un clic, pero no es el punto de partida: el tablero es para
