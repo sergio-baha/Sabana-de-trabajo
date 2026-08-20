@@ -167,9 +167,12 @@ Detalle completo en la [sección 7](#7-módulo-cronograma).
 
 ### 5.5 Gestión de meses (`/meses`) — solo Administrador
 
-Crear, duplicar, cerrar, archivar y eliminar meses. Duplicar copia personas,
-proyectos, gerentes, tareas y la distribución de horas del mes de origen.
-Cada mes admite **snapshots**: checkpoints restaurables de su estado.
+Crear, duplicar, cerrar, archivar y eliminar meses. Duplicar copia el roster
+(con sus tarifas) y la distribución de horas del mes de origen; el catálogo de
+proyectos no se duplica porque los proyectos son durables, y las tareas
+tampoco: en el mes nuevo el trabajo vuelve a empezar.
+Cada mes admite **snapshots**: checkpoints restaurables de su roster y su
+reparto de horas.
 
 Es el único módulo del ciclo de vida del mes y es exclusivo del
 Administrador: los demás roles **eligen** el mes en el selector del
@@ -424,12 +427,21 @@ manda lo suyo.
 - La UI impide que una tarjeta sea su propio padre, pero no detecta ciclos
   más largos (A → B → A). La jerarquía solo agrupa visualmente; nada se
   calcula en cascada sobre ella, así que un ciclo no rompe cálculos.
-- `create_month_from_previous` copia las tareas al mes nuevo **sin** la
-  jerarquía (`parent_task_id` queda en null) ni las marcas de tiempo:
-  remapear los padres exigiría una tabla de mapeo adicional, y en el mes
-  nuevo el trabajo vuelve a empezar.
-- Las tareas **no** forman parte de `month_snapshots`. Restaurar un snapshot
-  no las toca (pero sí borra y reinserta asignaciones).
+- `create_month_from_previous` **no** copia las tareas: desde que el proyecto
+  es durable, duplicar un mes es copiar el roster y el reparto de horas. Las
+  tareas se quedan en el mes en el que se crearon.
+- Las tareas tampoco forman parte de `month_snapshots`, y restaurar no las
+  toca. Cuidado con la versión vieja de esta afirmación: entre julio y el 12
+  de agosto de 2026 era falsa. `restore_month_snapshot` borraba y reinsertaba
+  `projects`, y como `tasks.project_id` es ON DELETE CASCADE, restaurar habría
+  vaciado el tablero del mes entero. Nadie llegó a restaurar en esa ventana.
+  Hoy el snapshot no incluye `projects` y no hay camino de restaurar a `tasks`.
+- **Borrar un mes sí borra las tareas**, y eso sigue vigente:
+  `tasks.month_id` es ON DELETE CASCADE. Es lo que se llevó 68 tarjetas el 11
+  y el 12 de agosto de 2026 (entonces bajaba además por
+  `projects.month_id`, que ya no existe). El borrado de un mes es la operación
+  más destructiva de la plataforma y no tiene vuelta atrás salvo por
+  `audit_logs`.
 
 ---
 
@@ -613,9 +625,12 @@ debe sobrevivir al borrado de la fila original.
   nuevo), proyectos, gerentes, tareas —con sus fechas y campos de tablero— y
   asignaciones. **No** copia comentarios ni auditoría.
 - **`create_month_snapshot` / `restore_month_snapshot`** — checkpoint `jsonb`
-  de personas, proyectos, gerentes y asignaciones. Restaurar borra y
-  reinserta con los mismos IDs para que los comentarios existentes se
-  reconecten.
+  del roster, las tarifas y el reparto de horas del mes. Restaurar corrige en
+  sitio y repone lo que falte, pero **no borra**: a nadie se le quita del
+  roster (`task_assignees.person_id` es ON DELETE CASCADE y se llevaría las
+  tarjetas asignadas) y ninguna celda de horas se elimina (arrastraría sus
+  comentarios) — las que sobran quedan en 0, que es el mismo anclaje que usa
+  un comentario sobre una celda vacía.
 
 ## 11. Convenciones para extender el proyecto
 

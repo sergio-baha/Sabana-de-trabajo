@@ -69,7 +69,8 @@ export default function SnapshotsDialog({
             <History className="size-4" /> Versiones de {monthName}
           </DialogTitle>
           <DialogDescription>
-            Guarda un punto de restauración de personas, proyectos y horas asignadas de este mes.
+            Guarda un punto de restauración del roster y el reparto de horas de este mes. Los
+            proyectos y las tareas no forman parte de la versión: no se tocan al restaurar.
           </DialogDescription>
         </DialogHeader>
 
@@ -132,7 +133,7 @@ export default function SnapshotsDialog({
         open={Boolean(toRestore)}
         onOpenChange={(o) => !o && setToRestore(null)}
         title={`Restaurar "${toRestore?.label || "esta versión"}"`}
-        description="Reemplaza las personas, proyectos y horas asignadas actuales del mes por las de esta versión. Los cambios hechos después de guardarla se perderán. Esta acción no se puede deshacer."
+        description="Devuelve el roster y el reparto de horas del mes al estado de esta versión. Las horas repartidas después de guardarla se perderán. Los proyectos, las tareas y los comentarios no se tocan; a nadie se le borra del roster."
         confirmLabel="Restaurar"
         onConfirm={async () => {
           if (toRestore) await restoreSnapshot.mutateAsync(toRestore.id)

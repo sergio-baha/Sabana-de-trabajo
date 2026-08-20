@@ -96,7 +96,7 @@ export default function MesesPage() {
         icon={CalendarRange}
         eyebrow="Configuración"
         title="Meses"
-        description="Cada mes es una planificación independiente. Duplicar copia personas, proyectos y distribución del mes elegido."
+        description="Cada mes es una planificación independiente. Duplicar copia el roster y la distribución de horas del mes elegido; los proyectos son durables y las tareas se quedan en su mes."
         stats={[
           { label: "Meses", value: months?.length ?? 0 },
           { label: "Abiertos", value: openCount },
@@ -254,7 +254,7 @@ export default function MesesPage() {
         open={Boolean(monthToDelete)}
         onOpenChange={(open) => !open && setMonthToDelete(null)}
         title={`Eliminar "${monthToDelete?.name}"`}
-        description="Se eliminarán también sus personas, proyectos, tareas y asignaciones. Esta acción no se puede deshacer."
+        description="Se eliminarán su roster, sus horas repartidas y sus comentarios. Los proyectos no se tocan (son durables). Si el mes todavía tiene tarjetas en el tablero, la eliminación se detiene y te dice cuántas: archívalo en vez de borrarlo. Esta acción no se puede deshacer."
         onConfirm={async () => {
           if (!monthToDelete) return
           await deleteMonth.mutateAsync(monthToDelete.id)
