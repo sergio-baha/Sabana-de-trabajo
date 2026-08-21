@@ -1,0 +1,22 @@
+-- Quinto rol: Coordinador.
+--
+-- Nace con la mesa de ayuda (*_tickets_de_soporte.sql). Su trabajo es
+-- repartir: un ticket entra sin dueño y alguien tiene que decidir de quién
+-- es. El Analista de Tecnología puede tomarlo él mismo, pero cuando no lo
+-- toma nadie —o cuando le toca a otra persona— hace falta quien asigne.
+--
+-- ALCANCE: tickets + supervisión del trabajo del equipo. Ve tableros y
+-- tareas como un Gestor, pero NO manda en la sábana de horas: no reparte,
+-- no cierra meses, no toca tarifas. Es la diferencia con Gestor, y es
+-- deliberada — coordinar el trabajo y planear la capacidad son dos oficios
+-- distintos en esta empresa.
+--
+-- Como Gestor y Administrador, queda FUERA del reparto de horas del mes
+-- (ver `usePlanningExclusions` en el frontend): dirige, no ejecuta, así que
+-- no ocupa columna en la grilla ni suma capacidad en el Dashboard.
+--
+-- Va en su propia migración porque Postgres no permite usar un valor de enum
+-- recién agregado dentro de la misma transacción que lo crea. Las migraciones
+-- siguientes ya pueden referenciarlo en funciones y políticas — el mismo
+-- motivo que separó *_role_analista_tecnologia.sql y *_categoria_emergente.sql.
+alter type public.app_role add value if not exists 'coordinador';
