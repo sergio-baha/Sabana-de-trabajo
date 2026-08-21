@@ -1170,15 +1170,19 @@ export type Database = {
           phase_id: string | null
           priority: number
           project_id: string
+          requester_email: string | null
           returned_count: number
           reviewed_at: string | null
           reviewed_by: string | null
+          source_message_id: string | null
           start_date: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["task_status"]
           submitted_at: string | null
           submitted_by: string | null
           tags: string[]
+          thread_reference: string | null
+          ticket_number: number | null
           title: string
           updated_at: string
           work_item_type: Database["public"]["Enums"]["work_item_type"]
@@ -1198,15 +1202,19 @@ export type Database = {
           phase_id?: string | null
           priority?: number
           project_id: string
+          requester_email?: string | null
           returned_count?: number
           reviewed_at?: string | null
           reviewed_by?: string | null
+          source_message_id?: string | null
           start_date?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           submitted_at?: string | null
           submitted_by?: string | null
           tags?: string[]
+          thread_reference?: string | null
+          ticket_number?: number | null
           title: string
           updated_at?: string
           work_item_type?: Database["public"]["Enums"]["work_item_type"]
@@ -1226,15 +1234,19 @@ export type Database = {
           phase_id?: string | null
           priority?: number
           project_id?: string
+          requester_email?: string | null
           returned_count?: number
           reviewed_at?: string | null
           reviewed_by?: string | null
+          source_message_id?: string | null
           start_date?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           submitted_at?: string | null
           submitted_by?: string | null
           tags?: string[]
+          thread_reference?: string | null
+          ticket_number?: number | null
           title?: string
           updated_at?: string
           work_item_type?: Database["public"]["Enums"]["work_item_type"]
@@ -1582,7 +1594,12 @@ export type Database = {
         | "desarrollar"
         | "producto"
         | "entregar"
-      app_role: "administrador" | "gestor" | "analista" | "analista_tecnologia"
+      app_role:
+        | "administrador"
+        | "gestor"
+        | "coordinador"
+        | "analista"
+        | "analista_tecnologia"
       audit_action: "insert" | "update" | "delete"
       invitation_status: "pendiente" | "aceptada" | "revocada"
       month_status: "abierto" | "cerrado" | "archivado"
@@ -1734,7 +1751,13 @@ export const Constants = {
         "producto",
         "entregar",
       ],
-      app_role: ["administrador", "gestor", "analista", "analista_tecnologia"],
+      app_role: [
+        "administrador",
+        "gestor",
+        "coordinador",
+        "analista",
+        "analista_tecnologia",
+      ],
       audit_action: ["insert", "update", "delete"],
       invitation_status: ["pendiente", "aceptada", "revocada"],
       month_status: ["abierto", "cerrado", "archivado"],

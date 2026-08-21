@@ -11,9 +11,17 @@ import type { AppRole } from "@/types/database.types"
 //     cientos de horas libres que nadie va a trabajar).
 //   · Analista de Tecnología — gestiona su propio trabajo y no participa del
 //     reparto del mes.
+//   · Coordinador — reparte tickets y supervisa, no ejecuta. Mismo criterio
+//     que Gestor y Administrador: si sumara capacidad, el equipo aparecería
+//     con horas libres que nadie va a trabajar.
 //
 // Queda dentro el Analista, que es de quien se reparten las horas.
-const EXCLUDED_ROLES: AppRole[] = ["gestor", "administrador", "analista_tecnologia"]
+const EXCLUDED_ROLES: AppRole[] = [
+  "gestor",
+  "administrador",
+  "coordinador",
+  "analista_tecnologia",
+]
 
 // Ids de las personas del mes que no entran en la planeación de horas.
 //

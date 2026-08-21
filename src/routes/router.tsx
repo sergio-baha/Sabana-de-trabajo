@@ -3,7 +3,7 @@ import { createBrowserRouter } from "react-router"
 import ProtectedRoute from "@/routes/ProtectedRoute"
 import RoleRoute from "@/routes/RoleRoute"
 import HomeRedirect from "@/routes/HomeRedirect"
-import { TEAM_WIDE_ROLES } from "@/lib/roles"
+import { TEAM_WIDE_ROLES, TICKET_ROLES } from "@/lib/roles"
 import AppShell from "@/components/shared/AppShell"
 import LoginPage from "@/features/auth/pages/LoginPage"
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage"
@@ -80,6 +80,19 @@ export const router = createBrowserRouter([
           {
             path: "cronograma",
             lazy: lazyPage(() => import("@/features/schedule/pages/CronogramaPage")),
+          },
+          // La mesa de ayuda es la excepción a la regla de arriba: no muestra
+          // "lo tuyo" sino una COLA COMPARTIDA, así que su acceso se acota por
+          // rol y no por RLS. Quien no atiende soporte no tiene nada que ver
+          // acá — ni siquiera vacío.
+          {
+            element: <RoleRoute allow={TICKET_ROLES} />,
+            children: [
+              {
+                path: "tickets",
+                lazy: lazyPage(() => import("@/features/tickets/pages/TicketsPage")),
+              },
+            ],
           },
           { path: "perfil", element: <ProfilePage /> },
           // Módulos de planeación de todo el equipo: quedan fuera del

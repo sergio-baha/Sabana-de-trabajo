@@ -8,6 +8,31 @@ export const isAdmin = (role: AppRole | undefined | null) => role === "administr
 export const isGestorOrAdmin = (role: AppRole | undefined | null) =>
   role === "administrador" || role === "gestor"
 
+// El Coordinador reparte trabajo y supervisa, pero no planea capacidad: ve
+// los tableros del equipo como un Gestor y NO toca la sábana de horas, los
+// meses ni las tarifas. Espejo de `is_coordinador()` en la base.
+export const isCoordinador = (role: AppRole | undefined | null) => role === "coordinador"
+
+// Quién ve el trabajo de TODO el equipo, no solo el propio. Antes esto era
+// `isGestorOrAdmin` a secas; se separa porque el Coordinador supervisa sin
+// tener las llaves de la planeación — que es justo lo que lo distingue del
+// Gestor.
+export const seesTeamWork = (role: AppRole | undefined | null) =>
+  isGestorOrAdmin(role) || isCoordinador(role)
+
+// La bandeja de la mesa de ayuda. Un ticket entra SIN DUEÑO y le sale a todo
+// Analista de Tecnología, que puede tomarlo; el Coordinador y el
+// Administrador lo asignan a quien corresponda. Espejo de la rama
+// `ticket_number is not null` en `tasks_select_scoped`.
+export const seesTickets = (role: AppRole | undefined | null) =>
+  isAnalistaTecnologia(role) || isCoordinador(role) || isAdmin(role)
+
+// Asignarle un ticket a OTRA persona. El Analista de Tecnología solo puede
+// tomarlo para sí mismo, y eso no pasa por acá. Espejo de
+// `can_assign_tickets()`.
+export const canAssignTickets = (role: AppRole | undefined | null) =>
+  isAdmin(role) || isCoordinador(role)
+
 export const canEditHours = (role: AppRole | undefined | null) => isGestorOrAdmin(role)
 
 export const canManageUsers = (role: AppRole | undefined | null) => isAdmin(role)
@@ -85,6 +110,7 @@ export const canDeleteTask = (
 export const roleLabel: Record<AppRole, string> = {
   administrador: "Administrador",
   gestor: "Gestor",
+  coordinador: "Coordinador",
   analista: "Analista",
   analista_tecnologia: "Analista de Tecnología",
 }
@@ -93,7 +119,25 @@ export const roleLabel: Record<AppRole, string> = {
 // grilla, meses, proyectos, personas, reportes). Se declara en positivo
 // para que agregar un rol nuevo obligue a decidir si entra, en vez de
 // heredar acceso por omisión.
-export const TEAM_WIDE_ROLES: AppRole[] = ["administrador", "gestor", "analista"]
+// El Coordinador entra acá porque supervisa el trabajo del equipo. Ojo: esto
+// le abre los módulos de planeación en la navegación, pero NO le da permiso
+// de escritura sobre ellos — eso lo siguen decidiendo `canEditHours`,
+// `canManageMonths` y la RLS, que no lo incluyen.
+export const TEAM_WIDE_ROLES: AppRole[] = [
+  "administrador",
+  "gestor",
+  "coordinador",
+  "analista",
+]
+
+// Quién entra a la mesa de ayuda. Se declara como lista aparte —y no como
+// `seesTickets`— porque el router necesita un array de roles, no un
+// predicado. Las dos formas dicen lo mismo y deben cambiarse juntas.
+export const TICKET_ROLES: AppRole[] = [
+  "administrador",
+  "coordinador",
+  "analista_tecnologia",
+]
 
 // Orden en que se ofrecen los roles al invitar o al cambiar el rol de una
 // cuenta, de mayor a menor alcance. Lista única para que agregar un rol no
@@ -101,6 +145,7 @@ export const TEAM_WIDE_ROLES: AppRole[] = ["administrador", "gestor", "analista"
 export const ASSIGNABLE_ROLES: AppRole[] = [
   "administrador",
   "gestor",
+  "coordinador",
   "analista",
   "analista_tecnologia",
 ]

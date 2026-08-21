@@ -6,11 +6,12 @@ import {
   Grid3x3,
   History,
   KanbanSquare,
+  LifeBuoy,
   LayoutDashboard,
   Settings,
   type LucideIcon,
 } from "lucide-react"
-import { TEAM_WIDE_ROLES } from "@/lib/roles"
+import { TEAM_WIDE_ROLES, TICKET_ROLES } from "@/lib/roles"
 import type { AppRole } from "@/types/database.types"
 
 export interface NavItem {
@@ -61,6 +62,18 @@ export const NAV_ITEMS: NavItem[] = [
     tips: [
       "Arrastra una tarjeta de una columna a otra para cambiarle el estado.",
       "En el backlog las ves como lista, con filtros, para planear con calma.",
+    ],
+  },
+  {
+    to: "/tickets",
+    label: "Mesa de ayuda",
+    icon: LifeBuoy,
+    allow: TICKET_ROLES,
+    description:
+      "Los tickets que llegan por correo a soporte. Entran sin dueño y le salen a todo el equipo de tecnología: el primero que pueda lo toma, o el Coordinador lo reparte.",
+    tips: [
+      "Un ticket sin dueño lo puede tomar cualquiera del equipo de soporte.",
+      "Al pasarlo a Completada, el solicitante recibe el correo de cierre.",
     ],
   },
   {
@@ -123,9 +136,9 @@ export const SETUP_ITEMS: NavItem[] = [
     // eligen con el selector del encabezado.
     allow: ["administrador"],
     description:
-      "Cada mes es una planificación aparte. Duplicar un mes copia personas, proyectos, equipos y tareas, así no se arranca de cero cada vez. Atajo: el selector de mes del encabezado tiene “Gestionar meses” al final de la lista.",
+      "Cada mes es una planificación aparte. Duplicar un mes copia el roster y el reparto de horas, así no se arranca de cero cada vez; los proyectos son durables y las tareas se quedan en su mes. Atajo: el selector de mes del encabezado tiene “Gestionar meses” al final de la lista.",
     tips: [
-      "Duplicar un mes copia personas, proyectos, equipos y tareas.",
+      "Duplicar un mes copia el roster y el reparto de horas.",
       "Cerrar un mes congela sus horas; las tareas se siguen trabajando.",
     ],
   },

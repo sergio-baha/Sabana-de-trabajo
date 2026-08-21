@@ -42,7 +42,7 @@ const schema = z
   .object({
     email: z.string().min(1, "Ingresa un correo").email("Correo inválido"),
     fullName: z.string().optional(),
-    role: z.enum(["administrador", "gestor", "analista", "analista_tecnologia"]),
+    role: z.enum(["administrador", "gestor", "coordinador", "analista", "analista_tecnologia"]),
     mode: z.enum(["invitacion", "password"]),
     password: z.string().optional(),
   })
