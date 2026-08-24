@@ -53,7 +53,7 @@ export default function NotificationBell() {
           {unreadCount > 0 && (
             <span
               aria-hidden
-              className="absolute top-1 right-1 grid min-w-4 place-content-center rounded-full bg-primary px-1 text-[10px] leading-4 font-semibold text-primary-foreground"
+              className="attention-pulse absolute top-1 right-1 grid min-w-4 place-content-center rounded-full bg-primary px-1 text-[10px] leading-4 font-semibold text-primary-foreground"
             >
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>

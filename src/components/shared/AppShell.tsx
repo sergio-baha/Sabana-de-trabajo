@@ -106,11 +106,17 @@ export default function AppShell() {
               el gap para que el logo quede centrado y no desplazado. */}
           <div className="flex items-center gap-2.5 px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
             <div className="relative shrink-0">
-              {/* Marca en color sólido con su sombra de color: el sistema no
-                  usa degradados ni resplandores (ver Experia §2). */}
+              {/* Halo de marca detrás del logo: respira muy lento (4.5s) y va
+                  desenfocado, así que no compite con nada — solo evita que la
+                  esquina superior del panel arranque en gris. */}
               <div
-                className="flex size-9 items-center justify-center rounded-xl text-sm font-bold tracking-tight text-white"
-                style={{ background: "var(--orange)", boxShadow: "var(--sh-orange)" }}
+                aria-hidden
+                className="animate-glow-soft pointer-events-none absolute -inset-1 rounded-2xl blur-md"
+                style={{ background: "var(--grad-orange)" }}
+              />
+              <div
+                className="relative flex size-9 items-center justify-center rounded-xl text-sm font-bold tracking-tight text-white"
+                style={{ background: "var(--grad-orange)", boxShadow: "var(--sh-orange)" }}
               >
                 DT
               </div>
@@ -165,7 +171,7 @@ export default function AppShell() {
                 <SidebarMenuButton
                   size="lg"
                   className={cn(
-                    "border border-sidebar-border bg-sidebar-accent/40 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent",
+                    "border border-sidebar-border bg-sidebar-accent/40 transition-colors hover:border-primary/40 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent",
                     tourHighlight === ACCOUNT_TARGET && "tour-highlight"
                   )}
                 >
@@ -174,7 +180,7 @@ export default function AppShell() {
                         avatar de la app, así que carga la identidad. */}
                     <AvatarFallback
                       className="text-xs font-semibold text-white"
-                      style={{ background: "var(--purple)" }}
+                      style={{ background: "var(--purple)", boxShadow: "var(--sh-purple)" }}
                     >
                       {initialsFor(profile.full_name)}
                     </AvatarFallback>
@@ -241,24 +247,24 @@ export default function AppShell() {
           se corre por debajo y el menú queda encima. */}
       <SidebarInset className="min-w-0">
         <header className="app-header sticky top-0 z-30 flex h-15 shrink-0 items-center gap-3 border-b border-border px-4">
-          {/* Filo de marca sobre el borde inferior: separa el header del
-              contenido con color de marca en vez de una línea gris más. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 -bottom-px h-px opacity-70"
-            style={{ background: "var(--orange)" }}
-          />
+          {/* El filo inferior lo pinta `.app-header::after` (index.css): es el
+              filete tricolor de marca completo, desplazándose muy lento. */}
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
           {/* El título vive aquí y no en cada página: da contexto al volver a
               la pestaña sin que cada módulo tenga que repetir su encabezado.
               La `key` reinicia la animación al navegar. */}
-          <h1
+          <div
             key={location.pathname}
-            className="animate-fade-in hidden truncate text-sm font-semibold sm:block"
+            className="animate-fade-in hidden min-w-0 items-center gap-2 sm:flex"
           >
-            {currentTitle}
-          </h1>
+            <span
+              aria-hidden
+              className="size-1.5 shrink-0 rounded-full"
+              style={{ background: "var(--orange)", boxShadow: "0 0 0 3px var(--orange-bg)" }}
+            />
+            <h1 className="truncate text-sm font-semibold">{currentTitle}</h1>
+          </div>
           {/* En Tareas, el Analista de Tecnología ve TODAS sus tareas sin
               importar el mes, así que el selector no cambiaría nada y solo
               confundiría. En Cronograma sí se mantiene: las horas que
@@ -281,9 +287,9 @@ export default function AppShell() {
             {/* El ícono gira al entrar, así el cambio de tema se percibe como
                 una acción y no como un parpadeo. */}
             {theme === "dark" ? (
-              <Sun className="animate-scale-in" />
+              <Sun className="animate-theme-swap" />
             ) : (
-              <Moon className="animate-scale-in" />
+              <Moon className="animate-theme-swap" />
             )}
           </Button>
         </header>

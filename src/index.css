@@ -127,6 +127,29 @@
     --orange-bg: #fef0e6;
     --orange-50: #fff8f2;
 
+    /* Capa viva (ver la sección "CAPA VIVA" al final del archivo): el naranja
+       deja de ser solo el color del botón primario y pasa a ser la voz de la
+       interfaz. Todo lo de aquí deriva del MISMO #EC671A —un tono profundo
+       para tinta/bordes, uno encendido para degradados— así la marca no se
+       desplaza, solo se hace más presente. */
+    --orange-deep: #c9520a;
+    --orange-bright: #f97316;
+    --grad-orange: linear-gradient(135deg, #f59e33 0%, #ec671a 55%, #d9550f 100%);
+    --grad-orange-soft: linear-gradient(
+        135deg,
+        rgba(245, 158, 51, 0.18) 0%,
+        rgba(236, 103, 26, 0.09) 100%
+    );
+    --grad-brand-line: linear-gradient(
+        90deg,
+        #f59e33 0%,
+        var(--orange) 30%,
+        var(--grad-mid) 65%,
+        var(--purple) 100%
+    );
+    --sh-orange-lg: 0 12px 32px -10px rgba(236, 103, 26, 0.55);
+    --sh-orange-ring: 0 0 0 3px rgba(236, 103, 26, 0.18);
+
     --accent-rgb: 94, 79, 156; /* el acento va en RGB para poder hacer alpha */
     --purple: #5e4f9c;
     --purple-deep: #45397a;
@@ -287,6 +310,19 @@
     --orange-50: rgba(236, 103, 26, 0.07);
     --orange-pale: rgba(236, 103, 26, 0.36);
     --purple-bg: rgba(var(--accent-rgb), 0.2);
+
+    /* En oscuro el naranja tiene que empujar más: los tintes al 9% se los come
+       el fondo #15141D y el estado activo se perdía. */
+    --orange-deep: #f0813a;
+    --grad-orange: linear-gradient(135deg, #f47a23 0%, #e05f12 55%, #c2500c 100%);
+    --grad-orange-soft: linear-gradient(
+        135deg,
+        rgba(245, 158, 51, 0.22) 0%,
+        rgba(236, 103, 26, 0.1) 100%
+    );
+    --sh-orange: 0 8px 24px -8px rgba(236, 103, 26, 0.5);
+    --sh-orange-lg: 0 12px 34px -10px rgba(236, 103, 26, 0.6);
+    --sh-orange-ring: 0 0 0 3px rgba(236, 103, 26, 0.26);
 
     --success-bg: rgba(13, 148, 136, 0.13);
     --success-bg-strong: rgba(13, 148, 136, 0.22);
@@ -507,8 +543,15 @@
 /* Texto acentuado. En Experia (§7) `.gradient-text` es color plano: el
    recorte de texto sobre un degradado se lee peor y no sobrevive al cambio
    de tema. */
+/* Solo para titulares grandes (>=24px / 700): a tamaño de cuerpo el recorte
+   sobre degradado baja el contraste. Lleva `color` de respaldo, así que si el
+   navegador no recorta el fondo el texto sigue siendo naranja legible. */
 .text-gradient-brand {
     color: var(--orange);
+    background: linear-gradient(100deg, #f59e33 0%, var(--orange) 45%, var(--grad-mid) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 /* Panel de marca (columna del login): color sólido con texto blanco. */
@@ -552,7 +595,12 @@
    selector de mes. La separación del contenido la dan el borde inferior, el
    filo de gradiente de marca y una sombra corta, no la transparencia. */
 .app-header {
-    background: var(--background);
+    position: relative;
+    background: linear-gradient(
+        180deg,
+        color-mix(in oklch, var(--primary) 8%, var(--background)) 0%,
+        var(--background) 100%
+    );
     box-shadow: var(--sh-sm);
 }
 
@@ -677,62 +725,155 @@
 }
 
 /* ── Navegación lateral ────────────────────────────────────────────────
-   El elemento activo se marca con una barra de gradiente pegada al borde
-   izquierdo, además del fondo. Con solo el fondo (naranja muy claro) el
-   activo se perdía cuando había hover en otro ítem. */
+   Es el menú que está siempre a la vista, así que es donde el naranja rinde
+   más. El ítem activo pasó de "fondo naranja pálido con tinta naranja" a
+   naranja pleno con texto blanco: se reconoce de un vistazo desde el otro
+   extremo de la pantalla, incluso con el panel colapsado a 48px. */
 [data-sidebar="menu-button"] {
     position: relative;
+    overflow: hidden;
     border-radius: var(--radius-md);
     transition:
         background-color 0.2s var(--ease),
         color 0.2s var(--ease),
+        box-shadow 0.25s var(--ease-out),
         transform 0.2s var(--ease-out);
 }
+/* Barra del borde izquierdo: crece desde el centro al activarse. */
 [data-sidebar="menu-button"]::before {
     content: "";
     position: absolute;
     top: 50%;
     left: 0;
+    z-index: 1;
     height: 0;
     width: 3px;
     border-radius: 0 3px 3px 0;
-    background: var(--gradient-orange);
+    background: var(--orange);
     transform: translateY(-50%);
     transition: height 0.25s var(--ease-spring);
 }
+/* Barrido de luz que cruza el ítem al pasar el mouse. Es un solo pase por
+   hover (no un bucle): sugiere que el elemento responde sin quedar parpadeando
+   en el rabillo del ojo mientras se lee otra cosa. */
+[data-sidebar="menu-button"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+        100deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.28) 50%,
+        transparent 80%
+    );
+    transform: translateX(-120%);
+    opacity: 0;
+}
+[data-sidebar="menu-button"]:hover::after {
+    animation: sabana-sheen 0.7s var(--ease-out);
+}
 [data-sidebar="menu-button"][data-active="true"]::before {
-    height: 60%;
+    height: 58%;
+    background: #fff;
 }
-[data-sidebar="menu-button"][data-active="true"] {
+/* Naranja pleno + texto blanco + sombra de color. Va como background-image
+   para ganarle al `bg-sidebar-accent` que shadcn pone como background-color
+   en los estados active/hover, sin tener que editar el componente. */
+[data-sidebar="menu-button"][data-active="true"],
+[data-sidebar="menu-button"][data-active="true"]:hover,
+[data-sidebar="menu-button"][data-active="true"]:active {
+    background-image: var(--grad-orange);
+    color: #fff;
     font-weight: 600;
+    box-shadow: var(--sh-orange);
 }
-[data-sidebar="menu-button"]:hover:not([data-active="true"]) {
-    transform: translateX(2px);
+[data-sidebar="menu-button"][data-active="true"] svg {
+    color: #fff;
+    transform: scale(1.1);
 }
-/* El ícono acompaña el estado: crece un poco y toma el color de marca */
+/* Hover del inactivo: tinte naranja de verdad (no un gris levantado) más un
+   desplazamiento corto hacia el contenido. */
+[data-sidebar="menu-button"]:not([data-active="true"]):hover {
+    background-image: var(--grad-orange-soft);
+    color: var(--sidebar-accent-foreground);
+    transform: translateX(3px);
+}
+[data-sidebar="menu-button"]:not([data-active="true"]):hover::before {
+    height: 34%;
+}
+/* El ícono es lo único visible con el panel colapsado: ahí es donde tiene que
+   reaccionar. Rebota una vez al pasar el mouse y se queda un punto más grande. */
 [data-sidebar="menu-button"] svg {
+    position: relative;
+    z-index: 1;
     transition:
         transform 0.25s var(--ease-spring),
         color 0.2s var(--ease);
 }
-[data-sidebar="menu-button"]:hover svg,
-[data-sidebar="menu-button"][data-active="true"] svg {
-    transform: scale(1.12);
+[data-sidebar="menu-button"]:hover svg {
+    animation: sabana-icon-pop 0.45s var(--ease-spring) both;
+    color: var(--orange);
 }
-[data-sidebar="menu-button"][data-active="true"] svg {
-    color: var(--sidebar-primary);
+[data-sidebar="menu-button"][data-active="true"]:hover svg {
+    color: #fff;
 }
-/* El panel es una superficie plana (--sidebar = superficie de tarjeta), sin
-   lavado de color: en Experia el sidebar es blanco con borde derecho y el
-   color entra solo por el ítem activo. */
+/* El texto acompaña con un empujón mínimo — el ojo lee el conjunto como una
+   sola pieza que se mueve, no como un ícono suelto. */
+[data-sidebar="menu-button"] > span:last-child {
+    position: relative;
+    z-index: 1;
+    transition: letter-spacing 0.25s var(--ease-out);
+}
+[data-sidebar="menu-button"]:hover > span:last-child {
+    letter-spacing: 0.2px;
+}
 
-/* Etiqueta de grupo con el tratamiento de etiqueta del sistema */
+/* Panel: superficie de tarjeta con un lavado naranja apenas perceptible en la
+   cabecera, para que el bloque de marca no arranque en gris. */
+[data-slot="sidebar-inner"] {
+    background: linear-gradient(
+        180deg,
+        color-mix(in oklch, var(--primary) 6%, var(--sidebar)) 0%,
+        var(--sidebar) 220px
+    );
+}
+/* El borde derecho del panel deja de ser gris: es el mismo filete de marca,
+   apenas teñido, que lo separa del contenido. */
+[data-slot="sidebar-container"] {
+    border-color: color-mix(in oklch, var(--primary) 22%, var(--sidebar-border));
+}
+[data-slot="sidebar-header"] {
+    position: relative;
+}
+[data-slot="sidebar-header"]::after {
+    content: "";
+    position: absolute;
+    inset: auto 0.75rem 0 0.75rem;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--grad-brand-line);
+    opacity: 0.75;
+}
+
+/* Etiqueta de grupo con el tratamiento de etiqueta del sistema, ahora en
+   naranja y con un guion de color que la ancla al margen. */
 [data-sidebar="group-label"] {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
     font-size: 10.5px;
     font-weight: 800;
     letter-spacing: 0.7px;
     text-transform: uppercase;
-    color: var(--muted-foreground);
+    color: var(--accent-foreground);
+}
+[data-sidebar="group-label"]::before {
+    content: "";
+    width: 10px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--orange);
 }
 
 /* ── Botones (§11.1) ───────────────────────────────────────────────────
@@ -911,6 +1052,43 @@ input[type="radio"] {
     position: relative;
     isolation: isolate;
 }
+/* Dos manchas de marca MUY tenues, fijas detrás del contenido: dan
+   temperatura al gris de la app sin competir con ninguna superficie. La
+   opacidad está calibrada para que el texto encima conserve el mismo
+   contraste que sobre el fondo plano. */
+.page-aurora::before,
+.page-aurora::after {
+    content: "";
+    position: fixed;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: 9999px;
+    filter: blur(90px);
+}
+.page-aurora::before {
+    top: -14vh;
+    right: -8vw;
+    width: 46vw;
+    height: 46vw;
+    background: radial-gradient(circle, rgba(236, 103, 26, 0.16), transparent 68%);
+    animation: sabana-float 14s ease-in-out infinite;
+}
+.page-aurora::after {
+    bottom: -18vh;
+    left: -10vw;
+    width: 40vw;
+    height: 40vw;
+    background: radial-gradient(circle, rgba(var(--accent-rgb), 0.13), transparent 68%);
+    animation: sabana-float 18s ease-in-out infinite reverse;
+}
+.dark .page-aurora::before,
+[data-theme="dark"] .page-aurora::before {
+    background: radial-gradient(circle, rgba(236, 103, 26, 0.2), transparent 68%);
+}
+.dark .page-aurora::after,
+[data-theme="dark"] .page-aurora::after {
+    background: radial-gradient(circle, rgba(var(--accent-rgb), 0.2), transparent 68%);
+}
 
 /* Encabezado de módulo: tarjeta de superficie con el filete tricolor de
    marca arriba. Sustituye la banda con degradado naranja→morado: Experia
@@ -1069,4 +1247,577 @@ input[type="radio"] {
   height: 0;
   color: var(--muted-foreground);
   pointer-events: none;
+}
+
+/* =====================================================================
+   CAPA VIVA — el naranja al frente y los menús en movimiento
+   ---------------------------------------------------------------------
+   Tercera iteración. Las dos anteriores dejaron un sistema correcto pero
+   frío: el naranja aparecía casi solo en el botón primario y todo lo demás
+   —menús, pestañas, tarjetas, tablas— vivía en grises. Esta capa reparte la
+   marca por toda la interfaz y le pone movimiento a lo que se toca.
+
+   Las tres reglas que se respetaron al hacerlo:
+     1. El naranja pleno es SUPERFICIE, nunca tinta de texto pequeño. Donde
+        hace falta naranja como texto se usa --accent-foreground (#B84E00 en
+        claro, naranja claro en oscuro), que sí mide 4.5:1.
+     2. Cada animación tiene principio y fin. Nada queda en bucle salvo lo
+        ambiental (las manchas del fondo, los filetes de marca), que se mueve
+        tan lento que no compite con la lectura.
+     3. Todo el movimiento se apaga entero con prefers-reduced-motion.
+   ===================================================================== */
+
+/* Un solo pase de luz cruzando un elemento (menús, botones) */
+@keyframes sabana-sheen {
+    from { opacity: 1; transform: translateX(-120%); }
+    to   { opacity: 0; transform: translateX(120%); }
+}
+/* Rebote corto del ícono: sobrepasa y se asienta un punto más grande */
+@keyframes sabana-icon-pop {
+    0%   { transform: scale(1) rotate(0deg); }
+    45%  { transform: scale(1.24) rotate(-7deg); }
+    100% { transform: scale(1.12) rotate(0deg); }
+}
+/* Entrada de cada opción de un menú: desde la izquierda, muy corta */
+@keyframes sabana-menu-item-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+/* Degradado que se desplaza — para filetes y bordes de marca */
+@keyframes sabana-gradient-slide {
+    from { background-position: 0% 50%; }
+    to   { background-position: 200% 50%; }
+}
+/* Pulso de anillo naranja para lo que pide atención */
+@keyframes sabana-ring-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(236, 103, 26, 0.45); }
+    50%      { box-shadow: 0 0 0 8px rgba(236, 103, 26, 0); }
+}
+
+/* ── Menús flotantes ───────────────────────────────────────────────────
+   Dropdown, select y popover comparten tratamiento: borde teñido de marca,
+   una línea naranja arriba que los identifica como superficie de la app, y
+   las opciones entrando en cascada al abrirse. La cascada es de 22ms por
+   ítem y se corta en el octavo: un menú largo no puede tardar en armarse
+   más de lo que tarda el usuario en apuntar a la primera opción. */
+[data-slot="dropdown-menu-content"],
+[data-slot="popover-content"],
+[data-slot="select-content"] {
+    position: relative;
+    overflow: hidden;
+    border-color: color-mix(in oklch, var(--primary) 20%, var(--border));
+    box-shadow:
+        var(--sh-lg),
+        0 0 0 1px color-mix(in oklch, var(--primary) 8%, transparent);
+}
+[data-slot="dropdown-menu-content"]::before,
+[data-slot="select-content"]::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 1;
+    height: 2px;
+    background: var(--grad-brand-line);
+    background-size: 200% 100%;
+    animation: sabana-gradient-slide 6s linear infinite;
+}
+
+[data-slot="dropdown-menu-item"],
+[data-slot="dropdown-menu-checkbox-item"],
+[data-slot="dropdown-menu-radio-item"],
+[data-slot="dropdown-menu-sub-trigger"],
+[data-slot="select-item"] {
+    position: relative;
+    border-radius: var(--radius-md);
+    animation: sabana-menu-item-in 0.26s var(--ease-out) both;
+    transition:
+        background-color 0.18s var(--ease),
+        color 0.18s var(--ease),
+        transform 0.18s var(--ease-out);
+}
+[data-slot="dropdown-menu-item"]:nth-child(1),
+[data-slot="select-item"]:nth-child(1) { animation-delay: 0ms; }
+[data-slot="dropdown-menu-item"]:nth-child(2),
+[data-slot="select-item"]:nth-child(2) { animation-delay: 22ms; }
+[data-slot="dropdown-menu-item"]:nth-child(3),
+[data-slot="select-item"]:nth-child(3) { animation-delay: 44ms; }
+[data-slot="dropdown-menu-item"]:nth-child(4),
+[data-slot="select-item"]:nth-child(4) { animation-delay: 66ms; }
+[data-slot="dropdown-menu-item"]:nth-child(5),
+[data-slot="select-item"]:nth-child(5) { animation-delay: 88ms; }
+[data-slot="dropdown-menu-item"]:nth-child(6),
+[data-slot="select-item"]:nth-child(6) { animation-delay: 110ms; }
+[data-slot="dropdown-menu-item"]:nth-child(7),
+[data-slot="select-item"]:nth-child(7) { animation-delay: 132ms; }
+[data-slot="dropdown-menu-item"]:nth-child(n + 8),
+[data-slot="select-item"]:nth-child(n + 8) { animation-delay: 154ms; }
+
+/* Marca de opción señalada: barra naranja pegada al borde izquierdo. Con
+   solo el cambio de fondo, en un menú de ocho ítems cuesta ver cuál está
+   bajo el cursor mientras se recorre rápido. */
+[data-slot="dropdown-menu-item"]::before,
+[data-slot="select-item"]::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 2px;
+    height: 0;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--orange);
+    transform: translateY(-50%);
+    transition: height 0.2s var(--ease-spring);
+}
+[data-slot="dropdown-menu-item"]:hover,
+[data-slot="dropdown-menu-item"]:focus,
+[data-slot="dropdown-menu-item"][data-highlighted],
+[data-slot="dropdown-menu-checkbox-item"]:focus,
+[data-slot="dropdown-menu-checkbox-item"][data-highlighted],
+[data-slot="dropdown-menu-radio-item"]:focus,
+[data-slot="dropdown-menu-radio-item"][data-highlighted],
+[data-slot="dropdown-menu-sub-trigger"]:focus,
+[data-slot="dropdown-menu-sub-trigger"][data-highlighted],
+[data-slot="dropdown-menu-sub-trigger"][data-state="open"],
+[data-slot="select-item"]:focus,
+[data-slot="select-item"][data-highlighted] {
+    background-image: var(--grad-orange-soft);
+    transform: translateX(3px);
+}
+[data-slot="dropdown-menu-item"]:hover::before,
+[data-slot="dropdown-menu-item"]:focus::before,
+[data-slot="dropdown-menu-item"][data-highlighted]::before,
+[data-slot="select-item"]:focus::before,
+[data-slot="select-item"][data-highlighted]::before {
+    height: 55%;
+}
+/* El ícono de la opción toma color de marca al señalarla */
+[data-slot="dropdown-menu-item"] svg,
+[data-slot="select-item"] svg {
+    transition:
+        color 0.18s var(--ease),
+        transform 0.22s var(--ease-spring);
+}
+[data-slot="dropdown-menu-item"]:hover svg,
+[data-slot="dropdown-menu-item"]:focus svg,
+[data-slot="dropdown-menu-item"][data-highlighted] svg,
+[data-slot="select-item"]:focus svg,
+[data-slot="select-item"][data-highlighted] svg {
+    color: var(--accent-foreground);
+    transform: scale(1.14);
+}
+/* La opción destructiva conserva su rojo: es la única que no se vuelve naranja */
+[data-slot="dropdown-menu-item"][data-variant="destructive"]::before {
+    background: var(--destructive);
+}
+[data-slot="dropdown-menu-item"][data-variant="destructive"]:hover,
+[data-slot="dropdown-menu-item"][data-variant="destructive"]:focus,
+[data-slot="dropdown-menu-item"][data-variant="destructive"][data-highlighted] {
+    background-image: none;
+}
+[data-slot="dropdown-menu-item"][data-variant="destructive"]:hover svg,
+[data-slot="dropdown-menu-item"][data-variant="destructive"]:focus svg,
+[data-slot="dropdown-menu-item"][data-variant="destructive"][data-highlighted] svg {
+    color: var(--destructive);
+}
+/* Encabezados y separadores del menú: etiqueta de marca y línea que se
+   desvanece hacia los extremos en vez de un trazo gris de lado a lado. */
+[data-slot="dropdown-menu-label"] {
+    color: var(--accent-foreground);
+}
+[data-slot="dropdown-menu-separator"],
+[data-slot="select-separator"] {
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in oklch, var(--primary) 30%, var(--border)),
+        transparent
+    );
+}
+/* La opción elegida de un Select se lee como elegida aun sin el cursor */
+[data-slot="select-item"][data-state="checked"] {
+    background-image: var(--grad-orange-soft);
+    color: var(--accent-foreground);
+    font-weight: 600;
+}
+[data-slot="select-item"][data-state="checked"]::before {
+    height: 55%;
+}
+/* El disparador del select gira su flecha al abrirse */
+[data-slot="select-trigger"] > svg:last-child {
+    transition: transform 0.22s var(--ease-out);
+}
+[data-slot="select-trigger"][data-state="open"] > svg:last-child {
+    transform: rotate(180deg);
+    color: var(--accent-foreground);
+}
+[data-slot="select-trigger"]:hover {
+    border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+}
+
+/* ── Pestañas ──────────────────────────────────────────────────────────
+   La pestaña activa era una pastilla blanca sobre gris: correcta y muda.
+   Ahora lleva el naranja, y el subrayado de la variante `line` entra
+   creciendo desde el centro. */
+[data-slot="tabs-trigger"] {
+    transition:
+        color 0.2s var(--ease),
+        background-color 0.2s var(--ease),
+        box-shadow 0.2s var(--ease-out);
+}
+[data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"]:is([data-state="active"], [data-active]) {
+    background-image: var(--grad-orange);
+    color: #fff;
+    box-shadow: var(--sh-orange);
+}
+[data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"]:is([data-state="active"], [data-active]) svg {
+    color: #fff;
+}
+[data-slot="tabs-trigger"]:hover:not([data-state="active"], [data-active]) {
+    color: var(--accent-foreground);
+}
+/* Variante `line`: el filete de abajo es naranja y crece desde el centro */
+[data-slot="tabs-list"][data-variant="line"] [data-slot="tabs-trigger"]::after {
+    background: var(--orange);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition:
+        transform 0.28s var(--ease-spring),
+        opacity 0.2s var(--ease);
+}
+[data-slot="tabs-list"][data-variant="line"] [data-slot="tabs-trigger"]:is([data-state="active"], [data-active]) {
+    color: var(--accent-foreground);
+}
+[data-slot="tabs-list"][data-variant="line"] [data-slot="tabs-trigger"]:is([data-state="active"], [data-active])::after {
+    transform: scaleX(1);
+}
+/* El contenido de la pestaña entra en vez de aparecer de golpe */
+[data-slot="tabs-content"]:is([data-state="active"], [data-active]) {
+    animation: sabana-fade-up 0.3s var(--ease-out) both;
+}
+
+/* ── Botones secundarios ───────────────────────────────────────────────
+   El primario ya era naranja. Los otros tres (ghost, outline, secondary)
+   eran completamente grises, y son la mayoría de los botones de la app: al
+   pasar el mouse ahora se tiñen de marca en vez de oscurecerse. */
+[data-slot="button"][data-variant="ghost"]:hover:not(:disabled),
+[data-slot="button"][data-variant="outline"]:hover:not(:disabled),
+[data-slot="button"][data-variant="secondary"]:hover:not(:disabled) {
+    background-image: var(--grad-orange-soft);
+    color: var(--accent-foreground);
+    border-color: color-mix(in oklch, var(--primary) 40%, var(--border));
+}
+[data-slot="button"][data-variant="ghost"] svg,
+[data-slot="button"][data-variant="outline"] svg,
+[data-slot="button"][data-variant="secondary"] svg {
+    transition: transform 0.22s var(--ease-spring);
+}
+[data-slot="button"][data-variant="ghost"]:hover:not(:disabled) svg,
+[data-slot="button"][data-variant="outline"]:hover:not(:disabled) svg,
+[data-slot="button"][data-variant="secondary"]:hover:not(:disabled) svg {
+    transform: scale(1.12);
+}
+/* El primario gana un barrido de luz al pasar el mouse, además de elevarse */
+[data-slot="button"][data-variant="default"] {
+    position: relative;
+    overflow: hidden;
+    background-image: var(--grad-orange);
+}
+[data-slot="button"][data-variant="default"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+        100deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.35) 50%,
+        transparent 80%
+    );
+    transform: translateX(-120%);
+    opacity: 0;
+}
+[data-slot="button"][data-variant="default"]:hover:not(:disabled)::after {
+    animation: sabana-sheen 0.65s var(--ease-out);
+}
+
+/* ── Campos de formulario ──────────────────────────────────────────────
+   El campo enfocado se rodea de un halo naranja suave. Es el mismo color
+   que ya tenía el `--ring`, pero antes solo dibujaba una línea de 1px que
+   se perdía sobre el gris del borde. */
+[data-slot="input"],
+[data-slot="textarea"],
+[data-slot="select-trigger"] {
+    transition:
+        border-color 0.2s var(--ease),
+        box-shadow 0.2s var(--ease-out),
+        background-color 0.2s var(--ease);
+}
+[data-slot="input"]:hover:not(:disabled),
+[data-slot="textarea"]:hover:not(:disabled) {
+    border-color: color-mix(in oklch, var(--primary) 35%, var(--border));
+}
+[data-slot="input"]:focus,
+[data-slot="textarea"]:focus,
+[data-slot="select-trigger"]:focus {
+    border-color: var(--orange);
+    box-shadow: var(--sh-orange-ring);
+}
+
+/* ── Tarjetas y superficies ────────────────────────────────────────────
+   Filete naranja que se despliega en el borde superior al pasar el mouse:
+   la tarjeta responde sin necesidad de moverse ni cambiar de fondo. */
+[data-slot="card"],
+.surface-section {
+    position: relative;
+}
+[data-slot="card"]::before,
+.surface-section::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 1;
+    height: 3px;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    background: var(--grad-orange);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.35s var(--ease-out);
+    pointer-events: none;
+}
+[data-slot="card"]:hover::before,
+.surface-section:hover::before {
+    transform: scaleX(1);
+}
+[data-slot="card"]:hover,
+.surface-section:hover {
+    border-color: color-mix(in oklch, var(--primary) 28%, var(--border));
+}
+
+/* Encabezado de módulo: el filete de marca de arriba ahora se desplaza muy
+   lento, y detrás del título hay un lavado naranja radial. */
+.page-hero::before {
+    background: var(--grad-brand-line);
+    background-size: 200% 100%;
+    animation: sabana-gradient-slide 9s linear infinite;
+}
+.page-hero {
+    background:
+        radial-gradient(
+            ellipse 60% 130% at 88% 0%,
+            color-mix(in oklch, var(--primary) 16%, transparent),
+            transparent 65%
+        ),
+        var(--card);
+}
+
+/* ── Tablas ────────────────────────────────────────────────────────────
+   La fila señalada se marca con más cuerpo (antes: 6% de tinte) y los
+   encabezados dejan el gris por la tinta de marca. */
+[data-slot="table"] tbody tr:hover {
+    background-color: color-mix(in oklch, var(--primary) 10%, transparent);
+    box-shadow: inset 3px 0 0 0 var(--primary);
+}
+[data-slot="table"] thead th {
+    color: var(--accent-foreground);
+}
+[data-slot="table"] thead {
+    background: color-mix(in oklch, var(--primary) 6%, transparent);
+}
+
+/* ── Barra superior ────────────────────────────────────────────────────
+   El filo inferior es el filete de marca completo y se desplaza, así el
+   header tiene un latido lento sin nada que parpadee. */
+.app-header::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 -1px 0;
+    height: 2px;
+    pointer-events: none;
+    background: var(--grad-brand-line);
+    background-size: 200% 100%;
+    animation: sabana-gradient-slide 10s linear infinite;
+    opacity: 0.9;
+}
+
+/* ── Insignias ─────────────────────────────────────────────────────────
+   La insignia primaria pasa a degradado y las que son enlace se elevan. */
+[data-slot="badge"] {
+    transition:
+        transform 0.2s var(--ease-spring),
+        box-shadow 0.2s var(--ease-out);
+}
+[data-slot="badge"][data-variant="default"] {
+    background-image: var(--grad-orange);
+    box-shadow: 0 2px 8px -2px rgba(236, 103, 26, 0.45);
+}
+a > [data-slot="badge"]:hover,
+[data-slot="badge"][href]:hover {
+    transform: translateY(-1px) scale(1.03);
+}
+
+/* ── Interruptores y casillas ──────────────────────────────────────────
+   Estaban en el gris por defecto de shadcn pese a que el `accent-color`
+   global ya era naranja: los componentes pintan su propio fondo. */
+[data-slot="switch"][data-state="checked"] {
+    background-image: var(--grad-orange);
+    box-shadow: 0 2px 10px -3px rgba(236, 103, 26, 0.6);
+}
+[data-slot="checkbox"][data-state="checked"] {
+    background-image: var(--grad-orange);
+    border-color: var(--orange);
+}
+[data-slot="switch-thumb"] {
+    transition: transform 0.24s var(--ease-spring);
+}
+
+/* Progreso: la barra crece con la curva del sistema y va en degradado */
+[data-slot="progress-indicator"] {
+    background-image: var(--grad-orange);
+    transition: transform 0.6s var(--ease-out);
+}
+
+/* ── Diálogos ──────────────────────────────────────────────────────────
+   Filete de marca arriba, igual que los menús: es lo que hace que un modal
+   se lea como parte de la app y no como una caja blanca genérica. */
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"] {
+    position: relative;
+    border-color: color-mix(in oklch, var(--primary) 18%, var(--border));
+}
+[data-slot="dialog-content"]::before,
+[data-slot="alert-dialog-content"]::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    background: var(--grad-brand-line);
+    background-size: 200% 100%;
+    animation: sabana-gradient-slide 8s linear infinite;
+}
+
+/* ── Barras de desplazamiento ──────────────────────────────────────────
+   Naranja al arrastrarlas. Es un detalle mínimo, pero la app vive dentro de
+   tablas largas y la barra está a la vista todo el tiempo. */
+* {
+    scrollbar-color: color-mix(in oklch, var(--primary) 45%, var(--subtle)) transparent;
+}
+::-webkit-scrollbar-thumb:hover,
+.dark ::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: var(--orange);
+    background-clip: padding-box;
+}
+
+/* Anillo naranja que late, para lo que pide atención (campana con pendientes) */
+.attention-pulse {
+    border-radius: 9999px;
+    animation: sabana-ring-pulse 2.2s var(--ease) infinite;
+}
+
+/* Utilidad de realce al pasar el mouse, para bloques que no son Card */
+.hover-glow {
+    transition:
+        transform 0.25s var(--ease-out),
+        box-shadow 0.25s var(--ease-out);
+}
+.hover-glow:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sh-orange-lg);
+}
+
+/* Todo lo anterior se apaga entero si el sistema pide menos movimiento. Las
+   animaciones infinitas se cancelan (no solo se acortan: con duración 0.01ms
+   seguirían recalculando en cada frame) y los estados que dependían de una
+   animación de entrada se dejan en su posición final. */
+@media (prefers-reduced-motion: reduce) {
+    .page-aurora::before,
+    .page-aurora::after,
+    .page-hero::before,
+    .app-header::after,
+    .attention-pulse,
+    [data-sidebar="menu-button"]::after,
+    [data-sidebar="menu-button"]:hover svg,
+    [data-slot="button"][data-variant="default"]::after,
+    [data-slot="dropdown-menu-content"]::before,
+    [data-slot="select-content"]::before,
+    [data-slot="dialog-content"]::before,
+    [data-slot="alert-dialog-content"]::before {
+        animation: none !important;
+    }
+    [data-slot="dropdown-menu-item"],
+    [data-slot="dropdown-menu-checkbox-item"],
+    [data-slot="dropdown-menu-radio-item"],
+    [data-slot="dropdown-menu-sub-trigger"],
+    [data-slot="select-item"] {
+        animation: none !important;
+        opacity: 1;
+    }
+    [data-slot="dropdown-menu-item"]:hover,
+    [data-slot="dropdown-menu-item"][data-highlighted],
+    [data-slot="select-item"][data-highlighted],
+    [data-sidebar="menu-button"]:not([data-active="true"]):hover,
+    .hover-glow:hover {
+        transform: none;
+    }
+    [data-slot="card"]::before,
+    .surface-section::before,
+    [data-slot="tabs-list"][data-variant="line"] [data-slot="tabs-trigger"]::after {
+        transition: none;
+    }
+}
+
+/* Halo de marca detrás de un elemento pequeño (el logo del panel). Es el
+   mismo latido que .animate-glow pero en el rango bajo de opacidad: sobre un
+   desenfoque, 0.85 se lee como una mancha y no como un halo. */
+@keyframes sabana-glow-soft {
+    0%, 100% { opacity: 0.22; transform: scale(1); }
+    50%      { opacity: 0.5; transform: scale(1.06); }
+}
+.animate-glow-soft {
+    animation: sabana-glow-soft 4.5s var(--ease) infinite;
+}
+
+/* Cambio de tema: el ícono entra girando media vuelta. El giro es lo que hace
+   que se perciba como una acción y no como un parpadeo del botón. */
+@keyframes sabana-theme-swap {
+    from { opacity: 0; transform: rotate(-120deg) scale(0.5); }
+    to   { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+.animate-theme-swap {
+    animation: sabana-theme-swap 0.45s var(--ease-spring) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-glow-soft {
+        animation: none !important;
+        opacity: 0.3;
+    }
+    .animate-theme-swap {
+        animation: none !important;
+    }
+}
+
+/* El panel lateral en móvil se dibuja dentro de un Sheet: recibe el mismo
+   filete de marca que los demás paneles flotantes para que el menú se sienta
+   igual en teléfono que en escritorio. */
+[data-slot="sheet-content"] {
+    position: relative;
+    border-color: color-mix(in oklch, var(--primary) 18%, var(--border));
+}
+[data-slot="sheet-content"][data-side="left"]::after,
+[data-slot="sheet-content"][data-side="right"]::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 auto;
+    width: 2px;
+    pointer-events: none;
+    background: linear-gradient(180deg, var(--orange), var(--grad-mid), var(--purple));
+}
+[data-slot="sheet-content"][data-side="left"]::after {
+    right: 0;
+}
+[data-slot="sheet-content"][data-side="right"]::after {
+    left: 0;
 }

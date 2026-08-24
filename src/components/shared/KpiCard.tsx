@@ -22,7 +22,9 @@ interface KpiCardProps {
 // informativo, y de estado (danger/warning) solo cuando el número en sí
 // significa un problema. Nunca color decorativo sin significado.
 const TONE_CLASS: Record<KpiTone, string> = {
-  default: "bg-muted text-muted-foreground",
+  // El neutro lleva el tinte de marca, no gris: son las tarjetas que abren
+  // cada pantalla y en gris el tablero entero arrancaba apagado.
+  default: "bg-accent text-accent-foreground",
   brand: "text-white",
   success: "bg-success-muted text-success",
   warning: "bg-warning-muted text-warning",
@@ -52,7 +54,7 @@ export default function KpiCard({
           )}
           style={
             tone === "brand"
-              ? { background: "var(--purple)", boxShadow: "var(--sh-purple)" }
+              ? { background: "var(--grad-orange)", boxShadow: "var(--sh-orange)" }
               : undefined
           }
         >
