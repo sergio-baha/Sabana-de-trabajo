@@ -94,7 +94,16 @@ export default function AppShell() {
     // desplazarse en horizontal nunca. Se usa `clip` y no `hidden` a
     // propósito — `hidden` en un eje obliga al otro a `auto`, lo que
     // convertiría el contenedor en un scroller y rompería el header sticky.
-    <SidebarProvider className="overflow-x-clip">
+    <SidebarProvider
+      className="overflow-x-clip"
+      style={
+        {
+          // Ancho del panel del sistema Experia (§9): 260px. El de móvil lo
+          // fija el propio componente (18rem) y no se toca por 8px de más.
+          "--sidebar-width": "var(--sidebar-w)",
+        } as CSSProperties
+      }
+    >
       {/* Enlace de salto (Experia §8): oculto hasta recibir foco, permite
           saltarse la navegación con el teclado. */}
       <a href="#main-content" className="skip-link">
@@ -246,7 +255,7 @@ export default function AppShell() {
           en `position: fixed`, no acompaña ese desplazamiento: el contenido
           se corre por debajo y el menú queda encima. */}
       <SidebarInset className="min-w-0">
-        <header className="app-header sticky top-0 z-30 flex h-15 shrink-0 items-center gap-3 border-b border-border px-4">
+        <header className="app-header sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border px-4 md:h-16">
           {/* El filo inferior lo pinta `.app-header::after` (index.css): es el
               filete tricolor de marca completo, desplazándose muy lento. */}
           <SidebarTrigger />

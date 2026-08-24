@@ -278,6 +278,19 @@
     --sh-orange: 0 8px 24px -8px rgba(236, 103, 26, 0.45);
     --sh-purple: 0 8px 24px -8px rgba(var(--accent-rgb), 0.4);
 
+    /* ── Alias con los nombres del documento de Experia ──────────────
+       Mismos valores, los nombres que usa la especificación. Permiten pegar
+       CSS de Experia tal cual, sin traducir cada variable. */
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-xl: 24px;
+    --r-full: 9999px;
+    --gradient: var(--gradient-brand);
+    --gradient-text: var(--orange);
+    --sidebar-w: 260px;
+    --header-h: 64px;
+
     /* Curvas de animación (§6) */
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -306,9 +319,9 @@
     --surface: #1c1b28;
 
     /* Tintes de acento, más sutiles sobre oscuro */
-    --orange-bg: rgba(236, 103, 26, 0.12);
-    --orange-50: rgba(236, 103, 26, 0.07);
-    --orange-pale: rgba(236, 103, 26, 0.36);
+    --orange-bg: rgba(232, 115, 44, 0.12);
+    --orange-50: rgba(232, 115, 44, 0.07);
+    --orange-pale: rgba(232, 115, 44, 0.36);
     --purple-bg: rgba(var(--accent-rgb), 0.2);
 
     /* En oscuro el naranja tiene que empujar más: los tintes al 9% se los come
@@ -434,9 +447,14 @@
     top: 0;
 }
 
-/* Táctil (§8): objetivos cómodos en móvil y sin destello azul al tocar */
+/* Táctil (§8/§13): objetivos cómodos en móvil y sin destello azul al tocar */
 * {
     -webkit-tap-highlight-color: transparent;
+}
+/* `manipulation` quita el retardo de 300ms del doble toque. Se excluyen los
+   campos de formulario: ahí el gesto de selección de texto sí hace falta. */
+:not(input, textarea, select, [contenteditable="true"]) {
+    touch-action: manipulation;
 }
 @media (max-width: 767px) {
     button,
@@ -479,7 +497,7 @@
 
 /* Entrada de página — se aplica al <main> en cada navegación */
 .page-enter {
-    animation: sabana-fade-up 0.42s var(--ease-out) both;
+    animation: sabana-fade-up 0.42s var(--ease-out);
 }
 
 /* Entrada escalonada de tarjetas: el índice lo pone el componente con
@@ -526,7 +544,10 @@
     animation: sabana-bar-grow 0.7s var(--ease-out) both;
 }
 
-/* Superficie premium: elevación + realce sutil del borde al pasar el mouse */
+/* Superficie premium: elevación + realce sutil del borde al pasar el mouse.
+   `.hover-lift` es el nombre que usa la especificación de Experia (§10);
+   `.card-lift` el que ya traían los componentes. Son la misma cosa. */
+.hover-lift,
 .card-lift {
     transition:
         transform 0.28s var(--ease-out),
@@ -534,6 +555,7 @@
         border-color 0.28s var(--ease-out);
     will-change: transform;
 }
+.hover-lift:hover,
 .card-lift:hover {
     transform: translateY(-3px);
     box-shadow: var(--sh-lg);
@@ -1820,4 +1842,136 @@ a > [data-slot="badge"]:hover,
 }
 [data-slot="sheet-content"][data-side="right"]::after {
     left: 0;
+}
+
+/* =====================================================================
+   ALINEACIÓN CON "Experia · Especificaciones visuales"
+   ---------------------------------------------------------------------
+   Ajustes puntuales para que los componentes coincidan con los valores
+   publicados en el documento. Todo lo de aquí es estilo: ningún componente
+   de shadcn cambia de marcado, se estilan por `data-slot` como el resto del
+   archivo. Lo que exigía tocar componentes o cambiar comportamiento quedó
+   fuera a propósito (ver las preguntas abiertas al final).
+   ===================================================================== */
+
+/* ── Botón, variantes `outline` y `ghost` (§11) ────────────────────────
+   En Experia el outline no lleva borde de 1px gris: es un anillo interior de
+   2px en naranja con el texto del mismo color, y el ghost es texto en
+   --muted. Las dos son variantes muy usadas aquí y estaban en el gris por
+   defecto de shadcn. */
+[data-slot="button"][data-variant="outline"] {
+    border-color: transparent;
+    background-color: transparent;
+    box-shadow: inset 0 0 0 2px var(--orange);
+    color: var(--accent-foreground);
+}
+[data-slot="button"][data-variant="outline"]:hover:not(:disabled) {
+    border-color: transparent;
+    box-shadow: inset 0 0 0 2px var(--orange);
+}
+[data-slot="button"][data-variant="ghost"] {
+    color: var(--text-muted);
+}
+/* §11: deshabilitado es opacidad .5 y sin eventos, en todas las variantes. */
+[data-slot="button"]:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* ── Modal (§11) ───────────────────────────────────────────────────────
+   Velo de color propio con desenfoque —el de shadcn es negro al 10% con un
+   blur mínimo, y sobre una tabla llena de texto no llega a separar el
+   diálogo del fondo— y radio de 24px (--r-xl), que es el del documento. */
+[data-slot="dialog-overlay"],
+[data-slot="alert-dialog-overlay"] {
+    background: rgba(15, 15, 30, 0.45);
+}
+@supports (backdrop-filter: blur(10px)) {
+    [data-slot="dialog-overlay"],
+    [data-slot="alert-dialog-overlay"] {
+        backdrop-filter: blur(10px) saturate(1.2);
+        -webkit-backdrop-filter: blur(10px) saturate(1.2);
+    }
+}
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"] {
+    border-radius: var(--r-xl);
+}
+[data-slot="dialog-content"]::before,
+[data-slot="alert-dialog-content"]::before {
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+}
+/* Título de modal: 18px / 700 (§11). El de shadcn venía en 16/500. */
+[data-slot="dialog-title"],
+[data-slot="alert-dialog-title"] {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+/* Botón de cierre: 32×32 sobre --bg-alt y gira 90° al pasar el mouse. Es de
+   los detalles más reconocibles del sistema. */
+[data-slot="dialog-content"] > [data-slot="dialog-close"],
+[data-slot="dialog-content"] > [data-slot="button"][data-variant="ghost"]:last-child {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-sm);
+    background: var(--bg-alt);
+    transition:
+        transform 0.2s var(--ease),
+        background-color 0.2s var(--ease),
+        color 0.2s var(--ease);
+}
+[data-slot="dialog-content"] > [data-slot="dialog-close"]:hover,
+[data-slot="dialog-content"] > [data-slot="button"][data-variant="ghost"]:last-child:hover {
+    transform: rotate(90deg);
+}
+
+/* ── Progreso (§11) ────────────────────────────────────────────────────
+   Altura 8, radio igual a la altura, y la transición larga (.8s) que hace
+   que la barra se lea como algo que "se llena" y no como un salto. */
+[data-slot="progress"] {
+    height: 8px;
+    border-radius: 8px;
+}
+[data-slot="progress-indicator"] {
+    border-radius: 8px;
+    transition: transform 0.8s var(--ease-out);
+}
+
+/* ── Skeleton (§11) ────────────────────────────────────────────────────
+   Fondo --bg-alt, radio --r-sm y barrido de 1.4s. El `animate-pulse` de
+   Tailwind (parpadeo de opacidad) se reemplaza por el barrido del sistema:
+   es el mismo objeto visual que ya tenía la clase .shimmer de esta app. */
+[data-slot="skeleton"] {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--r-sm);
+    background: var(--bg-alt);
+    animation: none;
+}
+[data-slot="skeleton"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in oklch, var(--foreground) 7%, transparent) 50%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: sabana-shimmer 1.4s var(--ease) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-slot="skeleton"]::after {
+        animation: none !important;
+    }
+    [data-slot="dialog-content"] > [data-slot="dialog-close"]:hover,
+    [data-slot="dialog-content"] > [data-slot="button"][data-variant="ghost"]:last-child:hover {
+        transform: none;
+    }
 }
