@@ -617,7 +617,8 @@
    selector de mes. La separación del contenido la dan el borde inferior, el
    filo de gradiente de marca y una sombra corta, no la transparencia. */
 .app-header {
-    position: relative;
+    /* Sin `position`: el header es `sticky` desde el marcado. Su ::after se
+       ancla a él porque sticky también es un elemento posicionado. */
     background: linear-gradient(
         180deg,
         color-mix(in oklch, var(--primary) 8%, var(--background)) 0%,
@@ -1704,7 +1705,9 @@ a > [data-slot="badge"]:hover,
    se lea como parte de la app y no como una caja blanca genérica. */
 [data-slot="dialog-content"],
 [data-slot="alert-dialog-content"] {
-    position: relative;
+    /* Sin `position` aquí: el diálogo se centra con `fixed` desde el
+       componente y una regla sin capa se lo pisaría. Ya está posicionado, así
+       que el ::before del filete se ancla a él sin necesidad de nada más. */
     border-color: color-mix(in oklch, var(--primary) 18%, var(--border));
 }
 [data-slot="dialog-content"]::before,
@@ -1825,7 +1828,7 @@ a > [data-slot="badge"]:hover,
    filete de marca que los demás paneles flotantes para que el menú se sienta
    igual en teléfono que en escritorio. */
 [data-slot="sheet-content"] {
-    position: relative;
+    /* Igual que el diálogo: el Sheet se coloca con `fixed`, no se toca. */
     border-color: color-mix(in oklch, var(--primary) 18%, var(--border));
 }
 [data-slot="sheet-content"][data-side="left"]::after,
