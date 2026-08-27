@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Compass,
   CalendarRange,
   FolderKanban,
   GanttChartSquare,
@@ -11,7 +12,7 @@ import {
   Settings,
   type LucideIcon,
 } from "lucide-react"
-import { TEAM_WIDE_ROLES, TICKET_ROLES } from "@/lib/roles"
+import { GOBERNANZA_ROLES, TEAM_WIDE_ROLES, TICKET_ROLES } from "@/lib/roles"
 import type { AppRole } from "@/types/database.types"
 
 export interface NavItem {
@@ -29,6 +30,9 @@ export interface NavItem {
   tips: string[]
 }
 
+// Los roles que trabajan la operación del día a día. El Estratega NO está:
+// no tiene tablero ni cronograma propios, solo gobierna el portafolio. Si
+// algún día se le abre un módulo operativo, se agrega aquí explícitamente.
 export const ALL_ROLES: AppRole[] = [...TEAM_WIDE_ROLES, "analista_tecnologia"]
 
 // Fuente única de la navegación: la barra lateral, los títulos del header y
@@ -121,6 +125,19 @@ export const NAV_ITEMS: NavItem[] = [
     description:
       "El resumen ejecutivo del mes, listo para exportar a Excel o PDF y compartirlo fuera de la plataforma.",
     tips: ["Exporta el mes a Excel o PDF para compartirlo fuera de la plataforma."],
+  },
+  {
+    to: "/gobernanza",
+    label: "Gobernanza",
+    icon: Compass,
+    allow: GOBERNANZA_ROLES,
+    description:
+      "La vista ejecutiva del portafolio: cuánto de lo presupuestado lleva ejecutado cada gestor mes a mes, qué entregables quedaron pendientes, y en qué fase del Doble Diamante va cada iniciativa comercial con su fecha de salida al mercado.",
+    tips: [
+      "El semáforo de ejecución es el mismo en todas partes: verde ≥90%, amarillo 70–89%, rojo <70%, azul si se pasó del presupuesto.",
+      "En el pipeline, marcar un entregable del checklist es lo único que mueve el porcentaje de avance.",
+      "Una iniciativa se pone en rojo cuando su fecha límite ya pasó y todavía le faltan entregables.",
+    ],
   },
 ]
 

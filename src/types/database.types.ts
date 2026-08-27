@@ -299,6 +299,209 @@ export type Database = {
           },
         ]
       }
+      estratega_entregables: {
+        Row: {
+          anio: number
+          colaborador: string
+          created_at: string
+          created_by: string | null
+          descripcion: string
+          estado: Database["public"]["Enums"]["estratega_entrega_estado"] | null
+          id: string
+          mes: number
+          profile_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          anio: number
+          colaborador: string
+          created_at?: string
+          created_by?: string | null
+          descripcion: string
+          estado?: Database["public"]["Enums"]["estratega_entrega_estado"] | null
+          id?: string
+          mes: number
+          profile_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anio?: number
+          colaborador?: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string
+          estado?: Database["public"]["Enums"]["estratega_entrega_estado"] | null
+          id?: string
+          mes?: number
+          profile_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estratega_entregables_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estratega_entregables_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estratega_finanzas: {
+        Row: {
+          anio: number
+          colaborador: string
+          created_at: string
+          created_by: string | null
+          ejecutado: number
+          id: string
+          mes: number
+          presupuestado: number
+          profile_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          anio: number
+          colaborador: string
+          created_at?: string
+          created_by?: string | null
+          ejecutado?: number
+          id?: string
+          mes: number
+          presupuestado?: number
+          profile_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anio?: number
+          colaborador?: string
+          created_at?: string
+          created_by?: string | null
+          ejecutado?: number
+          id?: string
+          mes?: number
+          presupuestado?: number
+          profile_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estratega_finanzas_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estratega_finanzas_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estratega_producto_items: {
+        Row: {
+          completado: boolean
+          completado_en: string | null
+          completado_por: string | null
+          created_at: string
+          fase: Database["public"]["Enums"]["estratega_fase"]
+          id: string
+          orden: number
+          producto_id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          completado?: boolean
+          completado_en?: string | null
+          completado_por?: string | null
+          created_at?: string
+          fase: Database["public"]["Enums"]["estratega_fase"]
+          id?: string
+          orden?: number
+          producto_id: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          completado?: boolean
+          completado_en?: string | null
+          completado_por?: string | null
+          created_at?: string
+          fase?: Database["public"]["Enums"]["estratega_fase"]
+          id?: string
+          orden?: number
+          producto_id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estratega_producto_items_completado_por_fkey"
+            columns: ["completado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estratega_producto_items_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "estratega_productos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estratega_productos: {
+        Row: {
+          celula: Database["public"]["Enums"]["estratega_celula"]
+          created_at: string
+          created_by: string | null
+          fecha_limite: string
+          id: string
+          nombre: string
+          notas: string | null
+          updated_at: string
+        }
+        Insert: {
+          celula: Database["public"]["Enums"]["estratega_celula"]
+          created_at?: string
+          created_by?: string | null
+          fecha_limite: string
+          id?: string
+          nombre: string
+          notas?: string | null
+          updated_at?: string
+        }
+        Update: {
+          celula?: Database["public"]["Enums"]["estratega_celula"]
+          created_at?: string
+          created_by?: string | null
+          fecha_limite?: string
+          id?: string
+          nombre?: string
+          notas?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estratega_productos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -1600,7 +1803,16 @@ export type Database = {
         | "coordinador"
         | "analista"
         | "analista_tecnologia"
+        | "estratega"
       audit_action: "insert" | "update" | "delete"
+      estratega_celula: "evaluacion" | "gestion_academica" | "sostenibilidad"
+      estratega_entrega_estado:
+        | "entregado"
+        | "en_proceso"
+        | "no_entregado"
+        | "detenido"
+        | "aplazado"
+      estratega_fase: "descubrir" | "definir" | "desarrollar" | "entregar"
       invitation_status: "pendiente" | "aceptada" | "revocada"
       month_status: "abierto" | "cerrado" | "archivado"
       person_status: "activo" | "inactivo"
@@ -1757,8 +1969,18 @@ export const Constants = {
         "coordinador",
         "analista",
         "analista_tecnologia",
+        "estratega",
       ],
       audit_action: ["insert", "update", "delete"],
+      estratega_celula: ["evaluacion", "gestion_academica", "sostenibilidad"],
+      estratega_entrega_estado: [
+        "entregado",
+        "en_proceso",
+        "no_entregado",
+        "detenido",
+        "aplazado",
+      ],
+      estratega_fase: ["descubrir", "definir", "desarrollar", "entregar"],
       invitation_status: ["pendiente", "aceptada", "revocada"],
       month_status: ["abierto", "cerrado", "archivado"],
       person_status: ["activo", "inactivo"],

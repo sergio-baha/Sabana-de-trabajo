@@ -33,6 +33,18 @@ export const seesTickets = (role: AppRole | undefined | null) =>
 export const canAssignTickets = (role: AppRole | undefined | null) =>
   isAdmin(role) || isCoordinador(role)
 
+// El Estratega mira el portafolio: ejecución presupuestal por gestor y avance
+// del pipeline comercial. No reparte horas, no cierra meses, no toca tareas —
+// su módulo es Gobernanza y nada más. Espejo de `is_estratega()` en la base.
+export const isEstratega = (role: AppRole | undefined | null) => role === "estratega"
+
+// Quién entra a Gobernanza. El Administrador siempre: si el acceso al módulo
+// dependiera solo del rol nuevo, la salida de esa persona dejaría el tablero
+// sin nadie que pueda ni corregir un dato. Mismo criterio que la mesa de
+// ayuda. Espejo de `sees_gobernanza()`.
+export const seesGobernanza = (role: AppRole | undefined | null) =>
+  isEstratega(role) || isAdmin(role)
+
 export const canEditHours = (role: AppRole | undefined | null) => isGestorOrAdmin(role)
 
 export const canManageUsers = (role: AppRole | undefined | null) => isAdmin(role)
@@ -113,6 +125,7 @@ export const roleLabel: Record<AppRole, string> = {
   coordinador: "Coordinador",
   analista: "Analista",
   analista_tecnologia: "Analista de Tecnología",
+  estratega: "Estratega",
 }
 
 // Roles que ven los módulos de planeación de todo el equipo (dashboard,
@@ -130,6 +143,11 @@ export const TEAM_WIDE_ROLES: AppRole[] = [
   "analista",
 ]
 
+// Quién entra al módulo de Gobernanza. Se declara como lista aparte —y no
+// como `seesGobernanza`— porque el router necesita un array de roles, no un
+// predicado. Las dos formas dicen lo mismo y se cambian juntas.
+export const GOBERNANZA_ROLES: AppRole[] = ["estratega", "administrador"]
+
 // Quién entra a la mesa de ayuda. Se declara como lista aparte —y no como
 // `seesTickets`— porque el router necesita un array de roles, no un
 // predicado. Las dos formas dicen lo mismo y deben cambiarse juntas.
@@ -146,6 +164,7 @@ export const ASSIGNABLE_ROLES: AppRole[] = [
   "administrador",
   "gestor",
   "coordinador",
+  "estratega",
   "analista",
   "analista_tecnologia",
 ]
@@ -154,5 +173,8 @@ export const ASSIGNABLE_ROLES: AppRole[] = [
 // una constante: el Analista de Tecnología no tiene acceso a /dashboard, así
 // que redirigirlo allí (al entrar, o al rebotar de una ruta prohibida) lo
 // dejaría rebotando entre /dashboard y RoleRoute indefinidamente.
-export const homePathFor = (role: AppRole | undefined | null) =>
-  isAnalistaTecnologia(role) ? "/tareas" : "/dashboard"
+export const homePathFor = (role: AppRole | undefined | null) => {
+  if (isAnalistaTecnologia(role)) return "/tareas"
+  if (isEstratega(role)) return "/gobernanza"
+  return "/dashboard"
+}

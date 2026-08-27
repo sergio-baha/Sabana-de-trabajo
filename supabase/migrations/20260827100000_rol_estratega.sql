@@ -1,0 +1,25 @@
+-- Sexto rol: Estratega.
+--
+-- Nace con el módulo de Gobernanza (*_estratega_esquema.sql). Su trabajo es
+-- MIRAR, no ejecutar: le da visibilidad a Dirección/Coordinación sobre dos
+-- cosas que hoy viven en un Excel y un dashboard suelto —
+--   (a) la ejecución presupuestal y los entregables de cada gestor de
+--       producto, mes a mes, y
+--   (b) el avance de cada iniciativa comercial por las cuatro fases del
+--       Doble Diamante, con alerta de SLA de lanzamiento.
+--
+-- ALCANCE: solo Gobernanza. No ve el Dashboard, ni la sábana de horas, ni
+-- Proyectos, ni Tareas — no porque no pueda, sino porque no es su oficio:
+-- el Estratega gobierna el portafolio, no reparte capacidad. El
+-- Administrador sí ve Gobernanza además de todo lo suyo (ver
+-- `sees_gobernanza()` en la migración siguiente).
+--
+-- Como Gestor, Coordinador y Administrador, queda FUERA del reparto de horas
+-- del mes (ver `usePlanningExclusions` en el frontend): dirige, no ejecuta,
+-- así que no ocupa columna en la grilla ni suma capacidad en el Dashboard.
+--
+-- Va en su propia migración porque Postgres no permite usar un valor de enum
+-- recién agregado dentro de la misma transacción que lo crea. Las migraciones
+-- siguientes ya pueden referenciarlo en funciones y políticas — el mismo
+-- motivo que separó *_rol_coordinador.sql y *_categoria_emergente.sql.
+alter type public.app_role add value if not exists 'estratega';

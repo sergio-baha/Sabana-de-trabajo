@@ -7,6 +7,12 @@ export const TABLE_LABELS: Record<string, string> = {
   project_managers: "Gerente de proyecto",
   tasks: "Tarea",
   allocations: "Asignación de horas",
+  // Gobernanza: las cuatro tablas del Estratega también se auditan, así que
+  // sin estas entradas el Historial mostraría el nombre crudo de la tabla.
+  estratega_finanzas: "Ejecución presupuestal",
+  estratega_entregables: "Entregable de gestión",
+  estratega_productos: "Iniciativa del pipeline",
+  estratega_producto_items: "Entregable del pipeline",
 }
 
 export const FIELD_LABELS: Record<string, string> = {
@@ -23,6 +29,17 @@ export const FIELD_LABELS: Record<string, string> = {
   title: "Título",
   due_date: "Fecha límite",
   assigned_person_id: "Persona asignada",
+  colaborador: "Gestor",
+  presupuestado: "Presupuestado",
+  ejecutado: "Ejecutado",
+  anio: "Año",
+  mes: "Mes",
+  celula: "Célula",
+  fecha_limite: "Fecha límite",
+  completado: "Completado",
+  titulo: "Título",
+  fase: "Fase",
+  orden: "Orden",
 }
 
 export const ACTION_LABELS: Record<string, string> = {

@@ -3,7 +3,7 @@ import { createBrowserRouter } from "react-router"
 import ProtectedRoute from "@/routes/ProtectedRoute"
 import RoleRoute from "@/routes/RoleRoute"
 import HomeRedirect from "@/routes/HomeRedirect"
-import { TEAM_WIDE_ROLES, TICKET_ROLES } from "@/lib/roles"
+import { GOBERNANZA_ROLES, TEAM_WIDE_ROLES, TICKET_ROLES } from "@/lib/roles"
 import AppShell from "@/components/shared/AppShell"
 import LoginPage from "@/features/auth/pages/LoginPage"
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage"
@@ -95,6 +95,18 @@ export const router = createBrowserRouter([
             ],
           },
           { path: "perfil", element: <ProfilePage /> },
+          // Gobernanza: como la mesa de ayuda, es un módulo entero acotado
+          // por rol y no por RLS de fila — el Estratega ve TODO el portafolio
+          // o no ve nada, porque medio portafolio no gobierna nada.
+          {
+            element: <RoleRoute allow={GOBERNANZA_ROLES} />,
+            children: [
+              {
+                path: "gobernanza",
+                lazy: lazyPage(() => import("@/features/estratega/pages/GobernanzaPage")),
+              },
+            ],
+          },
           // Módulos de planeación de todo el equipo: quedan fuera del
           // alcance del Analista de Tecnología, que no ve el trabajo ajeno.
           {
