@@ -36,6 +36,18 @@ export async function deleteMonth(id: string): Promise<void> {
   if (error) throw error
 }
 
+// Marca (o desmarca) la planeación del mes como terminada. Va por RPC y no
+// por un update: `months` es de escritura exclusiva del Administrador, y esta
+// es la única operación que un Gestor puede hacer sobre el mes. Ver
+// *_planeacion_lista.sql.
+export async function setPlanningReady(monthId: string, ready: boolean): Promise<void> {
+  const { error } = await supabase.rpc("set_planning_ready", {
+    p_month_id: monthId,
+    p_ready: ready,
+  })
+  if (error) throw error
+}
+
 export async function duplicateMonth(sourceMonthId: string, newName: string): Promise<string> {
   const { data, error } = await supabase.rpc("create_month_from_previous", {
     p_source_month_id: sourceMonthId,

@@ -5,6 +5,7 @@ import {
   deleteMonth,
   duplicateMonth,
   listMonths,
+  setPlanningReady,
   updateMonth,
   type MonthInsert,
   type MonthUpdate,
@@ -51,6 +52,23 @@ export function useDeleteMonth() {
       toast.success("Mes eliminado")
     },
     onError: (error) => toast.error("No se pudo eliminar el mes", { description: error.message }),
+  })
+}
+
+export function useSetPlanningReady() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ monthId, ready }: { monthId: string; ready: boolean }) =>
+      setPlanningReady(monthId, ready),
+    onSuccess: (_data, { ready }) => {
+      queryClient.invalidateQueries({ queryKey: monthsKeys.all })
+      toast.success(
+        ready
+          ? "Planeación marcada como lista. El Administrador ya puede liberar el mes."
+          : "Se quitó la marca de planeación lista."
+      )
+    },
+    onError: (error: Error) => toast.error(error.message),
   })
 }
 

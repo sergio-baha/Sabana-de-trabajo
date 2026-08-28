@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties } from "react"
 import { Link, useNavigate, useParams } from "react-router"
 import {
   ArrowLeft,
+  CalendarRange,
   ChevronDown,
   ChevronUp,
   FileSpreadsheet,
@@ -36,6 +37,7 @@ import AnimatedNumber from "@/components/shared/AnimatedNumber"
 import EmptyState from "@/components/shared/EmptyState"
 import BudgetBar from "@/features/projects/components/BudgetBar"
 import PhaseFormDialog from "@/features/projects/components/PhaseFormDialog"
+import FasesTimeline from "@/features/projects/components/FasesTimeline"
 import ExpenseFormDialog from "@/features/projects/components/ExpenseFormDialog"
 import {
   useDeleteExpense,
@@ -388,6 +390,28 @@ export default function ProyectoDetallePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Los momentos del proyecto en el tiempo ─────────────────────────
+          La planeación del gestor, aparte de la sábana: las fases cruzan
+          meses y sus fechas no dependen del mes activo. La columna de horas
+          es la que conecta las dos cosas — son las horas que el equipo ya
+          repartió contra cada fase desde la grilla. */}
+      {(phaseTotals ?? []).length > 0 && (
+        <Card className="card-lift">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarRange className="size-4" /> Cronograma del proyecto
+            </CardTitle>
+            <CardDescription>
+              Los momentos del proyecto en el tiempo. Las fechas son del proyecto, no del mes
+              activo: una fase puede cruzar varios meses.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FasesTimeline fases={phaseTotals ?? []} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Fases y sus tareas ─────────────────────────────────────────── */}
       <Card>

@@ -20,6 +20,7 @@ import UtilizationGauge from "@/features/dashboard/components/UtilizationGauge"
 import AttentionList from "@/features/dashboard/components/AttentionList"
 import TopProjectsList from "@/features/dashboard/components/TopProjectsList"
 import RecentChangesList from "@/features/dashboard/components/RecentChangesList"
+import EjecucionPanel from "@/features/dashboard/components/EjecucionPanel"
 import {
   usePersonTotals,
   useProjectTotals,
@@ -29,6 +30,8 @@ import { useMonths } from "@/features/months/hooks/useMonthsQueries"
 import MonthStatusBadge from "@/features/months/components/MonthStatusBadge"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import { usePlanningExclusions } from "@/features/people/hooks/usePlanningExclusions"
+import { useTaskAssignees, useTasks } from "@/features/tasks/hooks/useTasksQueries"
+import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
 import { isAdmin } from "@/lib/roles"
@@ -52,6 +55,15 @@ export default function DashboardPage() {
   // y lo hacía aparecer en "Requiere atención" por un desajuste que nadie va
   // a resolver desde la grilla.
   const excludedPersonIds = usePlanningExclusions(activeMonthId)
+
+  // El panel de ejecución se arma en el cliente con las tarjetas del mes: el
+  // dato ya existe en `tasks` (estimated_hours / completed_hours) y las
+  // consultas son las mismas que usan Tareas y Cronograma, así que react-query
+  // las sirve de caché. Si algún mes llega a tener miles de tarjetas, esto es
+  // lo primero que habría que mover a una vista de la base.
+  const { data: monthTasks } = useTasks(activeMonthId)
+  const { data: monthAssignees } = useTaskAssignees(activeMonthId)
+  const { data: allProjects } = useProjects()
 
   const visiblePersonTotals = useMemo(
     () => (personTotals ?? []).filter((row) => !excludedPersonIds.has(row.person_id)),
@@ -188,6 +200,17 @@ export default function DashboardPage() {
           />
         </div>
       )}
+
+      {/* Planeado contra ejecutado. Va arriba de la utilización a propósito:
+          una vez el mes arranca, "¿cómo vamos contra lo estimado?" pesa más
+          que "¿cuánto repartimos?", que ya es una decisión tomada. */}
+      <EjecucionPanel
+        tasks={monthTasks ?? []}
+        assignees={monthAssignees ?? []}
+        projects={allProjects ?? []}
+        personTotals={visiblePersonTotals}
+        projectTotals={projectTotals ?? []}
+      />
 
       {/* Utilización + atención */}
       <div className="grid gap-4 lg:grid-cols-3">

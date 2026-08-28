@@ -1,5 +1,6 @@
 import {
   addDays,
+  format as formatDate,
   differenceInCalendarDays,
   endOfMonth,
   format,
@@ -7,6 +8,7 @@ import {
   parseISO,
   startOfMonth,
 } from "date-fns"
+import type { Locale } from "date-fns"
 
 export interface ScheduleDay {
   iso: string
@@ -52,6 +54,39 @@ export function buildRange(dates: (string | null)[]): ScheduleDay[] {
     const iso = format(date, "yyyy-MM-dd")
     return { iso, date, isWeekend: isWeekend(date), isToday: iso === today }
   })
+}
+
+export interface MonthSegment {
+  clave: string
+  label: string
+  /** Días que ocupa el mes dentro del rango, para calcular su ancho. */
+  dias: number
+  /** Ancho en porcentaje del eje. */
+  ancho: number
+}
+
+// Agrupa el rango en meses. Un cronograma de días sirve para un mes de
+// tareas; cuando el rango abarca medio año —fases de proyecto, fechas de
+// lanzamiento— una columna por día son trescientas etiquetas ilegibles y lo
+// que se necesita es el mes.
+export function monthSegments(days: ScheduleDay[], locale: Locale): MonthSegment[] {
+  const grupos: MonthSegment[] = []
+  for (const day of days) {
+    const clave = day.iso.slice(0, 7)
+    const ultimo = grupos[grupos.length - 1]
+    if (ultimo?.clave === clave) {
+      ultimo.dias += 1
+    } else {
+      grupos.push({
+        clave,
+        label: formatDate(day.date, "LLL yy", { locale }),
+        dias: 1,
+        ancho: 0,
+      })
+    }
+  }
+  for (const grupo of grupos) grupo.ancho = (grupo.dias / days.length) * 100
+  return grupos
 }
 
 // Posición de una barra del Gantt dentro del rango, en porcentaje. Se

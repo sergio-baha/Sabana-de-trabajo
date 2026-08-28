@@ -593,6 +593,8 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          planning_ready_at: string | null
+          planning_ready_by: string | null
           released_at: string | null
           released_by: string | null
           source_month_id: string | null
@@ -621,6 +623,8 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          planning_ready_at?: string | null
+          planning_ready_by?: string | null
           released_at?: string | null
           released_by?: string | null
           source_month_id?: string | null
@@ -1740,6 +1744,10 @@ export type Database = {
       create_month_snapshot: {
         Args: { p_label?: string; p_month_id: string }
         Returns: string
+      }
+      set_planning_ready: {
+        Args: { p_month_id: string; p_ready: boolean }
+        Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
       is_analista_role: { Args: never; Returns: boolean }

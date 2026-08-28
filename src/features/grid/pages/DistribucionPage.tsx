@@ -5,6 +5,7 @@ import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
   Eraser,
+  CheckCircle2,
   EyeOff,
   Grid3x3,
   Lock,
@@ -37,7 +38,7 @@ import {
   useSeedMonthPeople,
   useUpdatePerson,
 } from "@/features/people/hooks/usePeopleQueries"
-import { useMonths } from "@/features/months/hooks/useMonthsQueries"
+import { useMonths, useSetPlanningReady } from "@/features/months/hooks/useMonthsQueries"
 import { usePlanningExclusions } from "@/features/people/hooks/usePlanningExclusions"
 import {
   useDeleteProject,
@@ -108,6 +109,7 @@ export default function DistribucionPage() {
   const { data: months } = useMonths()
   const activeMonth = months?.find((m) => m.id === activeMonthId)
   const monthLocked = Boolean(activeMonth && activeMonth.status !== "abierto")
+  const setPlanningReady = useSetPlanningReady()
   const canEdit = isGestorOrAdmin(profile?.role) && (!monthLocked || isAdmin(profile?.role))
 
   const { data: people, isLoading: loadingPeople } = usePeople(activeMonthId)
@@ -647,13 +649,42 @@ export default function DistribucionPage() {
           cambiar. Solo lo ven quienes lo preparan (Gestor/Administrador), que
           son los únicos que pueden estar aquí con el mes sin liberar. */}
       {activeMonth?.released_at === null && (
-        <div className="animate-fade-in flex items-start gap-3 rounded-xl border border-border bg-accent/60 p-3.5 text-sm">
-          <EyeOff className="mt-0.5 size-4 shrink-0 text-primary" />
-          <span>
-            <strong>{activeMonth?.name}</strong> está en preparación: el equipo todavía no lo ve.
-            Reparte las horas y carga las actividades; cuando esté listo, el administrador lo
-            libera desde Meses.
+        <div className="animate-fade-in flex flex-wrap items-start gap-3 rounded-xl border border-border bg-accent/60 p-3.5 text-sm">
+          {activeMonth.planning_ready_at ? (
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+          ) : (
+            <EyeOff className="mt-0.5 size-4 shrink-0 text-primary" />
+          )}
+          <span className="min-w-56 flex-1">
+            <strong>{activeMonth.name}</strong>{" "}
+            {activeMonth.planning_ready_at ? (
+              <>
+                está marcado como <strong>planeación lista</strong>. El administrador ya puede
+                liberarlo al equipo; mientras tanto sigues pudiendo ajustar las horas.
+              </>
+            ) : (
+              <>
+                está en preparación: el equipo todavía no lo ve. Reparte las horas y carga las
+                actividades, y cuando esté armado avísale al administrador con el botón.
+              </>
+            )}
           </span>
+          {isGestorOrAdmin(profile?.role) && !monthLocked && (
+            <Button
+              variant={activeMonth.planning_ready_at ? "ghost" : "default"}
+              size="sm"
+              disabled={setPlanningReady.isPending}
+              onClick={() =>
+                setPlanningReady.mutate({
+                  monthId: activeMonth.id,
+                  ready: !activeMonth.planning_ready_at,
+                })
+              }
+            >
+              <CheckCircle2 />
+              {activeMonth.planning_ready_at ? "Quitar la marca" : "Planeación lista"}
+            </Button>
+          )}
         </div>
       )}
 

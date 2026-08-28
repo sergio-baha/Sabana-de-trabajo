@@ -1,6 +1,7 @@
 import { useState } from "react"
 import {
   CalendarRange,
+  CheckCircle2,
   Copy,
   EyeOff,
   History,
@@ -11,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react"
 import PageHeader from "@/components/shared/PageHeader"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -160,7 +162,18 @@ export default function MesesPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <MonthStatusBadge status={month.status} releasedAt={month.released_at} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <MonthStatusBadge status={month.status} releasedAt={month.released_at} />
+                        {month.planning_ready_at && !month.released_at && (
+                          <Badge
+                            variant="ghost"
+                            className="bg-success-muted text-success"
+                            title={`Marcado el ${new Date(month.planning_ready_at).toLocaleDateString("es-CO")}`}
+                          >
+                            <CheckCircle2 /> Planeación lista
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{month.default_hours} h</TableCell>
                     <TableCell>
