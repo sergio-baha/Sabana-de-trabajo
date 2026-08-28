@@ -7,6 +7,7 @@ import {
   ChevronUp,
   FileSpreadsheet,
   Info,
+  Layers,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -62,6 +63,14 @@ import { useTaskReviewFlow } from "@/features/tasks/hooks/useTaskReviewFlow"
 import TaskFormDialog from "@/features/tasks/components/TaskFormDialog"
 import ImportTasksDialog from "@/features/tasks/components/ImportTasksDialog"
 import ProjectFormDialog from "@/features/projects/components/ProjectFormDialog"
+import ProjectLineFormDialog from "@/features/grid/components/ProjectLineFormDialog"
+import {
+  useCreateProjectLine,
+  useDeleteProjectLine,
+  useProjectLines,
+  useRenameProjectLine,
+} from "@/features/projects/hooks/useProjectLinesQueries"
+import type { ProjectLine } from "@/features/projects/api/projectLinesApi"
 import { useDeleteTask, useTaskAssignees, useTasks } from "@/features/tasks/hooks/useTasksQueries"
 import { useRealtimeTasks } from "@/features/tasks/hooks/useRealtimeTasks"
 import { STATUS_LABELS } from "@/features/tasks/lib/taskLabels"
@@ -105,6 +114,17 @@ export default function ProyectoDetallePage() {
   const { data: phaseTotals } = usePhaseTotals(projectId ?? null)
   const { data: phaseCosts } = usePhaseCosts()
   const { data: expenses } = useExpenses(projectId ?? null)
+  const { data: allLines } = useProjectLines()
+  const projectLines = useMemo(
+    () =>
+      (allLines ?? [])
+        .filter((l) => l.project_id === projectId)
+        .sort((a, b) => a.position - b.position),
+    [allLines, projectId]
+  )
+  const createLine = useCreateProjectLine()
+  const renameLine = useRenameProjectLine()
+  const deleteLine = useDeleteProjectLine()
 
   const { data: projects } = useProjects()
   const deleteProject = useDeleteProject()
@@ -150,6 +170,8 @@ export default function ProyectoDetallePage() {
   const [expenseOpen, setExpenseOpen] = useState(false)
   const [phaseToDelete, setPhaseToDelete] = useState<ProjectPhase | null>(null)
   const [expenseToDelete, setExpenseToDelete] = useState<ProjectExpense | null>(null)
+  const [lineDialog, setLineDialog] = useState<{ line: ProjectLine | null } | null>(null)
+  const [lineToDelete, setLineToDelete] = useState<ProjectLine | null>(null)
 
   const [taskFormOpen, setTaskFormOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -412,6 +434,58 @@ export default function ProyectoDetallePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Subproyectos ───────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="size-4" /> Subproyectos
+            </CardTitle>
+            <CardDescription>
+              Todo proyecto tiene al menos uno (por defecto, con su mismo nombre). Cada subproyecto
+              es su propia fila en la sábana, con horas independientes por persona.
+            </CardDescription>
+          </div>
+          {canWrite && (
+            <Button size="sm" variant="outline" onClick={() => setLineDialog({ line: null })}>
+              <Plus /> Agregar
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="flex flex-col gap-1">
+          {projectLines.map((line) => (
+            <div
+              key={line.id}
+              className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2"
+            >
+              <span className="text-sm font-medium">{line.name}</span>
+              {canWrite && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`Renombrar ${line.name}`}
+                    onClick={() => setLineDialog({ line })}
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  {projectLines.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={`Eliminar ${line.name}`}
+                      onClick={() => setLineToDelete(line)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* ── Fases y sus tareas ─────────────────────────────────────────── */}
       <Card>
@@ -721,6 +795,30 @@ export default function ProyectoDetallePage() {
         onOpenChange={setExpenseOpen}
         projectId={project.id}
         phases={phases ?? []}
+      />
+      <ProjectLineFormDialog
+        open={Boolean(lineDialog)}
+        onOpenChange={(open) => !open && setLineDialog(null)}
+        line={lineDialog?.line ?? null}
+        onSubmit={async (name) => {
+          if (!lineDialog) return
+          if (lineDialog.line) {
+            await renameLine.mutateAsync({ id: lineDialog.line.id, name })
+          } else {
+            await createLine.mutateAsync({ projectId: project.id, name })
+          }
+          setLineDialog(null)
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(lineToDelete)}
+        onOpenChange={(open) => !open && setLineToDelete(null)}
+        title={`Eliminar "${lineToDelete?.name}"`}
+        description="Se eliminan las horas repartidas en este subproyecto, sus actividades y sus comentarios. El proyecto y sus demás subproyectos no se tocan."
+        onConfirm={async () => {
+          if (lineToDelete) await deleteLine.mutateAsync(lineToDelete.id)
+          setLineToDelete(null)
+        }}
       />
       {activeMonthId && (
         <>

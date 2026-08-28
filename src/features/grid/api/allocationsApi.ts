@@ -16,17 +16,15 @@ export async function listAllocations(monthId: string): Promise<Allocation[]> {
 // perder el rastro de auditoría de quién la dejó en 0 (el trigger
 // audit_row_change registra el update igual).
 //
-// `lineId` es null para la fila base de un proyecto (el caso normal, un
-// proyecto sin dividir en frentes) y el id de la línea para una fila
-// adicional. `onConflict` incluye la columna aunque venga en null: la
-// restricción de la base es NULLS NOT DISTINCT, así que Postgres sí la
-// resuelve como el mismo conflicto de siempre para los proyectos sin líneas.
+// `lineId` es el subproyecto de la fila: todo proyecto tiene al menos uno
+// obligatorio (ver *_subproyecto_obligatorio.sql), así que ya no hay un caso
+// "fila base sin línea" — siempre se guarda contra un subproyecto real.
 export async function upsertAllocation(
   monthId: string,
   personId: string,
   projectId: string,
   hours: number,
-  lineId: string | null = null
+  lineId: string
 ): Promise<Allocation> {
   const { data, error } = await supabase
     .from("allocations")
@@ -63,23 +61,19 @@ export async function clearAllocationHours(allocationIds: string[]): Promise<voi
 // para que Gestor/Admin puedan agregar la primera actividad de una celda
 // vacía (features/activities).
 //
-// El filtro de línea usa `.is()` para null en vez de `.eq()`: en PostgREST
-// (y en SQL) `= null` nunca es verdadero, así que un `.eq("line_id", null)`
-// no encontraría NUNCA la fila base de un proyecto sin líneas — crearía una
-// nueva en cada llamada.
 export async function getOrCreateAllocationId(
   monthId: string,
   personId: string,
   projectId: string,
-  lineId: string | null = null
+  lineId: string
 ): Promise<string> {
-  let query = supabase
+  const query = supabase
     .from("allocations")
     .select("id")
     .eq("month_id", monthId)
     .eq("person_id", personId)
     .eq("project_id", projectId)
-  query = lineId === null ? query.is("line_id", null) : query.eq("line_id", lineId)
+    .eq("line_id", lineId)
 
   const { data: existing, error: selectError } = await query.maybeSingle()
   if (selectError) throw selectError

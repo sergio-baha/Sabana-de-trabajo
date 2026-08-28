@@ -80,7 +80,7 @@ export function useRealtimeActivities(monthId: string | null) {
 type AddActivityVars = Omit<CreateActivityInput, "allocationId" | "monthId"> & {
   personId: string
   projectId: string
-  lineId: string | null
+  lineId: string
 }
 
 export function useAddActivity(monthId: string) {

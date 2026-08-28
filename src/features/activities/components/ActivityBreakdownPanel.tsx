@@ -27,7 +27,7 @@ interface ActivityBreakdownPanelProps {
   personId: string
   projectId: string
   /** Null = fila base del proyecto. Con id = una línea (ver project_lines). */
-  lineId: string | null
+  lineId: string
   activities: ActivityWithCell[]
   readOnly: boolean
 }

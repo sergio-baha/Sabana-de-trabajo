@@ -56,6 +56,40 @@ export function buildRange(dates: (string | null)[]): ScheduleDay[] {
   })
 }
 
+export interface DueDateConflict {
+  taskA: { id: string; title: string; startIso: string; endIso: string }
+  taskB: { id: string; title: string; startIso: string; endIso: string }
+}
+
+// Dos tareas "se cruzan" cuando sus ventanas [start_date, due_date] se
+// superponen: la persona tendría que entregar ambas a la vez. Es solo
+// informativo (no bloquea nada) — el gestor decide si reordena, reasigna o
+// lo deja así. Una tarea sin due_date no entra en la comparación: sin fecha
+// de entrega no hay con qué cruzarse.
+export function findDueDateConflicts(
+  tasks: { id: string; title: string; start_date: string | null; due_date: string | null }[]
+): DueDateConflict[] {
+  const dated = tasks
+    .filter((t) => t.due_date)
+    .map((t) => ({
+      id: t.id,
+      title: t.title,
+      startIso: t.start_date ?? t.due_date!,
+      endIso: t.due_date!,
+    }))
+
+  const conflicts: DueDateConflict[] = []
+  for (let i = 0; i < dated.length; i++) {
+    for (let j = i + 1; j < dated.length; j++) {
+      const a = dated[i]
+      const b = dated[j]
+      const overlap = a.startIso <= b.endIso && b.startIso <= a.endIso
+      if (overlap) conflicts.push({ taskA: a, taskB: b })
+    }
+  }
+  return conflicts
+}
+
 export interface MonthSegment {
   clave: string
   label: string

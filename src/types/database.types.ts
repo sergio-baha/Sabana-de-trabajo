@@ -119,7 +119,7 @@ export type Database = {
           created_at: string
           hours: number
           id: string
-          line_id: string | null
+          line_id: string
           month_id: string
           person_id: string
           project_id: string
@@ -130,7 +130,7 @@ export type Database = {
           created_at?: string
           hours?: number
           id?: string
-          line_id?: string | null
+          line_id: string
           month_id: string
           person_id: string
           project_id: string
@@ -141,7 +141,7 @@ export type Database = {
           created_at?: string
           hours?: number
           id?: string
-          line_id?: string | null
+          line_id?: string
           month_id?: string
           person_id?: string
           project_id?: string

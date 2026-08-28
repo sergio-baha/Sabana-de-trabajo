@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { useAddActivity, useDeleteActivity } from "@/features/activities/hooks/useActivitiesQueries"
 import { usePhases } from "@/features/projects/hooks/useProjectBudgetQueries"
+import { useProjectLines } from "@/features/projects/hooks/useProjectLinesQueries"
 import type { ActivityWithCell } from "@/features/activities/api/activitiesApi"
 
 interface DayLogDialogProps {
@@ -61,6 +62,10 @@ export default function DayLogDialog({
 
   // Las fases son del proyecto completo, no del mes que muestra el calendario.
   const { data: phases } = usePhases(open ? projectId : null)
+  const { data: allLines } = useProjectLines()
+  const defaultLineId = allLines
+    ?.filter((l) => l.project_id === projectId)
+    .sort((a, b) => a.position - b.position)[0]?.id
 
   const total = activities.reduce((sum, a) => sum + a.hours, 0)
   const parsedHours = Number(hours)
@@ -68,16 +73,17 @@ export default function DayLogDialog({
     description.trim().length > 0 && hours.trim().length > 0 && Number.isFinite(parsedHours) && parsedHours > 0
 
   const submit = async () => {
-    if (!canSubmit) return
+    if (!canSubmit || !defaultLineId) return
     await addActivity.mutateAsync({
       personId,
       projectId,
       // El cronograma es el registro de tiempo de la persona por proyecto y
-      // día — no tiene (ni necesita) un selector de línea, así que siempre
-      // registra contra la fila base. Si el proyecto está dividido en
-      // líneas (ver project_lines), el desglose fino por frente se sigue
-      // haciendo desde la sábana.
-      lineId: null,
+      // día — no tiene (ni necesita) un selector de subproyecto, así que
+      // siempre registra contra el subproyecto por defecto (el de menor
+      // posición, que es el obligatorio con el mismo nombre del proyecto).
+      // Si el proyecto tiene más subproyectos, el desglose fino por frente
+      // se sigue haciendo desde la sábana.
+      lineId: defaultLineId,
       description: description.trim(),
       phaseId: phaseId === "none" ? null : phaseId,
       activityDate: dateIso,

@@ -75,7 +75,7 @@ export function useAddComment(monthId: string) {
     mutationFn: async (vars: {
       personId: string
       projectId: string
-      lineId: string | null
+      lineId: string
       authorId: string
       body: string
       parentCommentId?: string | null

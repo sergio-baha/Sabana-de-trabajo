@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react"
 import { DataGrid, type Column, type PositionChangeArgs } from "react-data-grid"
 import "react-data-grid/lib/styles.css"
 import {
+  AlertTriangle,
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
   Check,
@@ -97,6 +98,9 @@ import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { useSessionStore } from "@/stores/sessionStore"
 import { isAdmin, isGestorOrAdmin } from "@/lib/roles"
 import { cn } from "@/lib/utils"
+import { useTasks, useTaskAssignees } from "@/features/tasks/hooks/useTasksQueries"
+import { buildAssigneeIdsByTask } from "@/features/tasks/lib/taskAssignees"
+import { findDueDateConflicts } from "@/features/schedule/lib/scheduleRange"
 
 type SortField = "name" | "total"
 
@@ -149,7 +153,7 @@ export default function DistribucionPage() {
   const [detailCell, setDetailCell] = useState<{
     personId: string
     projectId: string
-    lineId: string | null
+    lineId: string
     tab: CellTab
   } | null>(null)
   // Fila (o grilla completa) a la que se le van a poner las horas en 0.
@@ -211,6 +215,34 @@ export default function DistribucionPage() {
         .sort((a, b) => a.name.localeCompare(b.name)),
     [people, excludedPersonIds]
   )
+
+  // Cruces de fechas de entrega: mismo cálculo que en Cronograma
+  // (findDueDateConflicts), pero acá se hace por persona y se juntan todos
+  // en un solo aviso — es al repartir horas y armar tareas cuando conviene
+  // verlo, no solo después en el cronograma de cada quien.
+  const { data: monthTasks } = useTasks(activeMonthId)
+  const { data: monthTaskAssignees } = useTaskAssignees(activeMonthId)
+  const assigneeIdsByTask = useMemo(
+    () => buildAssigneeIdsByTask(monthTaskAssignees ?? []),
+    [monthTaskAssignees]
+  )
+  const dueDateConflicts = useMemo(() => {
+    const results: { personName: string; taskA: string; taskB: string; date: string }[] = []
+    for (const person of visiblePeople) {
+      const personTasks = (monthTasks ?? []).filter((t) =>
+        (assigneeIdsByTask.get(t.id) ?? []).includes(person.id)
+      )
+      for (const conflict of findDueDateConflicts(personTasks)) {
+        results.push({
+          personName: person.name,
+          taskA: conflict.taskA.title,
+          taskB: conflict.taskB.title,
+          date: conflict.taskA.endIso,
+        })
+      }
+    }
+    return results
+  }, [visiblePeople, monthTasks, assigneeIdsByTask])
 
   // Los proyectos son durables, pero la sábana es de un mes: la grilla trae
   // los que consumen horas en el mes activo. `extraProjectIds` deja meter
@@ -350,22 +382,21 @@ export default function DistribucionPage() {
   const clearPlan = rowsToClear ? clearPlanFor(rowsToClear) : null
 
   const columns = useMemo<Column<ProjectGridRow, SummaryRow>[]>(() => {
+    const linesByProjectId = new Map<string, ProjectLine[]>()
+    for (const line of lines ?? []) {
+      const list = linesByProjectId.get(line.project_id) ?? []
+      list.push(line)
+      linesByProjectId.set(line.project_id, list)
+    }
+
     const projectCol: Column<ProjectGridRow, SummaryRow> = {
       key: "name",
       name: "Proyecto",
       frozen: true,
-      width: 240,
+      width: 200,
       resizable: true,
       renderCell: ({ row }) => (
-        <div
-          className={cn(
-            "group/proj flex h-full items-center gap-2 py-1 leading-tight",
-            // Sangría leve para que una línea se lea como parte de su
-            // proyecto y no como una fila más al mismo nivel.
-            row.lineId && "pl-3"
-          )}
-          title={row.name}
-        >
+        <div className="group/proj flex h-full items-center gap-2 py-1 leading-tight" title={row.name}>
           <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
           <span className="line-clamp-2 min-w-0 flex-1 whitespace-normal font-medium">
             {row.name}
@@ -373,7 +404,9 @@ export default function DistribucionPage() {
           {/* El menú vive en la columna congelada para que siga a la vista
               por más que se desplace la grilla a lo ancho. Aparece al pasar
               el mouse (o al enfocarlo con el teclado) para no meter un ícono
-              fijo en cada una de las filas. */}
+              fijo en cada una de las filas. Son acciones del PROYECTO
+              completo — renombrar/borrar el subproyecto de esta fila vive en
+              su propia columna. */}
           {canEdit && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -390,50 +423,28 @@ export default function DistribucionPage() {
                 <DropdownMenuItem onClick={() => setRowsToClear([row])}>
                   <Eraser /> Limpiar horas de la fila
                 </DropdownMenuItem>
-                {row.lineId ? (
-                  // Una línea no es un proyecto: se renombra o se borra a
-                  // ella misma, nunca al proyecto completo que la contiene.
-                  <>
-                    <DropdownMenuItem
-                      onClick={() =>
-                        setLineDialog({
-                          projectId: row.projectId,
-                          line: lineById.get(row.lineId as string) ?? null,
-                        })
-                      }
-                    >
-                      <Pencil /> Renombrar línea
-                    </DropdownMenuItem>
-                    <DropdownMenuItem variant="destructive" onClick={() => setLineToDelete(row)}>
-                      <Trash2 /> Eliminar línea
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => setLineDialog({ projectId: row.projectId, line: null })}
-                    >
-                      <Layers /> Agregar línea
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        const project = visibleProjects.find((p) => p.id === row.projectId)
-                        if (project) setEditingProject(project)
-                      }}
-                    >
-                      <Pencil /> Editar proyecto
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => {
-                        const project = visibleProjects.find((p) => p.id === row.projectId)
-                        if (project) setProjectToDelete(project)
-                      }}
-                    >
-                      <Trash2 /> Eliminar
-                    </DropdownMenuItem>
-                  </>
-                )}
+                <DropdownMenuItem
+                  onClick={() => setLineDialog({ projectId: row.projectId, line: null })}
+                >
+                  <Layers /> Agregar subproyecto
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    const project = visibleProjects.find((p) => p.id === row.projectId)
+                    if (project) setEditingProject(project)
+                  }}
+                >
+                  <Pencil /> Editar proyecto
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => {
+                    const project = visibleProjects.find((p) => p.id === row.projectId)
+                    if (project) setProjectToDelete(project)
+                  }}
+                >
+                  <Trash2 /> Eliminar proyecto
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -444,6 +455,61 @@ export default function DistribucionPage() {
           {row.id === "total" ? "Total" : row.id === "disponible" ? "Disponible" : "Libres"}
         </div>
       ),
+    }
+
+    // Todo proyecto tiene al menos un subproyecto (obligatorio, con su mismo
+    // nombre por defecto) — ver *_subproyecto_obligatorio.sql. Esta columna
+    // es la que distingue las filas de un mismo proyecto cuando tiene más de
+    // uno; para el caso normal (un solo subproyecto) simplemente repite el
+    // nombre del proyecto, que es justo lo que se pidió.
+    const subprojectCol: Column<ProjectGridRow, SummaryRow> = {
+      key: "subproject",
+      name: "Subproyecto",
+      frozen: true,
+      width: 160,
+      resizable: true,
+      renderCell: ({ row }) => {
+        const isOnlyLine = (linesByProjectId.get(row.projectId)?.length ?? 1) <= 1
+        return (
+          <div className="group/sub flex h-full items-center gap-1 py-1 leading-tight">
+            <span className="line-clamp-2 min-w-0 flex-1 whitespace-normal text-sm text-muted-foreground">
+              {row.subprojectName}
+            </span>
+            {canEdit && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`Acciones de ${row.subprojectName}`}
+                    className="shrink-0 opacity-0 transition-opacity group-hover/sub:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+                  >
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    onClick={() =>
+                      setLineDialog({
+                        projectId: row.projectId,
+                        line: lineById.get(row.lineId) ?? null,
+                      })
+                    }
+                  >
+                    <Pencil /> Renombrar subproyecto
+                  </DropdownMenuItem>
+                  {!isOnlyLine && (
+                    <DropdownMenuItem variant="destructive" onClick={() => setLineToDelete(row)}>
+                      <Trash2 /> Eliminar subproyecto
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        )
+      },
+      renderSummaryCell: () => null,
     }
 
     const personCols: Column<ProjectGridRow, SummaryRow>[] = visiblePeople.map((person) => ({
@@ -472,31 +538,38 @@ export default function DistribucionPage() {
         // mientras se reparten horas).
         const initialTab: CellTab =
           cellActivities.length === 0 && hasComments ? "comentarios" : "actividades"
+        const openDetail = () =>
+          setDetailCell({
+            personId: person.id,
+            projectId: row.projectId,
+            lineId: row.lineId,
+            tab: initialTab,
+          })
         return (
           <div
             className="relative flex h-full items-center justify-end px-2 tabular-nums"
             style={{ backgroundColor: tintBackground(row.color) }}
+            // Cualquier clic en la celda abre el detalle (actividades /
+            // tareas) — no hace falta apuntarle al iconito. No interfiere con
+            // la edición de horas: react-data-grid solo entra a editar con
+            // doble clic, Enter o al empezar a escribir, no con un clic.
+            onClick={openDetail}
           >
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   className={cn(
-                    "absolute left-1 top-1 flex items-center gap-0.5 rounded-full px-0.5 text-[10px] leading-none font-medium",
-                    marks > 0 ? "text-primary" : "text-muted-foreground/40"
+                    "absolute left-1 top-1 flex items-center gap-0.5 rounded-full px-0.5 text-xs leading-none font-medium",
+                    marks > 0 ? "text-primary" : "text-muted-foreground/60"
                   )}
                   onClick={(e) => {
                     e.stopPropagation()
-                    setDetailCell({
-                      personId: person.id,
-                      projectId: row.projectId,
-                      lineId: row.lineId,
-                      tab: initialTab,
-                    })
+                    openDetail()
                   }}
                   aria-label="Detalle de la celda: actividades y comentarios"
                 >
-                  <NotebookText className="size-3" />
+                  <NotebookText className="size-4" />
                   {marks > 0 && <span>{marks}</span>}
                 </button>
               </TooltipTrigger>
@@ -581,10 +654,11 @@ export default function DistribucionPage() {
       },
     }))
 
-    return [projectCol, ...personCols]
+    return [projectCol, subprojectCol, ...personCols]
   }, [
     visiblePeople,
     visibleProjects,
+    lines,
     lineById,
     canEdit,
     commentsByCell,
@@ -908,24 +982,43 @@ export default function DistribucionPage() {
           }
         />
       ) : (
-        <div onPaste={handlePaste} className="overflow-hidden rounded-md border border-border">
-          <DataGrid
-            className="sabana-grid"
-            columns={columns}
-            rows={rows}
-            rowKeyGetter={(row) => row.rowKey}
-            onRowsChange={handleRowsChange}
-            bottomSummaryRows={summaryRows}
-            onFill={({ columnKey, sourceRow, targetRow }) => ({
-              ...targetRow,
-              hours: { ...targetRow.hours, [columnKey]: sourceRow.hours[columnKey] ?? 0 },
-            })}
-            onActivePositionChange={handleActivePositionChange}
-            rowHeight={48}
-            headerRowHeight={44}
-            summaryRowHeight={36}
-            style={{ blockSize: "min(70svh, 640px)" }}
-          />
+        <div className="flex flex-col gap-3">
+          {dueDateConflicts.length > 0 && (
+            <div className="flex flex-col gap-1.5 rounded-md border border-warning/40 bg-warning-muted px-3 py-2 text-sm text-warning">
+              <p className="flex items-center gap-1.5 font-medium">
+                <AlertTriangle className="size-4 shrink-0" />
+                {dueDateConflicts.length === 1
+                  ? "Hay 2 tareas con fechas de entrega cruzadas"
+                  : `Hay ${dueDateConflicts.length} cruces de fechas de entrega`}
+              </p>
+              <ul className="ml-6 list-disc">
+                {dueDateConflicts.map((c, i) => (
+                  <li key={i}>
+                    {c.personName}: “{c.taskA}” y “{c.taskB}” ({c.date})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div onPaste={handlePaste} className="overflow-hidden rounded-md border border-border">
+            <DataGrid
+              className="sabana-grid"
+              columns={columns}
+              rows={rows}
+              rowKeyGetter={(row) => row.rowKey}
+              onRowsChange={handleRowsChange}
+              bottomSummaryRows={summaryRows}
+              onFill={({ columnKey, sourceRow, targetRow }) => ({
+                ...targetRow,
+                hours: { ...targetRow.hours, [columnKey]: sourceRow.hours[columnKey] ?? 0 },
+              })}
+              onActivePositionChange={handleActivePositionChange}
+              rowHeight={48}
+              headerRowHeight={44}
+              summaryRowHeight={36}
+              style={{ blockSize: "min(70svh, 640px)" }}
+            />
+          </div>
         </div>
       )}
 
@@ -942,6 +1035,8 @@ export default function DistribucionPage() {
           )
           if (!person || !row) return null
           const key = cellKey(detailCell.personId, detailCell.projectId, detailCell.lineId)
+          const displayName =
+            row.subprojectName === row.name ? row.name : `${row.name} — ${row.subprojectName}`
           return (
             <CellDetailsDialog
               open
@@ -952,7 +1047,7 @@ export default function DistribucionPage() {
               projectId={detailCell.projectId}
               lineId={detailCell.lineId}
               personName={person.name}
-              projectName={row.name}
+              projectName={displayName}
               comments={commentsByCell.get(key) ?? []}
               activities={activitiesByCell.get(key) ?? []}
               readOnly={!canEdit}
@@ -1046,8 +1141,8 @@ export default function DistribucionPage() {
       <ConfirmDialog
         open={Boolean(lineToDelete)}
         onOpenChange={(open) => !open && setLineToDelete(null)}
-        title={`Eliminar "${lineToDelete?.name}"`}
-        description="Se eliminan las horas repartidas en esta línea, sus actividades y sus comentarios. El proyecto y sus demás líneas no se tocan."
+        title={`Eliminar "${lineToDelete?.subprojectName}"`}
+        description="Se eliminan las horas repartidas en este subproyecto, sus actividades y sus comentarios. El proyecto y sus demás subproyectos no se tocan."
         onConfirm={async () => {
           if (lineToDelete?.lineId) await deleteLine.mutateAsync(lineToDelete.lineId)
           setLineToDelete(null)

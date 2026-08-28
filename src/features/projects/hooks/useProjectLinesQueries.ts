@@ -22,9 +22,10 @@ export function useCreateProjectLine() {
       createProjectLine(projectId, name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectLinesKeys.all })
-      toast.success("Línea agregada")
+      toast.success("Subproyecto agregado")
     },
-    onError: (error) => toast.error("No se pudo agregar la línea", { description: error.message }),
+    onError: (error) =>
+      toast.error("No se pudo agregar el subproyecto", { description: error.message }),
   })
 }
 
@@ -34,17 +35,19 @@ export function useRenameProjectLine() {
     mutationFn: ({ id, name }: { id: string; name: string }) => renameProjectLine(id, name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectLinesKeys.all })
-      toast.success("Línea renombrada")
+      toast.success("Subproyecto renombrado")
     },
     onError: (error) =>
-      toast.error("No se pudo renombrar la línea", { description: error.message }),
+      toast.error("No se pudo renombrar el subproyecto", { description: error.message }),
   })
 }
 
-// Borrar una línea se lleva sus horas (allocations.line_id on delete
+// Borrar un subproyecto se lleva sus horas (allocations.line_id on delete
 // cascade), así que también hay que refrescar las sábanas de todos los meses
-// abiertos que tuvieran esa línea — no se sabe cuáles desde acá, así que se
-// invalidan todas las claves de allocations con este prefijo.
+// abiertos que lo tuvieran — no se sabe cuáles desde acá, así que se
+// invalidan todas las claves de allocations con este prefijo. Si es el
+// último subproyecto del proyecto, un trigger en la base lo rechaza (ver
+// *_subproyecto_obligatorio.sql) y ese mensaje llega tal cual en error.message.
 export function useDeleteProjectLine() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -52,9 +55,9 @@ export function useDeleteProjectLine() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectLinesKeys.all })
       queryClient.invalidateQueries({ queryKey: ["allocations"] })
-      toast.success("Línea eliminada")
+      toast.success("Subproyecto eliminado")
     },
     onError: (error) =>
-      toast.error("No se pudo eliminar la línea", { description: error.message }),
+      toast.error("No se pudo eliminar el subproyecto", { description: error.message }),
   })
 }

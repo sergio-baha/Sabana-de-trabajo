@@ -3,10 +3,12 @@ import type { Database } from "@/types/database.types"
 
 export type ProjectLine = Database["public"]["Tables"]["project_lines"]["Row"]
 
-// Líneas de proyecto: filas adicionales de un mismo proyecto en la sábana,
-// para dividirlo en frentes de trabajo con horas independientes (ver
-// supabase/migrations/*_lineas_de_proyecto.sql). Son del proyecto, no del
-// mes — se traen todas de una vez, como los proyectos mismos.
+// Subproyectos: todo proyecto tiene al menos uno (se crea automático con su
+// mismo nombre al crear el proyecto, ver *_subproyecto_obligatorio.sql). Son
+// filas independientes en la sábana con sus propias horas por persona, y el
+// nombre de tabla/columna (project_lines / line_id) se mantiene desde cuando
+// se llamaban "líneas" para no repetir la migración de las FKs. Son del
+// proyecto, no del mes — se traen todas de una vez, como los proyectos mismos.
 export async function listProjectLines(): Promise<ProjectLine[]> {
   const { data, error } = await supabase
     .from("project_lines")
@@ -46,10 +48,10 @@ export async function renameProjectLine(id: string, name: string): Promise<Proje
   return data
 }
 
-// Borrar una línea se lleva sus horas (allocations.line_id on delete
-// cascade): es una fila más de la sábana, no un proyecto, así que no hace
-// falta la misma confirmación pesada que borrar un proyecto — el llamador
-// decide si pide confirmación antes.
+// Borrar un subproyecto se lleva sus horas (allocations.line_id on delete
+// cascade). No se puede borrar el último subproyecto de un proyecto — todo
+// proyecto necesita al menos uno — y un trigger en la base (ver
+// *_subproyecto_obligatorio.sql) lo rechaza con un mensaje claro.
 export async function deleteProjectLine(id: string): Promise<void> {
   const { error } = await supabase.from("project_lines").delete().eq("id", id)
   if (error) throw error
