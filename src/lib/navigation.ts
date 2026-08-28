@@ -106,7 +106,11 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     to: "/distribucion",
-    label: "Distribución",
+    // La ruta se queda igual (cambiarla rompería enlaces y marcadores ya
+    // guardados); solo cambia el nombre que ve el equipo, que es lo que se
+    // pidió — "Sábana" es como el equipo ya llama a la grilla en la
+    // conversación diaria.
+    label: "Sábana",
     icon: Grid3x3,
     allow: TEAM_WIDE_ROLES,
     description:

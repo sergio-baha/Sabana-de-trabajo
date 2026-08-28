@@ -36,6 +36,7 @@ import ColorPicker from "@/features/projects/components/ColorPicker"
 import { PersonMultiSelect } from "@/components/shared/PersonMultiSelect"
 import {
   useCreateProject,
+  useProjects,
   useSetProjectManager,
   useSetProjectMembers,
   useUpdateProject,
@@ -110,6 +111,10 @@ export default function ProjectFormDialog({
   onSaved,
 }: ProjectFormDialogProps) {
   const isEdit = Boolean(project)
+  // Para el aviso de nombre repetido (ver onSubmit). Lee de la misma
+  // queryKey que ya usa la pantalla que abrió este diálogo — react-query
+  // sirve la caché, no dispara una consulta aparte.
+  const { data: allProjects } = useProjects()
   const createProject = useCreateProject()
   const updateProject = useUpdateProject()
   const setManager = useSetProjectManager()
@@ -165,6 +170,23 @@ export default function ProjectFormDialog({
     setMembers.isPending
 
   const onSubmit = async (values: FormValues) => {
+    // No hay restricción en la base contra el nombre repetido —los
+    // proyectos son durables y nada impedía crear "IME" dos veces con ids
+    // distintos—, y las dos filas terminaban siendo agregables por
+    // separado a la sábana: la misma iniciativa parecía "poderse agregar
+    // varias veces". Se corta acá, comparando sin distinguir mayúsculas ni
+    // espacios sobrantes, y excluyendo el propio proyecto al editar.
+    const nombreNormalizado = values.name.trim().toLowerCase()
+    const yaExiste = (allProjects ?? []).some(
+      (p) => p.id !== project?.id && p.name.trim().toLowerCase() === nombreNormalizado
+    )
+    if (yaExiste) {
+      form.setError("name", {
+        message: "Ya existe un proyecto con ese nombre. Búscalo y agrégale las horas ahí en vez de crear uno nuevo.",
+      })
+      return
+    }
+
     const patch = {
       name: values.name,
       color: values.color,

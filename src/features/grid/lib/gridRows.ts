@@ -18,7 +18,7 @@ export interface ProjectGridRow {
 // Tipo de las bottomSummaryRows de react-data-grid (filas "Total"/
 // "Disponible" al pie de la grilla) — vive acá para que HoursEditCell y
 // DistribucionPage compartan el mismo segundo generic de Column/RenderEditCellProps.
-export type SummaryRowId = "total" | "disponible"
+export type SummaryRowId = "total" | "disponible" | "libres"
 export interface SummaryRow {
   id: SummaryRowId
 }

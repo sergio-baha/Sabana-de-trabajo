@@ -157,7 +157,13 @@ export default function DistribucionPage() {
   const addProjectToMonth = (projectId: string) =>
     setExtraByMonth((prev) => {
       const key = activeMonthId ?? ""
-      return { ...prev, [key]: [...(prev[key] ?? []), projectId] }
+      const current = prev[key] ?? []
+      // Defensa contra doble clic o una relectura del menú antes de que el
+      // estado se refresque: sin esto, dos disparos del mismo id apilarían
+      // el mismo proyecto dos veces en el arreglo (aunque el Set derivado lo
+      // deduplique para pintar la fila, sigue siendo estado sucio).
+      if (current.includes(projectId)) return prev
+      return { ...prev, [key]: [...current, projectId] }
     })
   const deleteProject = useDeleteProject()
   const { data: managers } = useProjectManagers()
@@ -256,7 +262,15 @@ export default function DistribucionPage() {
     return sorted
   }, [allRows, search, sortField, sortDir, rowTotals])
 
-  const summaryRows = useMemo<SummaryRow[]>(() => [{ id: "total" }, { id: "disponible" }], [])
+  // "Libres" es la resta que faltaba: disponibles menos lo ya planeado. Antes
+  // "Disponible" era la única cifra de capacidad, pero es un campo EDITABLE
+  // (ahí se ajustan las horas del mes de cada quien) — no puede a la vez
+  // mostrar el resultado de restarle lo planeado sin dejar de ser un input.
+  // "Libres" es de solo lectura y sí hace esa cuenta.
+  const summaryRows = useMemo<SummaryRow[]>(
+    () => [{ id: "total" }, { id: "disponible" }, { id: "libres" }],
+    []
+  )
 
   // Índice celda → allocation, para saber qué filas de la base tocar al
   // limpiar sin recorrer el arreglo entero por cada celda.
@@ -348,7 +362,7 @@ export default function DistribucionPage() {
       ),
       renderSummaryCell: ({ row }) => (
         <div className="flex h-full items-center px-2 text-sm font-semibold">
-          {row.id === "total" ? "Total" : "Disponible"}
+          {row.id === "total" ? "Total" : row.id === "disponible" ? "Disponible" : "Libres"}
         </div>
       ),
     }
@@ -452,6 +466,26 @@ export default function DistribucionPage() {
             />
           )
         }
+        if (row.id === "libres") {
+          // La resta que faltaba: disponibles menos lo ya repartido. Negativo
+          // = sobreasignada (rojo, mismo caso que el Total en rojo); positivo
+          // = todavía hay margen (amarillo, igual que "Total" cuando falta
+          // repartir); cero = exacto. Es el mismo statusColor de la fila
+          // "Total" — es la misma comparación, solo que aquí se ve el
+          // resultado de la resta en vez del acumulado.
+          const remaining = summary.availableHours - summary.totalHours
+          return (
+            <div
+              className={cn(
+                "flex h-full items-center justify-end px-2 font-semibold tabular-nums",
+                STATUS_CLASS[summary.statusColor]
+              )}
+              title={`${summary.availableHours} disponibles − ${summary.totalHours} planeadas`}
+            >
+              {remaining > 0 ? `+${remaining}` : remaining}
+            </div>
+          )
+        }
         return (
           <div
             className={cn(
@@ -534,7 +568,7 @@ export default function DistribucionPage() {
       <PageHeader
         icon={Grid3x3}
         eyebrow="Planeación"
-        title="Distribución"
+        title="Sábana"
         description={
           canEdit
             ? "Edita horas directamente en la grilla. Se guardan automáticamente."
