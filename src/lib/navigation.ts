@@ -137,6 +137,7 @@ export const NAV_ITEMS: NavItem[] = [
       "El semáforo de ejecución es el mismo en todas partes: verde ≥90%, amarillo 70–89%, rojo <70%, azul si se pasó del presupuesto.",
       "En el pipeline, marcar un entregable del checklist es lo único que mueve el porcentaje de avance.",
       "Una iniciativa se pone en rojo cuando su fecha límite ya pasó y todavía le faltan entregables.",
+      "El cronograma pone las iniciativas contra el calendario: la barra mide los días entre hoy y la fecha comprometida.",
     ],
   },
 ]

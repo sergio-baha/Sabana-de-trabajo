@@ -36,13 +36,18 @@ import {
   useRevokeInvitation,
 } from "@/features/settings/hooks/useInvitationsQueries"
 import { ASSIGNABLE_ROLES, roleLabel } from "@/lib/roles"
-import type { InvitationStatus } from "@/types/database.types"
+import type { AppRole, InvitationStatus } from "@/types/database.types"
 
 const schema = z
   .object({
     email: z.string().min(1, "Ingresa un correo").email("Correo inválido"),
     fullName: z.string().optional(),
-    role: z.enum(["administrador", "gestor", "coordinador", "analista", "analista_tecnologia"]),
+    // Derivado de ASSIGNABLE_ROLES —la misma lista que llena el <Select>— y no
+    // escrito a mano: cuando esto eran dos listas separadas, agregar un rol
+    // dejaba el selector ofreciendo una opción que la validación rechazaba, sin
+    // más pista que la etiqueta "Rol" en rojo. El cast a tupla es lo que pide
+    // z.enum, que exige al menos un elemento en tiempo de tipos.
+    role: z.enum(ASSIGNABLE_ROLES as [AppRole, ...AppRole[]]),
     mode: z.enum(["invitacion", "password"]),
     password: z.string().optional(),
   })

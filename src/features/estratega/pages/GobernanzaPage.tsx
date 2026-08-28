@@ -1,19 +1,23 @@
 import { useSearchParams } from "react-router"
-import { Compass, LayoutGrid, LineChart } from "lucide-react"
+import { CalendarClock, Compass, LayoutGrid, LineChart } from "lucide-react"
 import PageHeader from "@/components/shared/PageHeader"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import GestoresTab from "@/features/estratega/components/gestores/GestoresTab"
 import PipelineTab from "@/features/estratega/components/pipeline/PipelineTab"
+import CronogramaTab from "@/features/estratega/components/cronograma/CronogramaTab"
 
-const TABS = ["gestores", "pipeline"] as const
+const TABS = ["gestores", "pipeline", "cronograma"] as const
 type TabId = (typeof TABS)[number]
 
 // Gobernanza: la vista ejecutiva del portafolio.
 //
-// DOS PESTAÑAS Y NO DOS RUTAS: son las dos caras de la misma pregunta —"¿cómo
-// vamos?"— y quien las mira las alterna todo el tiempo. La pestaña sí vive en
-// la URL (`?tab=pipeline`) para que un enlace lleve a donde uno quiere y el
-// botón de atrás haga lo esperable.
+// PESTAÑAS Y NO RUTAS SEPARADAS: las tres son caras de la misma pregunta
+// —"¿cómo vamos?"— y quien las mira las alterna todo el tiempo. Pipeline y
+// Cronograma son además los mismos datos en dos formas: la tabla responde
+// "en qué fase va cada iniciativa" y la línea de tiempo, "cuándo sale y
+// cuánto margen queda". La pestaña sí vive en la URL (`?tab=cronograma`)
+// para que un enlace lleve a donde uno quiere y el botón de atrás haga lo
+// esperable.
 //
 // LA GESTIÓN DEL DATO VA DENTRO DE CADA PESTAÑA, no en una pantalla de
 // administración aparte: el dato se corrige donde se ve que está mal. Un
@@ -49,13 +53,20 @@ export default function GobernanzaPage() {
             <LayoutGrid />
             Pipeline comercial
           </TabsTrigger>
+          <TabsTrigger value="cronograma">
+            <CalendarClock />
+            Cronograma
+          </TabsTrigger>
         </TabsList>
 
-        {/* Las dos pestañas se montan bajo demanda: cada una trae sus propias
-            consultas, y cargar el pipeline entero para quien solo viene a
-            mirar la ejecución del mes sería trabajo tirado. */}
+        {/* Cada pestaña se monta bajo demanda: traen sus propias consultas, y
+            cargar el pipeline entero para quien solo viene a mirar la
+            ejecución del mes sería trabajo tirado. Cronograma y Pipeline
+            comparten las dos consultas, así que alternar entre ellas no pide
+            nada a la red — react-query las sirve de caché. */}
         <TabsContent value="gestores">{tab === "gestores" && <GestoresTab />}</TabsContent>
         <TabsContent value="pipeline">{tab === "pipeline" && <PipelineTab />}</TabsContent>
+        <TabsContent value="cronograma">{tab === "cronograma" && <CronogramaTab />}</TabsContent>
       </Tabs>
     </>
   )

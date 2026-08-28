@@ -76,8 +76,21 @@ Deno.serve(async (req) => {
     if (!email || typeof email !== "string") {
       return jsonResponse({ error: "Falta el correo del usuario" }, 400)
     }
-    if (!["administrador", "gestor", "analista", "analista_tecnologia"].includes(role)) {
-      return jsonResponse({ error: "Rol inválido" }, 400)
+    // Espejo de ASSIGNABLE_ROLES (src/lib/roles.ts). No se puede importar de
+    // ahí —esto corre en Deno, del otro lado de la red—, así que la lista se
+    // repite: al agregar un rol hay que tocarla acá también, o el alta falla
+    // con "Rol inválido" aunque el selector ya lo ofrezca. Le faltaban
+    // `coordinador` (desde *_rol_coordinador.sql) y `estratega`.
+    const ROLES_ASIGNABLES = [
+      "administrador",
+      "gestor",
+      "coordinador",
+      "estratega",
+      "analista",
+      "analista_tecnologia",
+    ]
+    if (!ROLES_ASIGNABLES.includes(role)) {
+      return jsonResponse({ error: `Rol inválido: ${role}` }, 400)
     }
 
     // Dos modos:
