@@ -26,16 +26,27 @@ export function useActivitiesForMonth(monthId: string | null) {
   })
 }
 
-// Agrupa actividades por celda (persona × proyecto), igual que
+// Agrupa actividades por celda (persona × proyecto × línea), igual que
 // useCommentsByCell en comments — así la grilla sabe qué celdas tienen
-// desglose sin una consulta por celda.
+// desglose sin una consulta por celda. La línea entra en la llave porque dos
+// filas del mismo proyecto (la base y una línea) son celdas distintas para
+// la misma persona: sin esto, el desglose de una se vería mezclado con el de
+// la otra.
+export function cellKey(personId: string, projectId: string, lineId: string | null) {
+  return `${personId}:${projectId}:${lineId ?? ""}`
+}
+
 export function useActivitiesByCell(monthId: string | null) {
   const { data, ...rest } = useActivitiesForMonth(monthId)
 
   const byCell = useMemo(() => {
     const map = new Map<string, ActivityWithCell[]>()
     for (const activity of data ?? []) {
-      const key = `${activity.allocation.person_id}:${activity.allocation.project_id}`
+      const key = cellKey(
+        activity.allocation.person_id,
+        activity.allocation.project_id,
+        activity.allocation.line_id
+      )
       const list = map.get(key) ?? []
       list.push(activity)
       map.set(key, list)
@@ -69,13 +80,19 @@ export function useRealtimeActivities(monthId: string | null) {
 type AddActivityVars = Omit<CreateActivityInput, "allocationId" | "monthId"> & {
   personId: string
   projectId: string
+  lineId: string | null
 }
 
 export function useAddActivity(monthId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (vars: AddActivityVars) => {
-      const allocationId = await getOrCreateAllocationId(monthId, vars.personId, vars.projectId)
+      const allocationId = await getOrCreateAllocationId(
+        monthId,
+        vars.personId,
+        vars.projectId,
+        vars.lineId
+      )
       return createActivity({
         allocationId,
         monthId,

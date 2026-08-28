@@ -10,6 +10,7 @@ import {
   type CommentWithCell,
 } from "@/features/comments/api/commentsApi"
 import { getOrCreateAllocationId } from "@/features/grid/api/allocationsApi"
+import { cellKey } from "@/features/activities/hooks/useActivitiesQueries"
 import type { Database } from "@/types/database.types"
 
 export const commentsKeys = {
@@ -24,16 +25,21 @@ export function useCommentsForMonth(monthId: string | null) {
   })
 }
 
-// Agrupa comentarios por celda (persona × proyecto) para que la grilla sepa
-// dónde mostrar el ícono, sin que cada celda tenga que hacer su propia
-// consulta.
+// Agrupa comentarios por celda (persona × proyecto × línea) para que la
+// grilla sepa dónde mostrar el ícono, sin que cada celda tenga que hacer su
+// propia consulta. Mismo `cellKey` que usa useActivitiesByCell: la base y
+// una línea del mismo proyecto son celdas distintas, no la misma.
 export function useCommentsByCell(monthId: string | null) {
   const { data, ...rest } = useCommentsForMonth(monthId)
 
   const byCell = useMemo(() => {
     const map = new Map<string, CommentWithCell[]>()
     for (const comment of data ?? []) {
-      const key = `${comment.allocation.person_id}:${comment.allocation.project_id}`
+      const key = cellKey(
+        comment.allocation.person_id,
+        comment.allocation.project_id,
+        comment.allocation.line_id
+      )
       const list = map.get(key) ?? []
       list.push(comment)
       map.set(key, list)
@@ -69,11 +75,17 @@ export function useAddComment(monthId: string) {
     mutationFn: async (vars: {
       personId: string
       projectId: string
+      lineId: string | null
       authorId: string
       body: string
       parentCommentId?: string | null
     }) => {
-      const allocationId = await getOrCreateAllocationId(monthId, vars.personId, vars.projectId)
+      const allocationId = await getOrCreateAllocationId(
+        monthId,
+        vars.personId,
+        vars.projectId,
+        vars.lineId
+      )
       return createComment({
         allocationId,
         authorId: vars.authorId,

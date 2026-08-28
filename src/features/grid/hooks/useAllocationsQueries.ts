@@ -24,6 +24,8 @@ interface UpsertVars {
   personId: string
   projectId: string
   hours: number
+  /** Null = fila base del proyecto. Con id = una línea (ver project_lines). */
+  lineId?: string | null
 }
 
 // Autoguardado optimista: la celda se actualiza en pantalla de inmediato
@@ -34,24 +36,32 @@ export function useUpsertAllocation(monthId: string) {
   const key = allocationsKeys.all(monthId)
 
   return useMutation({
-    mutationFn: ({ personId, projectId, hours }: UpsertVars) =>
-      upsertAllocation(monthId, personId, projectId, hours),
-    onMutate: async ({ personId, projectId, hours }) => {
+    mutationFn: ({ personId, projectId, hours, lineId = null }: UpsertVars) =>
+      upsertAllocation(monthId, personId, projectId, hours, lineId),
+    onMutate: async ({ personId, projectId, hours, lineId = null }) => {
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<Allocation[]>(key)
 
       queryClient.setQueryData<Allocation[]>(key, (current = []) => {
+        // La igualdad de línea no puede ser `a.line_id === lineId` a secas
+        // cuando lineId es null: si la fila optimista anterior no existe
+        // todavía, undefined !== null y se crearía una segunda fila en vez de
+        // actualizar la misma celda.
         const idx = current.findIndex(
-          (a) => a.person_id === personId && a.project_id === projectId
+          (a) =>
+            a.person_id === personId &&
+            a.project_id === projectId &&
+            (a.line_id ?? null) === lineId
         )
         if (idx === -1) {
           return [
             ...current,
             {
-              id: `optimistic-${personId}-${projectId}`,
+              id: `optimistic-${personId}-${projectId}-${lineId ?? "base"}`,
               month_id: monthId,
               person_id: personId,
               project_id: projectId,
+              line_id: lineId,
               hours,
               updated_by: null,
               created_at: new Date().toISOString(),

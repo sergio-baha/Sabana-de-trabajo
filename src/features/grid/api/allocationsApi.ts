@@ -10,21 +10,29 @@ export async function listAllocations(monthId: string): Promise<Allocation[]> {
 }
 
 // Una celda de la grilla = una fila de allocations (unique month_id+person_id
-// +project_id, ver supabase/migrations/*_allocations.sql). "Guardar" una
-// celda es upsert por ese conflicto; 0 horas simplemente se guarda como 0 en
-// vez de borrar la fila, para no perder el rastro de auditoría de quién la
-// dejó en 0 (el trigger audit_row_change registra el update igual).
+// +project_id+line_id, ver supabase/migrations/*_allocations.sql y
+// *_lineas_de_proyecto.sql). "Guardar" una celda es upsert por ese conflicto;
+// 0 horas simplemente se guarda como 0 en vez de borrar la fila, para no
+// perder el rastro de auditoría de quién la dejó en 0 (el trigger
+// audit_row_change registra el update igual).
+//
+// `lineId` es null para la fila base de un proyecto (el caso normal, un
+// proyecto sin dividir en frentes) y el id de la línea para una fila
+// adicional. `onConflict` incluye la columna aunque venga en null: la
+// restricción de la base es NULLS NOT DISTINCT, así que Postgres sí la
+// resuelve como el mismo conflicto de siempre para los proyectos sin líneas.
 export async function upsertAllocation(
   monthId: string,
   personId: string,
   projectId: string,
-  hours: number
+  hours: number,
+  lineId: string | null = null
 ): Promise<Allocation> {
   const { data, error } = await supabase
     .from("allocations")
     .upsert(
-      { month_id: monthId, person_id: personId, project_id: projectId, hours },
-      { onConflict: "month_id,person_id,project_id" }
+      { month_id: monthId, person_id: personId, project_id: projectId, line_id: lineId, hours },
+      { onConflict: "month_id,person_id,project_id,line_id" }
     )
     .select("*")
     .single()
@@ -54,24 +62,32 @@ export async function clearAllocationHours(allocationIds: string[]): Promise<voi
 // nunca se guardó (ver migración *_allocations_allow_comment_anchor.sql), y
 // para que Gestor/Admin puedan agregar la primera actividad de una celda
 // vacía (features/activities).
+//
+// El filtro de línea usa `.is()` para null en vez de `.eq()`: en PostgREST
+// (y en SQL) `= null` nunca es verdadero, así que un `.eq("line_id", null)`
+// no encontraría NUNCA la fila base de un proyecto sin líneas — crearía una
+// nueva en cada llamada.
 export async function getOrCreateAllocationId(
   monthId: string,
   personId: string,
-  projectId: string
+  projectId: string,
+  lineId: string | null = null
 ): Promise<string> {
-  const { data: existing, error: selectError } = await supabase
+  let query = supabase
     .from("allocations")
     .select("id")
     .eq("month_id", monthId)
     .eq("person_id", personId)
     .eq("project_id", projectId)
-    .maybeSingle()
+  query = lineId === null ? query.is("line_id", null) : query.eq("line_id", lineId)
+
+  const { data: existing, error: selectError } = await query.maybeSingle()
   if (selectError) throw selectError
   if (existing) return existing.id
 
   const { data: created, error: insertError } = await supabase
     .from("allocations")
-    .insert({ month_id: monthId, person_id: personId, project_id: projectId, hours: 0 })
+    .insert({ month_id: monthId, person_id: personId, project_id: projectId, line_id: lineId, hours: 0 })
     .select("id")
     .single()
   if (insertError) throw insertError

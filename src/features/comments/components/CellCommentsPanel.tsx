@@ -20,6 +20,8 @@ interface CellCommentsPanelProps {
   monthId: string
   personId: string
   projectId: string
+  /** Null = fila base del proyecto. Con id = una línea (ver project_lines). */
+  lineId: string | null
   comments: CommentWithCell[]
 }
 
@@ -45,6 +47,7 @@ export default function CellCommentsPanel({
   monthId,
   personId,
   projectId,
+  lineId,
   comments,
 }: CellCommentsPanelProps) {
   const profile = useSessionStore((s) => s.profile)
@@ -75,7 +78,13 @@ export default function CellCommentsPanel({
   const handleSend = async () => {
     const trimmed = body.trim()
     if (!trimmed) return
-    await addComment.mutateAsync({ personId, projectId, authorId: profile.id, body: trimmed })
+    await addComment.mutateAsync({
+      personId,
+      projectId,
+      lineId,
+      authorId: profile.id,
+      body: trimmed,
+    })
     setBody("")
   }
 

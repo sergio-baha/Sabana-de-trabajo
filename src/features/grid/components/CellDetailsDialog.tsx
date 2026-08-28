@@ -23,6 +23,8 @@ interface CellDetailsDialogProps {
   monthId: string
   personId: string
   projectId: string
+  /** Null = fila base del proyecto. Con id = una línea (ver project_lines). */
+  lineId: string | null
   personName: string
   projectName: string
   comments: CommentWithCell[]
@@ -41,6 +43,7 @@ export default function CellDetailsDialog({
   monthId,
   personId,
   projectId,
+  lineId,
   personName,
   projectName,
   comments,
@@ -83,6 +86,7 @@ export default function CellDetailsDialog({
               monthId={monthId}
               personId={personId}
               projectId={projectId}
+              lineId={lineId}
               activities={activities}
               readOnly={readOnly}
             />
@@ -93,6 +97,7 @@ export default function CellDetailsDialog({
               monthId={monthId}
               personId={personId}
               projectId={projectId}
+              lineId={lineId}
               comments={comments}
             />
           </TabsContent>

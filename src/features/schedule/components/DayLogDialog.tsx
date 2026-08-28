@@ -72,6 +72,12 @@ export default function DayLogDialog({
     await addActivity.mutateAsync({
       personId,
       projectId,
+      // El cronograma es el registro de tiempo de la persona por proyecto y
+      // día — no tiene (ni necesita) un selector de línea, así que siempre
+      // registra contra la fila base. Si el proyecto está dividido en
+      // líneas (ver project_lines), el desglose fino por frente se sigue
+      // haciendo desde la sábana.
+      lineId: null,
       description: description.trim(),
       phaseId: phaseId === "none" ? null : phaseId,
       activityDate: dateIso,

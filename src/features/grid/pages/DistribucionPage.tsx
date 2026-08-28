@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   EyeOff,
   Grid3x3,
+  Layers,
   Lock,
   MoreHorizontal,
   NotebookText,
@@ -50,6 +51,14 @@ import {
 import type { Project } from "@/features/projects/api/projectsApi"
 import type { ProjectCategory } from "@/types/database.types"
 import ProjectFormDialog from "@/features/projects/components/ProjectFormDialog"
+import ProjectLineFormDialog from "@/features/grid/components/ProjectLineFormDialog"
+import {
+  useCreateProjectLine,
+  useDeleteProjectLine,
+  useProjectLines,
+  useRenameProjectLine,
+} from "@/features/projects/hooks/useProjectLinesQueries"
+import type { ProjectLine } from "@/features/projects/api/projectLinesApi"
 import ConfirmDialog from "@/components/shared/ConfirmDialog"
 import {
   DropdownMenu,
@@ -68,6 +77,7 @@ import { useRealtimeAllocations } from "@/features/grid/hooks/useRealtimeAllocat
 import {
   buildPersonSummaries,
   buildProjectGridRows,
+  rowKeyFor,
   sortActiveProjectsFirst,
   type PersonSummary,
   type ProjectGridRow,
@@ -78,6 +88,7 @@ import HoursEditCell from "@/features/grid/components/HoursEditCell"
 import AvailableHoursCell from "@/features/grid/components/AvailableHoursCell"
 import { useCommentsByCell, useRealtimeComments } from "@/features/comments/hooks/useCommentsQueries"
 import {
+  cellKey,
   useActivitiesByCell,
   useRealtimeActivities,
 } from "@/features/activities/hooks/useActivitiesQueries"
@@ -115,8 +126,12 @@ export default function DistribucionPage() {
 
   const { data: people, isLoading: loadingPeople } = usePeople(activeMonthId)
   const { data: projects, isLoading: loadingProjects } = useProjects()
+  const { data: lines } = useProjectLines()
   const { data: allocations, isLoading: loadingAllocations } = useAllocations(activeMonthId)
   const upsertAllocation = useUpsertAllocation(activeMonthId ?? "")
+  const createLine = useCreateProjectLine()
+  const renameLine = useRenameProjectLine()
+  const deleteLine = useDeleteProjectLine()
   const clearAllocations = useClearAllocations(activeMonthId ?? "")
   const seedPeople = useSeedMonthPeople(activeMonthId ?? "")
   const updatePerson = useUpdatePerson(activeMonthId ?? "")
@@ -134,6 +149,7 @@ export default function DistribucionPage() {
   const [detailCell, setDetailCell] = useState<{
     personId: string
     projectId: string
+    lineId: string | null
     tab: CellTab
   } | null>(null)
   // Fila (o grilla completa) a la que se le van a poner las horas en 0.
@@ -148,6 +164,18 @@ export default function DistribucionPage() {
   const [newProjectCategory, setNewProjectCategory] = useState<ProjectCategory>("proyecto")
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+  // Alta/renombre de una línea: un mismo diálogo para las dos acciones,
+  // igual que ProjectFormDialog resuelve crear/editar. `projectId` es a qué
+  // proyecto se le agrega; `line` es la que se está renombrando.
+  const [lineDialog, setLineDialog] = useState<
+    { projectId: string; line: ProjectLine | null } | null
+  >(null)
+  const [lineToDelete, setLineToDelete] = useState<ProjectGridRow | null>(null)
+  const lineById = useMemo(() => {
+    const map = new Map<string, ProjectLine>()
+    for (const line of lines ?? []) map.set(line.id, line)
+    return map
+  }, [lines])
   // Proyectos sumados a la grilla de este mes que aún no tienen horas. Se
   // guardan por mes para que cambiar de mes no arrastre filas vacías ajenas.
   const [extraByMonth, setExtraByMonth] = useState<Record<string, string[]>>({})
@@ -237,8 +265,8 @@ export default function DistribucionPage() {
   )
 
   const allRows = useMemo(
-    () => buildProjectGridRows(visibleProjects, allocations ?? []),
-    [visibleProjects, allocations]
+    () => buildProjectGridRows(visibleProjects, lines ?? [], allocations ?? []),
+    [visibleProjects, lines, allocations]
   )
 
   const personSummaries = useMemo(
@@ -255,7 +283,7 @@ export default function DistribucionPage() {
     const map = new Map<string, number>()
     for (const row of allRows) {
       map.set(
-        row.projectId,
+        row.rowKey,
         Object.values(row.hours).reduce((sum, h) => sum + h, 0)
       )
     }
@@ -269,7 +297,7 @@ export default function DistribucionPage() {
       const cmp =
         sortField === "name"
           ? a.name.localeCompare(b.name)
-          : (rowTotals.get(a.projectId) ?? 0) - (rowTotals.get(b.projectId) ?? 0)
+          : (rowTotals.get(a.rowKey) ?? 0) - (rowTotals.get(b.rowKey) ?? 0)
       return sortDir === "asc" ? cmp : -cmp
     })
     return sorted
@@ -286,10 +314,13 @@ export default function DistribucionPage() {
   )
 
   // Índice celda → allocation, para saber qué filas de la base tocar al
-  // limpiar sin recorrer el arreglo entero por cada celda.
+  // limpiar sin recorrer el arreglo entero por cada celda. Misma llave
+  // persona+proyecto+línea que usan activitiesByCell/commentsByCell: dos
+  // filas del mismo proyecto (base y una línea) son celdas distintas.
   const allocationIdByCell = useMemo(() => {
     const map = new Map<string, string>()
-    for (const a of allocations ?? []) map.set(`${a.person_id}:${a.project_id}`, a.id)
+    for (const a of allocations ?? [])
+      map.set(cellKey(a.person_id, a.project_id, a.line_id), a.id)
     return map
   }, [allocations])
 
@@ -302,7 +333,7 @@ export default function DistribucionPage() {
     let skipped = 0
     for (const row of targets) {
       for (const person of visiblePeople) {
-        const key = `${person.id}:${row.projectId}`
+        const key = cellKey(person.id, row.projectId, row.lineId)
         const allocationId = allocationIdByCell.get(key)
         if (!allocationId) continue
         if ((activitiesByCell.get(key) ?? []).length > 0) {
@@ -326,7 +357,15 @@ export default function DistribucionPage() {
       width: 240,
       resizable: true,
       renderCell: ({ row }) => (
-        <div className="group/proj flex h-full items-center gap-2 py-1 leading-tight" title={row.name}>
+        <div
+          className={cn(
+            "group/proj flex h-full items-center gap-2 py-1 leading-tight",
+            // Sangría leve para que una línea se lea como parte de su
+            // proyecto y no como una fila más al mismo nivel.
+            row.lineId && "pl-3"
+          )}
+          title={row.name}
+        >
           <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
           <span className="line-clamp-2 min-w-0 flex-1 whitespace-normal font-medium">
             {row.name}
@@ -351,23 +390,50 @@ export default function DistribucionPage() {
                 <DropdownMenuItem onClick={() => setRowsToClear([row])}>
                   <Eraser /> Limpiar horas de la fila
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    const project = visibleProjects.find((p) => p.id === row.projectId)
-                    if (project) setEditingProject(project)
-                  }}
-                >
-                  <Pencil /> Editar proyecto
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => {
-                    const project = visibleProjects.find((p) => p.id === row.projectId)
-                    if (project) setProjectToDelete(project)
-                  }}
-                >
-                  <Trash2 /> Eliminar
-                </DropdownMenuItem>
+                {row.lineId ? (
+                  // Una línea no es un proyecto: se renombra o se borra a
+                  // ella misma, nunca al proyecto completo que la contiene.
+                  <>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        setLineDialog({
+                          projectId: row.projectId,
+                          line: lineById.get(row.lineId as string) ?? null,
+                        })
+                      }
+                    >
+                      <Pencil /> Renombrar línea
+                    </DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive" onClick={() => setLineToDelete(row)}>
+                      <Trash2 /> Eliminar línea
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => setLineDialog({ projectId: row.projectId, line: null })}
+                    >
+                      <Layers /> Agregar línea
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const project = visibleProjects.find((p) => p.id === row.projectId)
+                        if (project) setEditingProject(project)
+                      }}
+                    >
+                      <Pencil /> Editar proyecto
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => {
+                        const project = visibleProjects.find((p) => p.id === row.projectId)
+                        if (project) setProjectToDelete(project)
+                      }}
+                    >
+                      <Trash2 /> Eliminar
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -386,7 +452,8 @@ export default function DistribucionPage() {
       width: 120,
       resizable: true,
       editable: (row) =>
-        canEdit && (activitiesByCell.get(`${person.id}:${row.projectId}`) ?? []).length === 0,
+        canEdit &&
+        (activitiesByCell.get(cellKey(person.id, row.projectId, row.lineId)) ?? []).length === 0,
       renderHeaderCell: () => (
         <div className="flex h-full w-full flex-col items-center justify-center px-1 text-center text-xs font-semibold leading-tight">
           <span className="line-clamp-2 whitespace-normal">{person.name}</span>
@@ -394,9 +461,10 @@ export default function DistribucionPage() {
       ),
       renderCell: ({ row }) => {
         const value = row.hours[person.id] ?? 0
-        const cellComments = commentsByCell.get(`${person.id}:${row.projectId}`) ?? []
+        const key = cellKey(person.id, row.projectId, row.lineId)
+        const cellComments = commentsByCell.get(key) ?? []
         const hasComments = cellComments.length > 0
-        const cellActivities = activitiesByCell.get(`${person.id}:${row.projectId}`) ?? []
+        const cellActivities = activitiesByCell.get(key) ?? []
         const hasActivities = cellActivities.length > 0
         const marks = cellActivities.length + cellComments.length
         // Un solo acceso al detalle de la celda. Abre en la pestaña de lo que
@@ -422,6 +490,7 @@ export default function DistribucionPage() {
                     setDetailCell({
                       personId: person.id,
                       projectId: row.projectId,
+                      lineId: row.lineId,
                       tab: initialTab,
                     })
                   }}
@@ -516,6 +585,7 @@ export default function DistribucionPage() {
   }, [
     visiblePeople,
     visibleProjects,
+    lineById,
     canEdit,
     commentsByCell,
     activitiesByCell,
@@ -537,7 +607,12 @@ export default function DistribucionPage() {
     for (const idx of indexes) {
       const row = changedRows[idx]
       const hours = row.hours[column.key] ?? 0
-      upsertAllocation.mutate({ personId: column.key, projectId: row.projectId, hours })
+      upsertAllocation.mutate({
+        personId: column.key,
+        projectId: row.projectId,
+        lineId: row.lineId,
+        hours,
+      })
     }
   }
 
@@ -563,7 +638,12 @@ export default function DistribucionPage() {
         if (!personId) return
         const parsed = Number(rawValue.replace(",", ".").trim())
         if (!Number.isFinite(parsed) || parsed < 0) return
-        upsertAllocation.mutate({ personId, projectId: targetRow.projectId, hours: parsed })
+        upsertAllocation.mutate({
+          personId,
+          projectId: targetRow.projectId,
+          lineId: targetRow.lineId,
+          hours: parsed,
+        })
       })
     })
   }
@@ -833,7 +913,7 @@ export default function DistribucionPage() {
             className="sabana-grid"
             columns={columns}
             rows={rows}
-            rowKeyGetter={(row) => row.projectId}
+            rowKeyGetter={(row) => row.rowKey}
             onRowsChange={handleRowsChange}
             bottomSummaryRows={summaryRows}
             onFill={({ columnKey, sourceRow, targetRow }) => ({
@@ -853,9 +933,15 @@ export default function DistribucionPage() {
         activeMonthId &&
         (() => {
           const person = visiblePeople.find((p) => p.id === detailCell.personId)
-          const project = visibleProjects.find((p) => p.id === detailCell.projectId)
-          if (!person || !project) return null
-          const key = `${detailCell.personId}:${detailCell.projectId}`
+          // El nombre de la fila (con línea, si aplica) sale de la fila
+          // misma, no del proyecto: "Editar proyecto" y "Detalle de celda"
+          // necesitan textos distintos para la misma persona/proyecto si hay
+          // una línea de por medio.
+          const row = allRows.find(
+            (r) => r.rowKey === rowKeyFor(detailCell.projectId, detailCell.lineId)
+          )
+          if (!person || !row) return null
+          const key = cellKey(detailCell.personId, detailCell.projectId, detailCell.lineId)
           return (
             <CellDetailsDialog
               open
@@ -864,8 +950,9 @@ export default function DistribucionPage() {
               monthId={activeMonthId}
               personId={detailCell.personId}
               projectId={detailCell.projectId}
+              lineId={detailCell.lineId}
               personName={person.name}
-              projectName={project.name}
+              projectName={row.name}
               comments={commentsByCell.get(key) ?? []}
               activities={activitiesByCell.get(key) ?? []}
               readOnly={!canEdit}
@@ -938,6 +1025,32 @@ export default function DistribucionPage() {
         onConfirm={async () => {
           if (projectToDelete) await deleteProject.mutateAsync(projectToDelete.id)
           setProjectToDelete(null)
+        }}
+      />
+
+      <ProjectLineFormDialog
+        open={Boolean(lineDialog)}
+        onOpenChange={(open) => !open && setLineDialog(null)}
+        line={lineDialog?.line ?? null}
+        onSubmit={async (name) => {
+          if (!lineDialog) return
+          if (lineDialog.line) {
+            await renameLine.mutateAsync({ id: lineDialog.line.id, name })
+          } else {
+            await createLine.mutateAsync({ projectId: lineDialog.projectId, name })
+          }
+          setLineDialog(null)
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(lineToDelete)}
+        onOpenChange={(open) => !open && setLineToDelete(null)}
+        title={`Eliminar "${lineToDelete?.name}"`}
+        description="Se eliminan las horas repartidas en esta línea, sus actividades y sus comentarios. El proyecto y sus demás líneas no se tocan."
+        onConfirm={async () => {
+          if (lineToDelete?.lineId) await deleteLine.mutateAsync(lineToDelete.lineId)
+          setLineToDelete(null)
         }}
       />
     </div>

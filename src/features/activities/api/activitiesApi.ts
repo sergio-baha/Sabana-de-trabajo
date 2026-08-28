@@ -4,7 +4,7 @@ import type { Database } from "@/types/database.types"
 export type Activity = Database["public"]["Tables"]["activities"]["Row"]
 
 export interface ActivityWithCell extends Activity {
-  allocation: { person_id: string; project_id: string; month_id: string }
+  allocation: { person_id: string; project_id: string; month_id: string; line_id: string | null }
 }
 
 // select con recurso embebido — igual que listCommentsForMonth en
@@ -13,7 +13,7 @@ export interface ActivityWithCell extends Activity {
 export async function listActivitiesForMonth(monthId: string): Promise<ActivityWithCell[]> {
   const { data, error } = await supabase
     .from("activities")
-    .select("*, allocation:allocations!inner(person_id, project_id, month_id)")
+    .select("*, allocation:allocations!inner(person_id, project_id, month_id, line_id)")
     .eq("allocation.month_id", monthId)
     .order("activity_date", { ascending: true, nullsFirst: false })
   if (error) throw error

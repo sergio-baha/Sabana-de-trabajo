@@ -26,6 +26,8 @@ interface ActivityBreakdownPanelProps {
   monthId: string
   personId: string
   projectId: string
+  /** Null = fila base del proyecto. Con id = una línea (ver project_lines). */
+  lineId: string | null
   activities: ActivityWithCell[]
   readOnly: boolean
 }
@@ -54,6 +56,7 @@ export default function ActivityBreakdownPanel({
   monthId,
   personId,
   projectId,
+  lineId,
   activities,
   readOnly,
 }: ActivityBreakdownPanelProps) {
@@ -111,6 +114,7 @@ export default function ActivityBreakdownPanel({
       await addActivity.mutateAsync({
         personId,
         projectId,
+        lineId,
         description: draft.description.trim(),
         phaseId,
         activityDate,

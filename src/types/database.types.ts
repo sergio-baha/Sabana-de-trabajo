@@ -119,6 +119,7 @@ export type Database = {
           created_at: string
           hours: number
           id: string
+          line_id: string | null
           month_id: string
           person_id: string
           project_id: string
@@ -129,6 +130,7 @@ export type Database = {
           created_at?: string
           hours?: number
           id?: string
+          line_id?: string | null
           month_id: string
           person_id: string
           project_id: string
@@ -139,6 +141,7 @@ export type Database = {
           created_at?: string
           hours?: number
           id?: string
+          line_id?: string | null
           month_id?: string
           person_id?: string
           project_id?: string
@@ -193,6 +196,13 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocations_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "project_lines"
             referencedColumns: ["id"]
           },
         ]
@@ -1166,6 +1176,51 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_project_totals"
             referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      project_lines: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          position: number
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          position?: number
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          position?: number
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_lines_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
           },
         ]
       }

@@ -4,7 +4,7 @@ import type { Database } from "@/types/database.types"
 export type Comment = Database["public"]["Tables"]["comments"]["Row"]
 
 export interface CommentWithCell extends Comment {
-  allocation: { person_id: string; project_id: string; month_id: string }
+  allocation: { person_id: string; project_id: string; month_id: string; line_id: string | null }
 }
 
 // select con recurso embebido (allocations!inner) — los tipos generados a
@@ -15,7 +15,7 @@ export interface CommentWithCell extends Comment {
 export async function listCommentsForMonth(monthId: string): Promise<CommentWithCell[]> {
   const { data, error } = await supabase
     .from("comments")
-    .select("*, allocation:allocations!inner(person_id, project_id, month_id)")
+    .select("*, allocation:allocations!inner(person_id, project_id, month_id, line_id)")
     .eq("allocation.month_id", monthId)
     .order("created_at", { ascending: true })
   if (error) throw error
