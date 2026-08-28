@@ -3,6 +3,8 @@ import { AlertTriangle, GanttChartSquare, UserRoundX } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { findDueDateConflicts } from "@/features/schedule/lib/scheduleRange"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Select,
@@ -128,22 +130,52 @@ export default function CronogramaPage() {
           { label: "Horas registradas", value: loggedHours, suffix: " h", decimals: 1 },
         ]}
         actions={
-          !restrictedToSelf && (
-            <Select value={personId ?? ""} onValueChange={setSelectedPersonId}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Elige una persona" />
-              </SelectTrigger>
-              <SelectContent>
-                {/* Gestores primero, como en el resto de los selectores. */}
-                {peopleByRole.ordered.map((person) => (
-                  <SelectItem key={person.id} value={person.id}>
-                    {person.name}
-                    {myPerson?.id === person.id ? " (yo)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )
+          <div className="flex items-center gap-2">
+            {dueDateConflicts.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-warning/40 text-warning hover:text-warning"
+                    aria-label={`${dueDateConflicts.length} cruces de fechas de entrega`}
+                  >
+                    <AlertTriangle />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-72">
+                  <p className="mb-1 text-xs font-medium">
+                    {dueDateConflicts.length === 1
+                      ? "1 cruce de fechas de entrega"
+                      : `${dueDateConflicts.length} cruces de fechas de entrega`}
+                  </p>
+                  <ul className="ml-3 list-disc text-xs opacity-90">
+                    {dueDateConflicts.map((c, i) => (
+                      <li key={i}>
+                        “{c.taskA.title}” y “{c.taskB.title}” ({c.taskA.endIso})
+                      </li>
+                    ))}
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {!restrictedToSelf && (
+              <Select value={personId ?? ""} onValueChange={setSelectedPersonId}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Elige una persona" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Gestores primero, como en el resto de los selectores. */}
+                  {peopleByRole.ordered.map((person) => (
+                    <SelectItem key={person.id} value={person.id}>
+                      {person.name}
+                      {myPerson?.id === person.id ? " (yo)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         }
       />
 
@@ -159,24 +191,7 @@ export default function CronogramaPage() {
             <TabsTrigger value="gantt">Gantt de tareas</TabsTrigger>
             <TabsTrigger value="horas">Calendario de horas</TabsTrigger>
           </TabsList>
-          <TabsContent value="gantt" className="mt-4 flex flex-col gap-3">
-            {dueDateConflicts.length > 0 && (
-              <div className="flex flex-col gap-1.5 rounded-md border border-warning/40 bg-warning-muted px-3 py-2 text-sm text-warning">
-                <p className="flex items-center gap-1.5 font-medium">
-                  <AlertTriangle className="size-4 shrink-0" />
-                  {dueDateConflicts.length === 1
-                    ? "Hay 2 tareas con fechas de entrega cruzadas"
-                    : `Hay ${dueDateConflicts.length} cruces de fechas de entrega`}
-                </p>
-                <ul className="ml-6 list-disc">
-                  {dueDateConflicts.map((c, i) => (
-                    <li key={i}>
-                      “{c.taskA.title}” ({c.taskA.endIso}) y “{c.taskB.title}” ({c.taskB.endIso})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          <TabsContent value="gantt" className="mt-4">
             <Card>
               <CardContent>
                 <GanttChart

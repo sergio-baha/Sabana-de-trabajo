@@ -950,6 +950,34 @@ export default function DistribucionPage() {
             <Eraser /> Limpiar horas
           </Button>
         )}
+        {dueDateConflicts.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="border-warning/40 text-warning hover:text-warning"
+                aria-label={`${dueDateConflicts.length} cruces de fechas de entrega`}
+              >
+                <AlertTriangle />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72">
+              <p className="mb-1 text-xs font-medium">
+                {dueDateConflicts.length === 1
+                  ? "1 cruce de fechas de entrega"
+                  : `${dueDateConflicts.length} cruces de fechas de entrega`}
+              </p>
+              <ul className="ml-3 list-disc text-xs opacity-90">
+                {dueDateConflicts.map((c, i) => (
+                  <li key={i}>
+                    {c.personName}: “{c.taskA}” y “{c.taskB}” ({c.date})
+                  </li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {isLoading ? (
@@ -983,23 +1011,6 @@ export default function DistribucionPage() {
         />
       ) : (
         <div className="flex flex-col gap-3">
-          {dueDateConflicts.length > 0 && (
-            <div className="flex flex-col gap-1.5 rounded-md border border-warning/40 bg-warning-muted px-3 py-2 text-sm text-warning">
-              <p className="flex items-center gap-1.5 font-medium">
-                <AlertTriangle className="size-4 shrink-0" />
-                {dueDateConflicts.length === 1
-                  ? "Hay 2 tareas con fechas de entrega cruzadas"
-                  : `Hay ${dueDateConflicts.length} cruces de fechas de entrega`}
-              </p>
-              <ul className="ml-6 list-disc">
-                {dueDateConflicts.map((c, i) => (
-                  <li key={i}>
-                    {c.personName}: “{c.taskA}” y “{c.taskB}” ({c.date})
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
           <div onPaste={handlePaste} className="overflow-hidden rounded-md border border-border">
             <DataGrid
               className="sabana-grid"

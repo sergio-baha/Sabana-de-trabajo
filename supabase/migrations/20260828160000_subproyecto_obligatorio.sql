@@ -20,6 +20,56 @@ where not exists (
 --    (line_id null) se reasigna al subproyecto por defecto de su proyecto:
 --    el de posición más baja (el recién creado en el paso 1, o el que ya
 --    existiera con ese rol si el proyecto nunca tuvo líneas explícitas).
+--
+-- Un proyecto que YA tenía líneas explícitas (ej. Uppie con Formación /
+-- Empresarial, del cargue de septiembre) puede además tener una fila base
+-- residual de antes de que existieran las líneas, para la misma persona+mes.
+-- Reasignarla directo chocaría con la fila que ya existe en esa combinación
+-- (mes, persona, proyecto, línea) — así que primero se fusionan sumando las
+-- horas y borrando la residual, y solo al final se reasignan las que quedan
+-- sueltas (esas sí pueden actualizarse directo, no tienen con qué chocar).
+with fusiones as (
+  select
+    base.id as base_id,
+    destino.id as destino_id,
+    base.hours as base_hours
+  from public.allocations base
+  join public.allocations destino
+    on destino.month_id = base.month_id
+   and destino.person_id = base.person_id
+   and destino.project_id = base.project_id
+   and destino.line_id = (
+     select pl.id from public.project_lines pl
+     where pl.project_id = base.project_id
+     order by pl.position asc
+     limit 1
+   )
+  where base.line_id is null
+)
+update public.allocations destino
+set hours = destino.hours + fusiones.base_hours
+from fusiones
+where destino.id = fusiones.destino_id;
+
+delete from public.allocations base
+using (
+  select
+    base.id as base_id
+  from public.allocations base
+  join public.allocations destino
+    on destino.month_id = base.month_id
+   and destino.person_id = base.person_id
+   and destino.project_id = base.project_id
+   and destino.line_id = (
+     select pl.id from public.project_lines pl
+     where pl.project_id = base.project_id
+     order by pl.position asc
+     limit 1
+   )
+  where base.line_id is null
+) as choques
+where base.id = choques.base_id;
+
 update public.allocations a
 set line_id = (
   select pl.id
