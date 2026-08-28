@@ -4,6 +4,7 @@ import "react-data-grid/lib/styles.css"
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
+  Check,
   Eraser,
   CheckCircle2,
   EyeOff,
@@ -203,16 +204,21 @@ export default function DistribucionPage() {
     [projects, monthProjectIds, extraProjectIds]
   )
 
-  // Para el menú de "agregar al mes": lo que existe y todavía no está.
+  // Para el menú de "agregar al mes": todo el portafolio activo, esté o no
+  // ya en la grilla. Antes se escondía lo que ya estaba, con la idea de
+  // evitar filas repetidas — pero el efecto real era que un proyecto se
+  // "perdía" del menú apenas se le tocaban las horas, y no había forma de
+  // volver a encontrarlo ahí si hacía falta (por ejemplo, para confirmar que
+  // sigue sumado al mes). Reagregarlo es inofensivo: el proyecto ya tiene
+  // una sola fila (`visibleProjects` es un OR, no puede duplicarla) y
+  // `addProjectToMonth` no hace nada si el id ya está anotado.
   //
   // Los emergentes van en su propio grupo y no mezclados entre los proyectos:
   // son trabajo que apareció sin planear, suelen ser muchos y de nombre
   // parecido, y enterraban al portafolio en la lista. Se ordenan del más
   // viejo al más nuevo — el orden en que fueron apareciendo.
   const addable = useMemo(() => {
-    const disponibles = (projects ?? []).filter(
-      (p) => p.status !== "archivado" && !monthProjectIds.has(p.id) && !extraProjectIds.has(p.id)
-    )
+    const disponibles = (projects ?? []).filter((p) => p.status !== "archivado")
     return {
       proyectos: disponibles
         .filter((p) => p.category !== "emergente")
@@ -221,7 +227,14 @@ export default function DistribucionPage() {
         .filter((p) => p.category === "emergente")
         .sort((a, b) => a.created_at.localeCompare(b.created_at)),
     }
-  }, [projects, monthProjectIds, extraProjectIds])
+  }, [projects])
+
+  // Para marcar en el menú los que ya tienen fila en el mes — visible, pero
+  // ya no oculto ni bloqueado.
+  const enLaGrilla = useMemo(
+    () => new Set([...monthProjectIds, ...extraProjectIds]),
+    [monthProjectIds, extraProjectIds]
+  )
 
   const allRows = useMemo(
     () => buildProjectGridRows(visibleProjects, allocations ?? []),
@@ -608,22 +621,29 @@ export default function DistribucionPage() {
                   </DropdownMenuLabel>
                   {addable.proyectos.length === 0 ? (
                     <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                      Todos los proyectos ya están en este mes.
+                      No hay proyectos creados todavía.
                     </p>
                   ) : (
-                    addable.proyectos.map((project) => (
-                      <DropdownMenuItem
-                        key={project.id}
-                        onClick={() => addProjectToMonth(project.id)}
-                      >
-                        <span
-                          aria-hidden
-                          className="size-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: project.color }}
-                        />
-                        <span className="truncate">{project.name}</span>
-                      </DropdownMenuItem>
-                    ))
+                    addable.proyectos.map((project) => {
+                      const yaEstá = enLaGrilla.has(project.id)
+                      return (
+                        <DropdownMenuItem
+                          key={project.id}
+                          onClick={() => addProjectToMonth(project.id)}
+                          title={yaEstá ? "Ya está en este mes — puedes agregarlo de nuevo si lo necesitas." : undefined}
+                        >
+                          <span
+                            aria-hidden
+                            className="size-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: project.color }}
+                          />
+                          <span className={cn("truncate", yaEstá && "text-muted-foreground")}>
+                            {project.name}
+                          </span>
+                          {yaEstá && <Check aria-hidden className="ml-auto size-3.5 shrink-0 text-success" />}
+                        </DropdownMenuItem>
+                      )
+                    })
                   )}
                   <DropdownMenuSeparator />
                   {/* Los emergentes van aparte: no compiten con el portafolio
@@ -633,22 +653,29 @@ export default function DistribucionPage() {
                   </DropdownMenuLabel>
                   {addable.emergentes.length === 0 ? (
                     <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                      No hay emergentes por agregar.
+                      No hay emergentes creados todavía.
                     </p>
                   ) : (
-                    addable.emergentes.map((project) => (
-                      <DropdownMenuItem
-                        key={project.id}
-                        onClick={() => addProjectToMonth(project.id)}
-                      >
-                        <span
-                          aria-hidden
-                          className="size-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: project.color }}
-                        />
-                        <span className="truncate">{project.name}</span>
-                      </DropdownMenuItem>
-                    ))
+                    addable.emergentes.map((project) => {
+                      const yaEstá = enLaGrilla.has(project.id)
+                      return (
+                        <DropdownMenuItem
+                          key={project.id}
+                          onClick={() => addProjectToMonth(project.id)}
+                          title={yaEstá ? "Ya está en este mes — puedes agregarlo de nuevo si lo necesitas." : undefined}
+                        >
+                          <span
+                            aria-hidden
+                            className="size-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: project.color }}
+                          />
+                          <span className={cn("truncate", yaEstá && "text-muted-foreground")}>
+                            {project.name}
+                          </span>
+                          {yaEstá && <Check aria-hidden className="ml-auto size-3.5 shrink-0 text-success" />}
+                        </DropdownMenuItem>
+                      )
+                    })
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
