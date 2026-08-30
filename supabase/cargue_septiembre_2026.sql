@@ -1,33 +1,55 @@
 -- =============================================================================
--- CARGA MANUAL — Septiembre 2026, tomada de Cargue_septiembre.md
+-- CARGA MANUAL (REEMPLAZO) — Septiembre 2026, tomada de Cargue_septiembre.md
 -- =============================================================================
 -- NO ES UNA MIGRACIÓN: es carga de datos operativa de un mes concreto, no un
 -- cambio de esquema. Por eso vive fuera de supabase/migrations/ — `supabase
 -- db push` no la toca, y correrla no forma parte del historial de esquema.
 -- Se ejecuta UNA VEZ, a mano, por el SQL Editor.
 --
+-- ESTA VERSIÓN REEMPLAZA, NO SOLO AGREGA: primero borra lo que ya estaba
+-- cargado en Septiembre y luego deja SOLO las filas de la sábana de abajo.
+-- Decisiones tomadas explícitamente con el usuario para este reemplazo:
+--   · Se borran TODAS las actividades de Septiembre, sin importar si venían
+--     de la carga anterior o de edición manual en la app.
+--   · EXCEPCIÓN — tareas del Analista de Tecnología ya trabajadas: cada
+--     actividad genera una tarea en el tablero (trigger
+--     activity_syncs_task). Si esa tarea ya salió de "pendiente" o ya tiene
+--     un comentario, la actividad que la generó NO se borra ni se
+--     reemplaza — se deja intacta, tal cual estaba, para no tocar trabajo
+--     que el analista ya empezó. Como sigue viva, el paso de carga la
+--     detecta y NO la duplica.
+--   · Las asignaciones (persona × proyecto × línea) que queden sin ninguna
+--     actividad después de borrar se dejan en el sistema con 0 horas — no
+--     se eliminan la fila de asignación.
+--   · Proyectos, líneas y fases no se borran (aunque queden sin uso); solo
+--     se crean los que falten, igual que en la carga original.
+--
 -- QUÉ HACE, EN ORDEN:
 --   1. Ubica el mes de Septiembre por nombre.
---   2. Vuelca las 104 filas de la hoja en una tabla temporal (_cargue).
---   3. Crea los proyectos que falten (por nombre, sin distinguir mayúsculas).
---      La mayoría YA EXISTEN en producción — el script los reutiliza; solo
---      crea "GenIA Impulsa", que es el único de la hoja que no aparecía.
---   4. Crea las líneas que falten SOLO para Uppie HSE (Fase II) →
+--   2. Vuelca las 106 filas de la hoja en una tabla temporal (_cargue).
+--   3. Borra las actividades de Septiembre que sean seguras de borrar (ver
+--      excepción arriba); las protegidas quedan tal cual.
+--   4. Crea los proyectos que falten (por nombre, sin distinguir mayúsculas).
+--   5. Crea las líneas que falten SOLO para Uppie HSE (Fase II) →
 --      Formación/Empresarial: es el MISMO proyecto en tres filas de la
---      sábana, decisión tomada explícitamente con el usuario. "Desafío" NO
---      es una línea — ya existe como proyecto propio ("Emergentes -
---      Desafío") en producción, así que sus 8 filas van directo ahí.
---   5. Crea las fases que falten por proyecto (Descubrir/Definir/
+--      sábana. "Desafío" NO es una línea — ya existe como proyecto propio
+--      ("Emergentes - Desafío") en producción, así que sus 8 filas van
+--      directo ahí.
+--   6. Crea las fases que falten por proyecto (Descubrir/Definir/
 --      Desarrollar/Producto), del catálogo canónico de 5 fases.
---   6. Resuelve cada nombre de pila contra el roster de Septiembre —
+--   7. Resuelve cada nombre de pila contra el roster de Septiembre —
 --      SI UN NOMBRE NO APARECE O ES AMBIGUO, EL SCRIPT SE DETIENE AHÍ MISMO
 --      con un error que dice cuál nombre falló. No sigue adivinando.
---      ("Mafe" = María Fernanda, "Paola" (de la hoja) = Andrea en el
---      sistema — corrección confirmada por el usuario, no un supuesto mío.)
---   7. Por cada fila: crea (o reutiliza) la asignación de horas
---      (persona × proyecto × línea) y le inserta su actividad. Las horas de
---      la celda las termina calculando solas el trigger que suma actividades
---      — no se escribe `allocations.hours` a mano en ningún punto de acá.
+--      ("Mafe" = María Fernanda, "Paola" (de la hoja) = Andrea Albornoz en
+--      el sistema — corrección confirmada por el usuario, no un supuesto
+--      mío.)
+--   8. Por cada fila de la hoja: si ya existe una actividad protegida
+--      idéntica (misma persona/proyecto/línea/fase/descripción/fecha/horas)
+--      que sobrevivió al borrado, NO la duplica. Si no, crea (o reutiliza)
+--      la asignación de horas (persona × proyecto × línea) y le inserta su
+--      actividad. Las horas de la celda las termina calculando solas el
+--      trigger que suma actividades — no se escribe `allocations.hours` a
+--      mano en ningún punto de acá.
 --
 -- SOBRE LAS FECHAS DE LA HOJA ORIGINAL
 -- Casi todas parsean limpio a un día de septiembre de 2026. Tres no eran
@@ -39,6 +61,43 @@
 -- decidir, no un dato que falte.
 --
 -- ANTES DE CORRERLO: cambia 'Septiembre 1 - 30' si tu mes se llama distinto.
+-- =============================================================================
+
+-- =============================================================================
+-- PASO 0 (OPCIONAL) — VISTA PREVIA, NO BORRA NADA
+-- =============================================================================
+-- Corre solo este SELECT primero (selecciónalo y ejecútalo aparte) para ver,
+-- tarjeta por tarjeta, qué se borraría si corrieras el script completo.
+-- Es de solo lectura: no modifica nada, puedes correrlo las veces que quieras.
+--
+--   · a_borrar   = tarjeta sin tocar (pendiente, sin comentario) → si sigue
+--                  así cuando corras el script real, se borra.
+--   · protegida  = el analista ya la movió o la comentó → nunca se borra,
+--                  pase lo que pase.
+select
+  t.id as task_id,
+  t.title,
+  t.status,
+  p.name as proyecto,
+  (select string_agg(pe.name, ', ') from public.task_assignees ta
+     join public.people pe on pe.id = ta.person_id
+    where ta.task_id = t.id) as asignada_a,
+  case
+    when t.status <> 'pendiente'
+      or exists (select 1 from public.task_comments c where c.task_id = t.id)
+    then 'protegida'
+    else 'a_borrar'
+  end as resultado_si_corres_el_script
+from public.activities a
+join public.allocations al on al.id = a.allocation_id
+join public.tasks t on t.id = a.task_id
+join public.projects p on p.id = al.project_id
+where al.month_id = (select id from public.months where name = 'Septiembre 1 - 30')
+order by resultado_si_corres_el_script, p.name, t.title;
+
+-- =============================================================================
+-- SCRIPT REAL — a partir de acá sí escribe. Corre esto en una transacción
+-- aparte cuando ya hayas revisado la vista previa de arriba.
 -- =============================================================================
 
 begin;
@@ -54,7 +113,11 @@ declare
   v_allocation_id uuid;
   v_match_count integer;
   v_match_ids uuid[];
+  v_existing_activity_id uuid;
   v_inserted_activities integer := 0;
+  v_skipped_duplicates integer := 0;
+  v_deleted_activities integer := 0;
+  v_protected_activities integer := 0;
 begin
   -- -----------------------------------------------------------------------
   -- 0. El mes
@@ -100,15 +163,16 @@ begin
     ('GenIA Trasciende', null, 'desarrollar', 'Maria', 'Estructuración y diseño del curso de formación docente (nueva secuencia didáctica)', '2026-09-28', 15),
     ('GenIA Trasciende', null, 'desarrollar', 'Sergio', 'Estructuración y diseño del curso de formación docente (nueva secuencia didáctica)', '2026-09-28', 10),
 
-    -- Uppie HSE (Fase II) — fila base
-    ('Uppie HSE (Fase II)', null, 'descubrir', 'Edicson', 'Validación digitalización AP4 Estudiantes', null, 2),
-    ('Uppie HSE (Fase II)', null, 'descubrir', 'Natalia', 'Exploración plataforma RIEBB', '2026-09-14', 20),
-    ('Uppie HSE (Fase II)', null, 'definir', 'Edicson', 'Validación digitalización AP2 Docentes', null, 2),
-    ('Uppie HSE (Fase II)', null, 'definir', 'Fernando', 'Recomendaciones Estudiantes Aplicación 4', null, 20),
-    ('Uppie HSE (Fase II)', null, 'definir', 'Natalia', 'Digitalización AP4 Estudiantes', null, 24),
-    ('Uppie HSE (Fase II)', null, 'definir', 'Edicson', 'Digitalización AP2 Docentes', null, 8),
-    ('Uppie HSE (Fase II)', null, 'definir', 'Fernando', 'Consultorías', null, 5),
-    ('Uppie HSE (Fase II)', null, 'definir', 'Natalia', 'Consultorías', null, 5),
+    -- Uppie HSE (Fase II) — línea "Colegios" (antes cargada por error como
+    -- fila base sin línea; corregido en correccion_uppie_colegios.sql)
+    ('Uppie HSE (Fase II)', 'Colegios', 'descubrir', 'Edicson', 'Validación digitalización AP4 Estudiantes', null, 2),
+    ('Uppie HSE (Fase II)', 'Colegios', 'descubrir', 'Natalia', 'Exploración plataforma RIEEB', '2026-09-14', 20),
+    ('Uppie HSE (Fase II)', 'Colegios', 'definir', 'Edicson', 'Validación digitalización AP2 Docentes', null, 2),
+    ('Uppie HSE (Fase II)', 'Colegios', 'definir', 'Fernando', 'Recomendaciones Estudiantes Aplicación 4', null, 20),
+    ('Uppie HSE (Fase II)', 'Colegios', 'definir', 'Natalia', 'Digitalización AP4 Estudiantes', null, 24),
+    ('Uppie HSE (Fase II)', 'Colegios', 'definir', 'Edicson', 'Digitalización AP2 Docentes', null, 8),
+    ('Uppie HSE (Fase II)', 'Colegios', 'definir', 'Fernando', 'Consultorías', null, 5),
+    ('Uppie HSE (Fase II)', 'Colegios', 'definir', 'Natalia', 'Consultorías', null, 5),
 
     -- Uppie HSE (Fase II) — línea "Formación"
     ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Edicson', 'Estructuración de juego', '2026-09-04', 3),
@@ -121,9 +185,9 @@ begin
     ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Fernando', 'Estructuración taller de Dimensiones', '2026-09-09', 3),
     ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Sebas', 'Estructuración taller de Dimensiones', '2026-09-09', 3),
     ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Natalia', 'Estructuración taller de Dimensiones', '2026-09-09', 3),
-    ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Fernando', 'Taller a docentes HSE dimensión 1', '2026-09-23', 8),
-    ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Sebas', 'Taller a docentes HSE dimensión 2', '2026-09-23', 8),
-    ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Natalia', 'Taller a docentes HSE dimensión 3', '2026-09-23', 8),
+    ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Fernando', 'Taller a docentes HSE dimensión 1', '2026-09-15', 8),
+    ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Sebas', 'Taller a docentes HSE dimensión 2', '2026-09-15', 8),
+    ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Natalia', 'Taller a docentes HSE dimensión 3', '2026-09-15', 8),
     ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Fernando', 'Ajustes talleres padres y docentes', '2026-09-21', 6),
     ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Sebas', 'Ajustes talleres padres y docentes', '2026-09-21', 6),
     ('Uppie HSE (Fase II)', 'Formación', 'definir', 'Natalia', 'Ajustes talleres padres y docentes', '2026-09-21', 6),
@@ -159,9 +223,12 @@ begin
     ('Pensamiento ciudadano', null, 'descubrir', 'Natalia', 'Cargue y análisis de resultados piloto competencias ciudadanas', '2026-09-30', 5),
 
     -- IME (dos "fechas" de la hoja eran en realidad notas — se conservan en la descripción)
-    ('IME', null, 'descubrir', 'Sebas', 'Benchmarking tableros educación Colombia', null, 5),
-    ('IME', null, 'descubrir', 'Sergio', 'Ajuste estrategia IME (Incluye estructuración de estándares)', null, 10),
-    ('IME', null, 'descubrir', 'Natalia', 'Benchmarking tableros educación Colombia', null, 5),
+    ('IME', null, 'descubrir', 'Sebas', 'Benchmarking tableros educación Colombia', '2026-09-10', 5),
+    ('IME', null, 'descubrir', 'Sergio', 'Ajuste estrategia IME (Incluye estructuración de estándares)', '2026-09-02', 10),
+    ('IME', null, 'descubrir', 'Natalia', 'Benchmarking tableros educación Colombia', '2026-09-10', 5),
+
+    -- Martes de prueba 2027
+    ('Martes de prueba 2027', null, 'producto', 'Maria', 'Planeación y despliegue del proyecto', null, 25),
 
     -- Grupo de investigación
     ('Grupo de investigación', null, 'producto', 'Fernando', 'Construcción e ideación de productos de investigación', null, 5),
@@ -169,24 +236,25 @@ begin
     ('Grupo de investigación', null, 'producto', 'Sebas', 'Construcción e ideación de productos de investigación', null, 5),
     ('Grupo de investigación', null, 'producto', 'Maria', 'Construcción e ideación de productos de investigación', null, 5),
     ('Grupo de investigación', null, 'producto', 'Sergio', 'Tablero de fuentes de información (artículos)', null, 8),
-    ('Grupo de investigación', null, 'producto', 'Edicson', 'Versión final Radiografía bienestar', null, 8),
-    ('Grupo de investigación', null, 'producto', 'Fernando', 'Versión final Radiografía bienestar', null, 8),
-    ('Grupo de investigación', null, 'producto', 'Sergio', 'Tableros Saber 11 y Pro', null, 10),
-    ('Grupo de investigación', null, 'producto', 'Andrea Albornoz', 'Reuniones de seguimiento de artículo de Fondecun', null, 3),
-    ('Grupo de investigación', null, 'producto', 'Maria', 'Reuniones de seguimiento de artículo de Fondecun', null, 3),
-    ('Grupo de investigación', null, 'producto', 'Andrea Albornoz', 'Construcción de artículo Fondecun', null, 10),
-    ('Grupo de investigación', null, 'producto', 'Maria', 'Construcción de artículo Fondecun', null, 10),
+    ('Grupo de investigación', null, 'producto', 'Edicson', 'Versión final Radiografía bienestar', '2026-09-10', 8),
+    ('Grupo de investigación', null, 'producto', 'Fernando', 'Versión final Radiografía bienestar', '2026-09-10', 8),
+    ('Grupo de investigación', null, 'producto', 'Sergio', 'Tableros Saber 11 y Pro', '2026-09-08', 10),
+    ('Grupo de investigación', null, 'producto', 'Edicson', 'Reunión revisión documental Planeación estratégica (10 sept y 30 sept)', null, 20),
+    ('Grupo de investigación', null, 'producto', 'Andrea Albornoz', 'Reuniones de seguimiento de artículo de Fondecun', '2026-09-15', 3),
+    ('Grupo de investigación', null, 'producto', 'Maria', 'Reuniones de seguimiento de artículo de Fondecun', '2026-09-15', 3),
+    ('Grupo de investigación', null, 'producto', 'Andrea Albornoz', 'Construcción de artículo Fondecun', '2026-09-29', 10),
+    ('Grupo de investigación', null, 'producto', 'Maria', 'Construcción de artículo Fondecun', '2026-09-29', 10),
 
     -- Escuela de padres
-    ('Escuela de padres', null, 'producto', 'Fernando', 'Ideación de producto', null, 3),
-    ('Escuela de padres', null, 'producto', 'Sebas', 'Ideación de producto', null, 3),
-    ('Escuela de padres', null, 'producto', 'Natalia', 'Ideación de producto', null, 3),
+    ('Escuela de padres', null, 'producto', 'Fernando', 'Ideación de producto', '2026-09-08', 3),
+    ('Escuela de padres', null, 'producto', 'Sebas', 'Ideación de producto', '2026-09-08', 3),
+    ('Escuela de padres', null, 'producto', 'Natalia', 'Ideación de producto', '2026-09-08', 3),
 
     -- Iniciativa cuidadores
-    ('Iniciativa cuidadores', null, 'producto', 'Fernando', 'Ideación de producto', null, 3),
-    ('Iniciativa cuidadores', null, 'producto', 'Andrea Albornoz', 'Ideación de producto', null, 3),
-    ('Iniciativa cuidadores', null, 'producto', 'Sebas', 'Ideación de producto', null, 3),
-    ('Iniciativa cuidadores', null, 'producto', 'Natalia', 'Ideación de producto', null, 3),
+    ('Iniciativa cuidadores', null, 'producto', 'Fernando', 'Ideación de producto', '2026-09-03', 3),
+    ('Iniciativa cuidadores', null, 'producto', 'Andrea Albornoz', 'Ideación de producto', '2026-09-03', 3),
+    ('Iniciativa cuidadores', null, 'producto', 'Sebas', 'Ideación de producto', '2026-09-03', 3),
+    ('Iniciativa cuidadores', null, 'producto', 'Natalia', 'Ideación de producto', '2026-09-03', 3),
 
     -- "Emergentes - Desafío" ya existe como proyecto propio en producción
     -- (no como línea de Emergentes) — sus horas van directo ahí.
@@ -204,7 +272,7 @@ begin
     ('Emergentes', null, 'producto', 'Andrea Albornoz', 'Desafío "Pensiones"', null, 10),
     ('Emergentes', null, 'producto', 'Sergio', 'Ajustes de herramienta de gestión de gestores', null, 2),
     ('Emergentes', null, 'producto', 'Fernando', 'Análisis de mercado "Sector educación preescolar" (Fecha original: 21 de agosto y 28)', null, 6),
-    ('Emergentes', null, 'producto', 'Fernando', 'Taller cumbres de la educación', null, 3),
+    ('Emergentes', null, 'producto', 'Fernando', 'Taller cumbres de la educación', '2026-09-21', 3),
     ('Emergentes', null, 'producto', 'Sebas', 'Ajustes Pestel plan de gobierno', null, 3),
     ('Emergentes', null, 'producto', 'Sergio', 'Ajustes Pestel plan de gobierno', null, 3),
     ('Emergentes', null, 'producto', 'Sergio', 'Apoyo desarrollo plataforma Desafío MP', null, 20),
@@ -214,7 +282,51 @@ begin
   raise notice 'Filas cargadas en la tabla temporal: %', (select count(*) from _cargue);
 
   -- -----------------------------------------------------------------------
-  -- 2. Proyectos que falten
+  -- 2. Borrar lo que ya estaba en Septiembre — salvo tareas ya trabajadas
+  --    por el Analista de Tecnología (fuera de 'pendiente' o con comentarios).
+  -- -----------------------------------------------------------------------
+  select count(*) into v_protected_activities
+  from public.activities a
+  join public.allocations al on al.id = a.allocation_id
+  where al.month_id = v_month_id
+    and a.task_id is not null
+    and exists (
+      select 1 from public.tasks t
+      where t.id = a.task_id
+        and (
+          t.status <> 'pendiente'
+          or exists (select 1 from public.task_comments c where c.task_id = t.id)
+        )
+    );
+
+  with borrables as (
+    select a.id
+    from public.activities a
+    join public.allocations al on al.id = a.allocation_id
+    where al.month_id = v_month_id
+      and not (
+        a.task_id is not null
+        and exists (
+          select 1 from public.tasks t
+          where t.id = a.task_id
+            and (
+              t.status <> 'pendiente'
+              or exists (select 1 from public.task_comments c where c.task_id = t.id)
+            )
+        )
+      )
+  )
+  delete from public.activities a
+  using borrables b
+  where a.id = b.id;
+
+  get diagnostics v_deleted_activities = row_count;
+
+  raise notice 'Actividades borradas: % — Actividades protegidas (tarea ya trabajada, se conservan): %',
+    v_deleted_activities, v_protected_activities;
+
+  -- -----------------------------------------------------------------------
+  -- 3. Proyectos que falten
   -- -----------------------------------------------------------------------
   insert into public.projects (name, color, status, category)
   select distinct
@@ -229,9 +341,7 @@ begin
   );
 
   -- -----------------------------------------------------------------------
-  -- 3. Líneas que falten (solo Uppie HSE → Formación/Empresarial; ninguna
-  --    fila de _cargue trae line_name para "Emergentes - Desafío", así que
-  --    esta sección no le crea nada — ya es un proyecto aparte).
+  -- 4. Líneas que falten (solo Uppie HSE → Formación/Empresarial)
   -- -----------------------------------------------------------------------
   insert into public.project_lines (project_id, name, position)
   select distinct
@@ -247,7 +357,7 @@ begin
     );
 
   -- -----------------------------------------------------------------------
-  -- 4. Fases que falten, del catálogo canónico
+  -- 5. Fases que falten, del catálogo canónico
   -- -----------------------------------------------------------------------
   insert into public.project_phases (project_id, name, phase_key, position)
   select distinct
@@ -266,14 +376,13 @@ begin
   );
 
   -- -----------------------------------------------------------------------
-  -- 5. Cada fila: resolver persona/proyecto/línea/fase, crear la asignación
-  --    si falta, e insertar la actividad.
+  -- 6. Cada fila: resolver persona/proyecto/línea/fase; si ya sobrevive una
+  --    actividad protegida idéntica, no duplicar; si no, crear (o reutilizar)
+  --    la asignación e insertar la actividad.
   -- -----------------------------------------------------------------------
   for v_row in select * from _cargue loop
     -- Persona: por prefijo del nombre, DENTRO del roster de septiembre.
     -- Si no hay exactamente una, el script se detiene acá — no adivina.
-    -- uuid no tiene MAX/MIN de fábrica en Postgres — se juntan los ids en un
-    -- arreglo y se cuentan sus elementos, en vez de agregarlos con max().
     select array_agg(pe.id) into v_match_ids
     from public.people pe
     where pe.month_id = v_month_id
@@ -294,18 +403,56 @@ begin
     select id into v_project_id from public.projects
     where lower(btrim(name)) = lower(btrim(v_row.project_name));
 
+    -- line_id es obligatorio (desde 20260828160000_subproyecto_obligatorio):
+    -- ya no existe la "fila base sin línea". Si la hoja no trae line_name,
+    -- se resuelve al subproyecto por defecto (el que se llama igual que el
+    -- proyecto); si por algo no existe ese, al de menor posición.
     v_line_id := null;
     if v_row.line_name is not null then
       select id into v_line_id from public.project_lines
       where project_id = v_project_id and lower(btrim(name)) = lower(btrim(v_row.line_name));
+    else
+      select id into v_line_id from public.project_lines
+      where project_id = v_project_id and lower(btrim(name)) = lower(btrim(v_row.project_name));
+
+      if v_line_id is null then
+        select id into v_line_id from public.project_lines
+        where project_id = v_project_id
+        order by position asc
+        limit 1;
+      end if;
+    end if;
+
+    if v_line_id is null then
+      raise exception 'El proyecto "%" no tiene ningún subproyecto (project_lines) — no debería pasar, revisa el paso 3/4 del script.',
+        v_row.project_name;
     end if;
 
     select id into v_phase_id from public.project_phases
     where project_id = v_project_id and phase_key = v_row.phase_key;
 
+    -- ¿Ya sobrevive (protegida) una actividad idéntica para esta persona/
+    -- proyecto/línea/fase/descripción/fecha/horas? Si sí, no la dupliques.
+    select a.id into v_existing_activity_id
+    from public.activities a
+    join public.allocations al on al.id = a.allocation_id
+    where al.month_id = v_month_id
+      and al.person_id = v_person_id
+      and al.project_id = v_project_id
+      and al.line_id is not distinct from v_line_id
+      and a.phase_id is not distinct from v_phase_id
+      and a.description = v_row.description
+      and a.activity_date is not distinct from v_row.activity_date
+      and a.hours = v_row.hours
+    limit 1;
+
+    if v_existing_activity_id is not null then
+      v_skipped_duplicates := v_skipped_duplicates + 1;
+      continue;
+    end if;
+
     -- Asignación: la misma llave (mes, persona, proyecto, línea) que usa la
-    -- sábana. Se reutiliza si ya existe (por ejemplo, si el script se corre
-    -- dos veces sobre el mismo mes).
+    -- sábana. Se reutiliza si ya existe.
     select id into v_allocation_id from public.allocations
     where month_id = v_month_id
       and person_id = v_person_id
@@ -324,7 +471,8 @@ begin
     v_inserted_activities := v_inserted_activities + 1;
   end loop;
 
-  raise notice 'Actividades insertadas: %', v_inserted_activities;
+  raise notice 'Actividades insertadas: % — Filas de la sábana ya cubiertas por una actividad protegida (no duplicadas): %',
+    v_inserted_activities, v_skipped_duplicates;
 end $$;
 
 -- -----------------------------------------------------------------------
@@ -334,10 +482,10 @@ select
   (select count(*) from public.activities a
      join public.allocations al on al.id = a.allocation_id
     where al.month_id = (select id from public.months where name = 'Septiembre 1 - 30')
-  ) as actividades_en_septiembre,          -- debería dar 104
+  ) as actividades_en_septiembre,          -- debería dar 106 (o menos si hubo protegidas duplicadas)
   (select count(*) from public.projects) as total_proyectos,
   (select count(*) from public.project_lines) as total_lineas;
 
--- Revisa el resultado de arriba. Si "actividades_en_septiembre" no da 104,
--- o algo se ve raro, ejecuta ROLLBACK en vez de COMMIT.
+-- Revisa el resultado de arriba. Si "actividades_en_septiembre" no cuadra
+-- con lo esperado, o algo se ve raro, ejecuta ROLLBACK en vez de COMMIT.
 commit;   -- o rollback;
