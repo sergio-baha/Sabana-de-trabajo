@@ -5,6 +5,7 @@ import {
   bulkSetTaskAssignees,
   createTask,
   deleteTask,
+  escalateTaskReview,
   listTaskAssignees,
   moveTask,
   returnTaskForRework,
@@ -134,8 +135,15 @@ interface MoveVars {
 
 interface SubmitVars {
   taskId: string
+  reviewerPersonId: string | null
   hours: number | null
   note: string | null
+}
+
+interface EscalateVars {
+  taskId: string
+  reviewerPersonId: string
+  comment: string | null
 }
 
 interface ReturnVars {
@@ -169,14 +177,32 @@ export function useSubmitTaskForReview() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ taskId, hours, note }: SubmitVars) =>
-      submitTaskForReview(taskId, hours, note),
+    mutationFn: ({ taskId, reviewerPersonId, hours, note }: SubmitVars) =>
+      submitTaskForReview(taskId, reviewerPersonId, hours, note),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tasksKeys.root })
       toast.success("Tarea entregada a revisión")
     },
     onError: (error) =>
       toast.error("No se pudo entregar la tarea", { description: error.message }),
+  })
+}
+
+// Reasignar la revisión a otra persona: la tarea sigue 'en_revision', solo
+// cambia quién debe actuar. Sin optimismo por lo mismo que entregar/devolver
+// — el servidor puede rechazarlo (no eres quien tiene la revisión ahora).
+export function useEscalateTaskReview() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ taskId, reviewerPersonId, comment }: EscalateVars) =>
+      escalateTaskReview(taskId, reviewerPersonId, comment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tasksKeys.root })
+      toast.success("Revisión reasignada")
+    },
+    onError: (error) =>
+      toast.error("No se pudo reasignar la revisión", { description: error.message }),
   })
 }
 

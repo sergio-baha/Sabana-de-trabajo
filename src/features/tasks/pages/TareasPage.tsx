@@ -24,8 +24,11 @@ import { useRealtimeTasks } from "@/features/tasks/hooks/useRealtimeTasks"
 import { STATUS_LABELS, WORK_ITEM_OPTIONS } from "@/features/tasks/lib/taskLabels"
 import { buildAssigneeIdsByTask, buildAssigneesByTask } from "@/features/tasks/lib/taskAssignees"
 import type { Task } from "@/features/tasks/api/tasksApi"
-import { useProjects } from "@/features/projects/hooks/useProjectsQueries"
-import { useManagedProjectIds } from "@/features/projects/hooks/useManagedProjects"
+import {
+  useProjectManagers,
+  useProjectMembers,
+  useProjects,
+} from "@/features/projects/hooks/useProjectsQueries"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { usePeopleByRole } from "@/features/people/hooks/usePeopleByRole"
 import { useMonths } from "@/features/months/hooks/useMonthsQueries"
@@ -69,7 +72,8 @@ export default function TareasPage() {
   const { data: people } = usePeople(activeMonthId)
   const { data: taskAssignees } = useTaskAssignees(activeMonthId, { allMonths: ignoresMonths })
   const { data: months } = useMonths()
-  const managedProjectIds = useManagedProjectIds()
+  const { data: projectManagers } = useProjectManagers()
+  const { data: projectMembers } = useProjectMembers()
   const peopleByRole = usePeopleByRole(people)
 
   // El estado del mes NO limita las tareas: cerrar o archivar un mes congela
@@ -80,8 +84,18 @@ export default function TareasPage() {
   const canWrite = canManageTasks(profile?.role) && (!writesOwn || Boolean(myPerson))
 
   // Entregar y devolver no son movimientos comunes: cada uno abre su diálogo
-  // (horas reales / motivo). El hook trae los handlers y los diálogos.
-  const { handleRequestReview, handleRequestReturn, dialogs: reviewDialogs } = useTaskReviewFlow()
+  // (horas reales / revisor / motivo). El hook trae los handlers y los diálogos.
+  const {
+    handleRequestReview,
+    handleRequestReturn,
+    dialogs: reviewDialogs,
+  } = useTaskReviewFlow({
+    projects: projects ?? [],
+    people: people ?? [],
+    projectManagers,
+    projectMembers,
+    myPersonId: myPerson?.id,
+  })
 
   // Solo se pasa en modo "todos los meses": es lo que le dice a las vistas
   // que pinten la etiqueta, y evita ruido cuando el mes ya es el del filtro.
@@ -114,26 +128,20 @@ export default function TareasPage() {
   const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>("pendiente")
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null)
 
-  // Lo que ESTE usuario tiene que revisar: entregas de los proyectos que
-  // gerencia. El tablero las pinta en su columna "Por hacer" — para quien
-  // revisa, revisar es su pendiente; el que entregó las sigue viendo en
+  // Lo que ESTE usuario tiene que revisar: entregas donde quedó como revisor
+  // ELEGIDO (current_reviewer_person_id), no cualquier entrega de un
+  // proyecto que gerencia. El tablero las pinta en su columna "Por hacer" —
+  // para quien revisa, revisar es su pendiente; a quien la entregó (o a
+  // quien se la haya reenviado antes en la cadena) le queda quieta en
   // "En revisión", que es lo que le pasa a él: está esperando.
-  //
-  // Se excluye lo que uno mismo entregó: nadie se revisa a sí mismo (la base
-  // aplica el mismo criterio en task_requires_review).
   const awaitingMyReview = useMemo(() => {
-    if (managedProjectIds.size === 0) return new Set<string>()
+    if (!myPerson) return new Set<string>()
     return new Set(
       (tasks ?? [])
-        .filter(
-          (task) =>
-            task.status === "en_revision" &&
-            managedProjectIds.has(task.project_id) &&
-            task.submitted_by !== profile?.id
-        )
+        .filter((task) => task.status === "en_revision" && task.current_reviewer_person_id === myPerson.id)
         .map((task) => task.id)
     )
-  }, [tasks, managedProjectIds, profile?.id])
+  }, [tasks, myPerson])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()

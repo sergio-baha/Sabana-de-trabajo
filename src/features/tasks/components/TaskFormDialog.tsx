@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { CheckCheck, CornerUpLeft, Plus, ShieldCheck, X } from "lucide-react"
+import { CheckCheck, CornerUpLeft, Plus, Send, ShieldCheck, X } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -13,8 +13,13 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { Textarea } from "@/components/ui/textarea"
 import { PersonMultiSelect } from "@/components/shared/PersonMultiSelect"
+import ReviewerSelect from "@/features/tasks/components/ReviewerSelect"
+import { getProjectReviewOptions } from "@/features/tasks/lib/reviewerOptions"
+import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import {
   Select,
   SelectContent,
@@ -40,6 +45,8 @@ import { nextBoardOrder, type Task } from "@/features/tasks/api/tasksApi"
 import { uploadTaskImage } from "@/features/tasks/lib/uploadTaskImage"
 import {
   useCreateTask,
+  useEscalateTaskReview,
+  useReturnTaskForRework,
   useSetTaskAssignees,
   useTaskAssignees,
   useUpdateTask,
@@ -291,9 +298,16 @@ export default function TaskFormDialog({
     ? STATUS_OPTIONS.filter(([value]) => value !== "completada")
     : STATUS_OPTIONS
 
-  // Quien revisa: gestor/admin, o el analista dueño del proyecto.
-  const canReview = !readOnly && (!writesOwnWorkOnly(profile?.role) || ownsProject)
+  const { myPerson } = useMyPerson(monthId)
   const inReview = task?.status === "en_revision"
+  // Quien puede actuar sobre ESTA entrega puntual: gestor/admin (siempre), o
+  // la persona que quedó como revisor elegido — ya no "cualquier gestor del
+  // proyecto". Espejo de is_current_reviewer()/is_project_manager() en la
+  // base (return_task_for_rework / el trigger del circuito).
+  const isCurrentReviewer = Boolean(
+    myPerson && task && task.current_reviewer_person_id === myPerson.id
+  )
+  const canReview = !readOnly && (!writesOwnWorkOnly(profile?.role) || isCurrentReviewer)
 
   // Si el proyecto no tiene gerente con cuenta, la entrega no le llega a
   // nadie. Es la regla acordada, pero callarlo dejaría al analista creyendo
@@ -302,9 +316,44 @@ export default function TaskFormDialog({
     (m) => m.project_id === selectedProjectId
   )
 
-  const applyReview = async (next: TaskStatus) => {
+  const returnTask = useReturnTaskForRework()
+  const escalate = useEscalateTaskReview()
+  const [returning, setReturning] = useState(false)
+  const [returnComment, setReturnComment] = useState("")
+  const [escalating, setEscalating] = useState(false)
+  const [escalateTo, setEscalateTo] = useState("")
+
+  const escalateOptions = getProjectReviewOptions(
+    task?.project_id,
+    projectManagers,
+    projectMembers,
+    people,
+    myPerson?.id
+  )
+
+  const approveReview = async () => {
     if (!task) return
-    await updateTask.mutateAsync({ id: task.id, patch: { status: next } })
+    await updateTask.mutateAsync({ id: task.id, patch: { status: "completada" } })
+    onOpenChange(false)
+  }
+
+  const confirmReturn = async () => {
+    if (!task || !returnComment.trim()) return
+    await returnTask.mutateAsync({
+      taskId: task.id,
+      status: "en_progreso",
+      comment: returnComment.trim(),
+    })
+    setReturning(false)
+    setReturnComment("")
+    onOpenChange(false)
+  }
+
+  const confirmEscalate = async () => {
+    if (!task || !escalateTo) return
+    await escalate.mutateAsync({ taskId: task.id, reviewerPersonId: escalateTo, comment: null })
+    setEscalating(false)
+    setEscalateTo("")
     onOpenChange(false)
   }
 
@@ -727,8 +776,8 @@ export default function TaskFormDialog({
               <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/60 p-3 text-sm">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <span className="text-muted-foreground">
-                  Esta tarea la cierra el gestor del proyecto. Cuando termines, ponla{" "}
-                  <strong>En revisión</strong> y le llegará el aviso.
+                  Esta tarea la cierra quien la revise. Cuando termines, ponla{" "}
+                  <strong>En revisión</strong> y elige quién debe revisarla.
                   {!projectHasReviewer && (
                     <>
                       {" "}
@@ -739,6 +788,71 @@ export default function TaskFormDialog({
                     </>
                   )}
                 </span>
+              </div>
+            )}
+
+            {inReview && canReview && (returning || escalating) && (
+              <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3">
+                {returning && (
+                  <>
+                    <Label htmlFor="inline-return-reason">
+                      Qué hay que corregir <span className="text-danger">*</span>
+                    </Label>
+                    <Textarea
+                      id="inline-return-reason"
+                      rows={3}
+                      placeholder="Sé concreto: qué falta, qué está mal, qué esperabas…"
+                      value={returnComment}
+                      onChange={(e) => setReturnComment(e.target.value)}
+                      autoFocus
+                    />
+                  </>
+                )}
+                {escalating && (
+                  <>
+                    <Label>Reasignar revisión a</Label>
+                    <ReviewerSelect
+                      options={escalateOptions}
+                      value={escalateTo}
+                      onChange={setEscalateTo}
+                    />
+                  </>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setReturning(false)
+                      setEscalating(false)
+                      setReturnComment("")
+                      setEscalateTo("")
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  {returning && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!returnComment.trim() || returnTask.isPending}
+                      onClick={() => void confirmReturn()}
+                    >
+                      <CornerUpLeft /> Confirmar devolución
+                    </Button>
+                  )}
+                  {escalating && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!escalateTo || escalate.isPending}
+                      onClick={() => void confirmEscalate()}
+                    >
+                      <Send /> Confirmar reasignación
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -753,22 +867,28 @@ export default function TaskFormDialog({
               <DialogFooter className="gap-2 sm:justify-between">
                 {/* Las acciones de revisión van aparte del guardado: son
                     decisiones sobre la entrega, no una edición más del
-                    formulario. */}
-                {inReview && canReview ? (
+                    formulario. Solo las ofrece quien tiene la revisión
+                    ahora mismo (o gestor/admin) — is_current_reviewer en
+                    la base. */}
+                {inReview && canReview && !returning && !escalating ? (
                   <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       disabled={submitting}
-                      onClick={() => void applyReview("en_progreso")}
+                      onClick={() => setReturning(true)}
                     >
                       <CornerUpLeft /> Devolver
                     </Button>
                     <Button
                       type="button"
+                      variant="outline"
                       disabled={submitting}
-                      onClick={() => void applyReview("completada")}
+                      onClick={() => setEscalating(true)}
                     >
+                      <Send /> Reasignar
+                    </Button>
+                    <Button type="button" disabled={submitting} onClick={() => void approveReview()}>
                       <CheckCheck /> Aprobar
                     </Button>
                   </div>

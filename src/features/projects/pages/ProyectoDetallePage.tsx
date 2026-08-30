@@ -156,7 +156,17 @@ export default function ProyectoDetallePage() {
 
   // Mismo circuito que en Tareas: entregar pide horas reales y devolver pide
   // el motivo, se mueva la tarjeta desde donde se mueva.
-  const { handleRequestReview, handleRequestReturn, dialogs: reviewDialogs } = useTaskReviewFlow()
+  const {
+    handleRequestReview,
+    handleRequestReturn,
+    dialogs: reviewDialogs,
+  } = useTaskReviewFlow({
+    projects: projects ?? [],
+    people: people ?? [],
+    projectManagers: managers,
+    projectMembers: members,
+    myPersonId: myPerson?.id,
+  })
 
   const reorderPhases = useReorderPhases(projectId ?? "")
   const deletePhase = useDeletePhase(projectId ?? "")

@@ -231,13 +231,31 @@ export async function returnTaskForRework(
 
 export async function submitTaskForReview(
   taskId: string,
+  reviewerPersonId: string | null,
   hours: number | null,
   note: string | null
 ): Promise<void> {
   const { error } = await supabase.rpc("submit_task_for_review", {
     p_task_id: taskId,
+    p_reviewer_person_id: reviewerPersonId ?? undefined,
     p_hours: hours ?? undefined,
     p_note: note ?? undefined,
+  })
+  if (error) throw error
+}
+
+// Reasignar la revisión a otra persona sin sacarla de 'en_revision': quien
+// la tiene ahora se la pasa a alguien más, y el circuito se repite para esa
+// persona. No es un cambio de estado, así que no pasa por moveTask.
+export async function escalateTaskReview(
+  taskId: string,
+  reviewerPersonId: string,
+  comment: string | null
+): Promise<void> {
+  const { error } = await supabase.rpc("escalate_task_review", {
+    p_task_id: taskId,
+    p_reviewer_person_id: reviewerPersonId,
+    p_comment: comment ?? undefined,
   })
   if (error) throw error
 }

@@ -12,14 +12,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import ReviewerSelect from "@/features/tasks/components/ReviewerSelect"
 import { useSubmitTaskForReview } from "@/features/tasks/hooks/useTasksQueries"
 import type { Task } from "@/features/tasks/api/tasksApi"
+import type { ReviewerOptions } from "@/features/tasks/lib/reviewerOptions"
 
 interface SubmitReviewDialogProps {
   task: Task | null
   onOpenChange: (open: boolean) => void
   /** Si el reporte es obligatorio para quien entrega (ver requiresTimeReport). */
   requiresHours: boolean
+  /** Si hay que elegir revisor (ver requiresReviewerPick). Analista de
+   * Tecnología y quien trabaja en su propio proyecto quedan fuera. */
+  requiresReviewer: boolean
+  reviewerOptions: ReviewerOptions
 }
 
 // Entregar a revisión: el momento en que se captura cuánto costó de verdad la
@@ -33,15 +39,19 @@ export default function SubmitReviewDialog({
   task,
   onOpenChange,
   requiresHours,
+  requiresReviewer,
+  reviewerOptions,
 }: SubmitReviewDialogProps) {
   const submit = useSubmitTaskForReview()
   const [hours, setHours] = useState("")
   const [note, setNote] = useState("")
+  const [reviewerId, setReviewerId] = useState("")
 
   useEffect(() => {
     if (task) {
       setHours("")
       setNote("")
+      setReviewerId("")
     }
   }, [task])
 
@@ -50,12 +60,15 @@ export default function SubmitReviewDialog({
   const isRework = (task.returned_count ?? 0) > 0
   const parsed = Number(hours.replace(",", "."))
   const validHours = Number.isFinite(parsed) && parsed > 0
-  const canSubmit = requiresHours ? validHours : hours === "" || validHours
+  const canSubmit =
+    (requiresHours ? validHours : hours === "" || validHours) &&
+    (!requiresReviewer || reviewerId !== "")
 
   const handleSubmit = async () => {
     if (!canSubmit) return
     await submit.mutateAsync({
       taskId: task.id,
+      reviewerPersonId: reviewerId || null,
       hours: validHours ? parsed : null,
       note: note.trim() || null,
     })
@@ -70,7 +83,7 @@ export default function SubmitReviewDialog({
           <DialogDescription>
             {isRework
               ? "Esta tarea volvió del gestor. Reporta las horas que te tomó el reproceso — se suman a las ya registradas."
-              : "El gestor del proyecto la revisará. Antes, deja registrado cuánto te tomó de verdad."}
+              : "Elige quién la revisa y deja registrado cuánto te tomó de verdad."}
           </DialogDescription>
         </DialogHeader>
 
@@ -115,8 +128,21 @@ export default function SubmitReviewDialog({
             )}
           </div>
 
+          {requiresReviewer && (
+            <div className="flex flex-col gap-2">
+              <Label>
+                Quién revisa <span className="text-danger">*</span>
+              </Label>
+              <ReviewerSelect options={reviewerOptions} value={reviewerId} onChange={setReviewerId} />
+              <p className="text-xs text-muted-foreground">
+                Le va a aparecer en su "Por hacer". A ti te queda quieta en "En revisión" hasta que
+                la complete, la reasigne o te la devuelva.
+              </p>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
-            <Label htmlFor="real-note">Nota para el gestor (opcional)</Label>
+            <Label htmlFor="real-note">Nota para quien revisa (opcional)</Label>
             <Textarea
               id="real-note"
               rows={2}

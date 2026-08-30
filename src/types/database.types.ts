@@ -1433,6 +1433,7 @@ export type Database = {
           completed_hours: number | null
           created_at: string
           created_by: string | null
+          current_reviewer_person_id: string | null
           description: string | null
           due_date: string | null
           estimated_hours: number | null
@@ -1465,6 +1466,7 @@ export type Database = {
           completed_hours?: number | null
           created_at?: string
           created_by?: string | null
+          current_reviewer_person_id?: string | null
           description?: string | null
           due_date?: string | null
           estimated_hours?: number | null
@@ -1497,6 +1499,7 @@ export type Database = {
           completed_hours?: number | null
           created_at?: string
           created_by?: string | null
+          current_reviewer_person_id?: string | null
           description?: string | null
           due_date?: string | null
           estimated_hours?: number | null
@@ -1579,6 +1582,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_project_totals"
             referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "tasks_current_reviewer_person_id_fkey"
+            columns: ["current_reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "tasks_reviewed_by_fkey"
@@ -1837,9 +1847,19 @@ export type Database = {
       is_month_released: { Args: { p_month_id: string }; Returns: boolean }
       task_requires_time_report: { Args: { p_task_id: string }; Returns: boolean }
       submit_task_for_review: {
-        Args: { p_hours?: number; p_note?: string; p_task_id: string }
+        Args: {
+          p_hours?: number
+          p_note?: string
+          p_reviewer_person_id?: string
+          p_task_id: string
+        }
         Returns: undefined
       }
+      escalate_task_review: {
+        Args: { p_comment?: string; p_reviewer_person_id: string; p_task_id: string }
+        Returns: undefined
+      }
+      is_current_reviewer: { Args: { p_task_id: string }; Returns: boolean }
       is_project_manager: { Args: { p_project_id: string }; Returns: boolean }
       admin_update_user_email: {
         Args: { p_email: string; p_user_id: string }
