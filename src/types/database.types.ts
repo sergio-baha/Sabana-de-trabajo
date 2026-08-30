@@ -50,6 +50,7 @@ export type Database = {
           id: string
           month_id: string
           phase_id: string | null
+          task_id: string | null
           updated_at: string
         }
         Insert: {
@@ -62,6 +63,7 @@ export type Database = {
           id?: string
           month_id: string
           phase_id?: string | null
+          task_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -74,6 +76,7 @@ export type Database = {
           id?: string
           month_id?: string
           phase_id?: string | null
+          task_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -82,6 +85,13 @@ export type Database = {
             columns: ["allocation_id"]
             isOneToOne: false
             referencedRelation: "allocations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
           {

@@ -73,6 +73,28 @@ export async function deleteTask(id: string): Promise<void> {
   if (error) throw error
 }
 
+// Mismo criterio que el trigger tg_activity_deletes_task (ver
+// *_actividad_genera_tarea.sql): una tarea "tiene avance" si el analista ya
+// la sacó de 'pendiente' o dejó un comentario. Se usa para avisarle al
+// gestor ANTES de borrar la actividad de la sábana que la generó, ya que si
+// tiene avance el trigger la deja sobrevivir desligada en vez de borrarla.
+export async function taskHasProgress(taskId: string): Promise<boolean> {
+  const { data: task, error } = await supabase
+    .from("tasks")
+    .select("status")
+    .eq("id", taskId)
+    .single()
+  if (error) throw error
+  if (task.status !== "pendiente") return true
+
+  const { count, error: countError } = await supabase
+    .from("task_comments")
+    .select("id", { count: "exact", head: true })
+    .eq("task_id", taskId)
+  if (countError) throw countError
+  return (count ?? 0) > 0
+}
+
 // Mismo criterio que listTasks: `null` = todos los meses.
 export async function listTaskAssignees(monthId: string | null): Promise<TaskAssignee[]> {
   let query = supabase.from("task_assignees").select("*")

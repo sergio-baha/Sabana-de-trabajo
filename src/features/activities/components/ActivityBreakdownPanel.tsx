@@ -20,6 +20,8 @@ import {
 } from "@/features/activities/hooks/useActivitiesQueries"
 import { usePhases } from "@/features/projects/hooks/useProjectBudgetQueries"
 import type { ActivityWithCell } from "@/features/activities/api/activitiesApi"
+import { taskHasProgress } from "@/features/tasks/api/tasksApi"
+import { useDeleteTask } from "@/features/tasks/hooks/useTasksQueries"
 
 interface ActivityBreakdownPanelProps {
   open: boolean
@@ -63,6 +65,7 @@ export default function ActivityBreakdownPanel({
   const addActivity = useAddActivity(monthId)
   const updateActivity = useUpdateActivity(monthId)
   const deleteActivity = useDeleteActivity(monthId)
+  const deleteTask = useDeleteTask()
 
   // Las fases son del proyecto completo, no de un mes. Un proyecto sin fases
   // devuelve lista vacía y el selector queda solo con "Sin fase".
@@ -75,6 +78,28 @@ export default function ActivityBreakdownPanel({
 
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT)
   const [toDelete, setToDelete] = useState<ActivityWithCell | null>(null)
+  // Se resuelve ANTES de abrir la confirmación: si la tarea que generó esta
+  // actividad ya tiene avance (el analista la movió o comentó), hay que
+  // avisarle al gestor — de lo contrario el trigger la deja sobrevivir
+  // desligada en vez de borrarla, y "eliminar" no haría lo que se ve.
+  const [deleteHasProgress, setDeleteHasProgress] = useState(false)
+  const [checkingDelete, setCheckingDelete] = useState<string | null>(null)
+
+  const requestDelete = async (activity: ActivityWithCell) => {
+    if (!activity.task_id) {
+      setDeleteHasProgress(false)
+      setToDelete(activity)
+      return
+    }
+    setCheckingDelete(activity.id)
+    try {
+      const hasProgress = await taskHasProgress(activity.task_id)
+      setDeleteHasProgress(hasProgress)
+      setToDelete(activity)
+    } finally {
+      setCheckingDelete(null)
+    }
+  }
 
   useEffect(() => {
     if (open) setDraft(EMPTY_DRAFT)
@@ -172,7 +197,8 @@ export default function ActivityBreakdownPanel({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => setToDelete(activity)}
+                    onClick={() => requestDelete(activity)}
+                    disabled={checkingDelete === activity.id}
                     title="Eliminar"
                   >
                     <Trash2 />
@@ -246,10 +272,23 @@ export default function ActivityBreakdownPanel({
       <ConfirmDialog
         open={Boolean(toDelete)}
         onOpenChange={(o) => !o && setToDelete(null)}
-        title="Eliminar actividad"
-        description="Las horas de la celda se recalculan sin esta actividad."
+        title={deleteHasProgress ? "Esta tarea ya tiene avance" : "Eliminar actividad"}
+        description={
+          deleteHasProgress
+            ? "El analista ya la movió de columna o dejó un comentario. Si la borras igual, la tarea también desaparece de su tablero y ese registro se pierde."
+            : "Las horas de la celda se recalculan sin esta actividad."
+        }
+        confirmLabel={deleteHasProgress ? "Borrar de todas formas" : "Eliminar"}
         onConfirm={async () => {
-          if (toDelete) await deleteActivity.mutateAsync(toDelete.id)
+          if (!toDelete) return
+          // Con avance: se borra la tarea primero (se lleva sus comentarios y
+          // asignaciones en cascada) y luego la actividad — al revés, el
+          // trigger la dejaría sobrevivir desligada, que es justo lo que este
+          // aviso existe para evitar si el gestor decide seguir.
+          if (deleteHasProgress && toDelete.task_id) {
+            await deleteTask.mutateAsync(toDelete.task_id)
+          }
+          await deleteActivity.mutateAsync(toDelete.id)
         }}
       />
     </div>
