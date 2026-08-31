@@ -97,6 +97,7 @@ export function useAddActivity(monthId: string) {
         allocationId,
         monthId,
         description: vars.description,
+        notes: vars.notes,
         phaseId: vars.phaseId,
         activityDate: vars.activityDate,
         hours: vars.hours,

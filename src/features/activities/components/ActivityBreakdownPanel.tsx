@@ -37,6 +37,7 @@ interface ActivityBreakdownPanelProps {
 interface DraftState {
   id: string | null // null = creando una nueva
   description: string
+  notes: string
   phaseId: string | "none"
   activityDate: string
   hours: string
@@ -45,6 +46,7 @@ interface DraftState {
 const EMPTY_DRAFT: DraftState = {
   id: null,
   description: "",
+  notes: "",
   phaseId: "none",
   activityDate: "",
   hours: "",
@@ -111,6 +113,7 @@ export default function ActivityBreakdownPanel({
     setDraft({
       id: activity.id,
       description: activity.description,
+      notes: activity.notes ?? "",
       phaseId: activity.phase_id ?? "none",
       activityDate: activity.activity_date ?? "",
       hours: String(activity.hours),
@@ -130,6 +133,7 @@ export default function ActivityBreakdownPanel({
         id: draft.id,
         patch: {
           description: draft.description.trim(),
+          notes: draft.notes.trim() || null,
           phase_id: phaseId,
           activity_date: activityDate,
           hours,
@@ -141,6 +145,7 @@ export default function ActivityBreakdownPanel({
         projectId,
         lineId,
         description: draft.description.trim(),
+        notes: draft.notes.trim() || null,
         phaseId,
         activityDate,
         hours,
@@ -226,12 +231,30 @@ export default function ActivityBreakdownPanel({
               </Button>
             )}
           </div>
-          <Textarea
-            placeholder="Descripción de la actividad…"
-            rows={2}
-            value={draft.description}
-            onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-          />
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="activity-title" className="text-xs text-muted-foreground">
+              Título
+            </Label>
+            <Textarea
+              id="activity-title"
+              placeholder="Qué hay que hacer, en pocas palabras…"
+              rows={2}
+              value={draft.description}
+              onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="activity-notes" className="text-xs text-muted-foreground">
+              Descripción (opcional)
+            </Label>
+            <Textarea
+              id="activity-notes"
+              placeholder="Detalle para quien la va a trabajar: alcance, contexto, qué queda listo…"
+              rows={3}
+              value={draft.notes}
+              onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
+            />
+          </div>
           <div className="grid grid-cols-3 gap-2">
             <Select
               value={draft.phaseId}

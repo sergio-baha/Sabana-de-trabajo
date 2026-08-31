@@ -23,6 +23,8 @@ export async function listActivitiesForMonth(monthId: string): Promise<ActivityW
 export interface CreateActivityInput {
   allocationId: string
   description: string
+  /** Descripción larga, opcional — pasa tal cual a la tarea generada. */
+  notes?: string | null
   phaseId: string | null
   activityDate: string | null
   hours: number
@@ -36,6 +38,7 @@ export async function createActivity(input: CreateActivityInput): Promise<Activi
       allocation_id: input.allocationId,
       month_id: input.monthId,
       description: input.description,
+      notes: input.notes,
       phase_id: input.phaseId,
       activity_date: input.activityDate,
       hours: input.hours,

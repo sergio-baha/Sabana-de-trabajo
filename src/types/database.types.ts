@@ -49,6 +49,7 @@ export type Database = {
           hours: number
           id: string
           month_id: string
+          notes: string | null
           phase_id: string | null
           task_id: string | null
           updated_at: string
@@ -62,6 +63,7 @@ export type Database = {
           hours?: number
           id?: string
           month_id: string
+          notes?: string | null
           phase_id?: string | null
           task_id?: string | null
           updated_at?: string
@@ -75,6 +77,7 @@ export type Database = {
           hours?: number
           id?: string
           month_id?: string
+          notes?: string | null
           phase_id?: string | null
           task_id?: string | null
           updated_at?: string
