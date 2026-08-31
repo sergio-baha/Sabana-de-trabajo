@@ -26,6 +26,9 @@ interface SubmitReviewDialogProps {
    * Tecnología y quien trabaja en su propio proyecto quedan fuera. */
   requiresReviewer: boolean
   reviewerOptions: ReviewerOptions
+  /** El revisor ya no tiene que ser del equipo del proyecto — si no lo es,
+   * esto pregunta si se le inscribe. Resuelve `false` si el usuario cancela. */
+  ensureReviewerOnTeam: (projectId: string, personId: string, personName: string) => Promise<boolean>
 }
 
 // Entregar a revisión: el momento en que se captura cuánto costó de verdad la
@@ -41,6 +44,7 @@ export default function SubmitReviewDialog({
   requiresHours,
   requiresReviewer,
   reviewerOptions,
+  ensureReviewerOnTeam,
 }: SubmitReviewDialogProps) {
   const submit = useSubmitTaskForReview()
   const [hours, setHours] = useState("")
@@ -66,6 +70,13 @@ export default function SubmitReviewDialog({
 
   const handleSubmit = async () => {
     if (!canSubmit) return
+
+    if (reviewerId) {
+      const reviewer = reviewerOptions.ordered.find((p) => p.id === reviewerId)
+      const proceed = await ensureReviewerOnTeam(task.project_id, reviewerId, reviewer?.name ?? "")
+      if (!proceed) return
+    }
+
     await submit.mutateAsync({
       taskId: task.id,
       reviewerPersonId: reviewerId || null,

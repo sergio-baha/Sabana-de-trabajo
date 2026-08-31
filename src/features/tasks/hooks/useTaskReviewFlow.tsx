@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react"
 import SubmitReviewDialog from "@/features/tasks/components/SubmitReviewDialog"
 import ReturnTaskDialog, { type PendingReturn } from "@/features/tasks/components/ReturnTaskDialog"
-import { getProjectReviewOptions } from "@/features/tasks/lib/reviewerOptions"
+import { reviewerOptionsFromRoster } from "@/features/tasks/lib/reviewerOptions"
+import { usePeopleByRole } from "@/features/people/hooks/usePeopleByRole"
+import { useEnsureProjectMember } from "@/features/tasks/hooks/useEnsureProjectMember"
 import type { Task } from "@/features/tasks/api/tasksApi"
 import type { Person } from "@/features/people/api/peopleApi"
-import type { Project } from "@/features/projects/api/projectsApi"
-import type { ProjectManager, ProjectMember } from "@/features/projects/api/projectsApi"
+import type { Project, ProjectManager, ProjectMember } from "@/features/projects/api/projectsApi"
 import { useSessionStore } from "@/stores/sessionStore"
 import { requiresReviewerPick, requiresTimeReport, writesOwnWorkOnly } from "@/lib/roles"
 import type { TaskStatus } from "@/types/database.types"
@@ -34,6 +35,11 @@ export function useTaskReviewFlow({
 }: UseTaskReviewFlowArgs) {
   const profile = useSessionStore((s) => s.profile)
   const writesOwn = writesOwnWorkOnly(profile?.role)
+  const peopleByRole = usePeopleByRole(people)
+  const { dialog: ensureMemberDialog, ensureMember } = useEnsureProjectMember(
+    projectManagers,
+    projectMembers
+  )
 
   const [taskToSubmit, setTaskToSubmit] = useState<Task | null>(null)
   const [taskToReturn, setTaskToReturn] = useState<PendingReturn | null>(null)
@@ -57,19 +63,11 @@ export function useTaskReviewFlow({
 
   const submitProject = projects.find((p) => p.id === taskToSubmit?.project_id)
   const requiresReviewer = requiresReviewerPick(profile?.role, submitProject?.created_by, profile?.id)
-  // Recorre proyectos/miembros y arma dos arreglos ordenados: no vale la
-  // pena repetirlo en cada tecleo del diálogo de entrega, solo cuando
-  // cambia el proyecto en cuestión o el roster.
+  // Todo el roster, gestores primero: no vale la pena repetirlo en cada
+  // tecleo del diálogo de entrega, solo cuando cambia el roster.
   const reviewerOptions = useMemo(
-    () =>
-      getProjectReviewOptions(
-        taskToSubmit?.project_id,
-        projectManagers,
-        projectMembers,
-        people,
-        myPersonId
-      ),
-    [taskToSubmit?.project_id, projectManagers, projectMembers, people, myPersonId]
+    () => reviewerOptionsFromRoster(peopleByRole, myPersonId),
+    [peopleByRole, myPersonId]
   )
 
   const dialogs = (
@@ -80,11 +78,13 @@ export function useTaskReviewFlow({
         requiresHours={requiresTimeReport(profile?.role, taskToSubmit?.created_by, profile?.id)}
         requiresReviewer={requiresReviewer}
         reviewerOptions={reviewerOptions}
+        ensureReviewerOnTeam={ensureMember}
       />
       <ReturnTaskDialog
         pending={taskToReturn}
         onOpenChange={(open) => !open && setTaskToReturn(null)}
       />
+      {ensureMemberDialog}
     </>
   )
 

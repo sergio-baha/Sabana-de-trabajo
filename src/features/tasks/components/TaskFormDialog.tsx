@@ -18,7 +18,8 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { Textarea } from "@/components/ui/textarea"
 import { PersonMultiSelect } from "@/components/shared/PersonMultiSelect"
 import ReviewerSelect from "@/features/tasks/components/ReviewerSelect"
-import { getProjectReviewOptions } from "@/features/tasks/lib/reviewerOptions"
+import { reviewerOptionsFromRoster } from "@/features/tasks/lib/reviewerOptions"
+import { useEnsureProjectMember } from "@/features/tasks/hooks/useEnsureProjectMember"
 import { useMyPerson } from "@/features/schedule/hooks/useMyPerson"
 import {
   Select,
@@ -258,8 +259,8 @@ export default function TaskFormDialog({
   // tengan horas repartidas en la sábana — que es de donde sale hoy la
   // pertenencia al equipo (allocation_implies_membership). Sin esto,
   // justamente los responsables desaparecían del selector.
-  const { owners } = usePeopleByRole(people)
-  const alwaysVisibleIds = new Set(owners.map((p) => p.id))
+  const peopleByRole = usePeopleByRole(people)
+  const alwaysVisibleIds = new Set(peopleByRole.owners.map((p) => p.id))
   const projectManagerPersonId = (projectManagers ?? []).find(
     (m) => m.project_id === selectedProjectId
   )?.person_id
@@ -336,21 +337,19 @@ export default function TaskFormDialog({
   const [escalating, setEscalating] = useState(false)
   const [escalateTo, setEscalateTo] = useState("")
 
-  // Al reasignar, además de no ofrecerte a ti mismo, tampoco se ofrece a
-  // quien la entregó originalmente — eso es "Devolver", no "Reasignar" (el
-  // backend, validate_task_reviewer, es quien de verdad lo hace cumplir).
+  // Todo el roster, gestores primero — no acotado al equipo del proyecto
+  // (ver reviewerOptions.ts). Al reasignar, además de no ofrecerte a ti
+  // mismo, tampoco se ofrece a quien la entregó originalmente — eso es
+  // "Devolver", no "Reasignar" (el backend, validate_task_reviewer, es
+  // quien de verdad lo hace cumplir).
   const originalSubmitterPersonId = people.find((p) => p.profile_id === task?.submitted_by)?.id
   const escalateOptions = useMemo(
-    () =>
-      getProjectReviewOptions(
-        task?.project_id,
-        projectManagers,
-        projectMembers,
-        people,
-        myPerson?.id,
-        originalSubmitterPersonId
-      ),
-    [task?.project_id, projectManagers, projectMembers, people, myPerson?.id, originalSubmitterPersonId]
+    () => reviewerOptionsFromRoster(peopleByRole, myPerson?.id, originalSubmitterPersonId),
+    [peopleByRole, myPerson?.id, originalSubmitterPersonId]
+  )
+  const { dialog: ensureMemberDialog, ensureMember } = useEnsureProjectMember(
+    projectManagers,
+    projectMembers
   )
 
   const approveReview = async () => {
@@ -373,6 +372,9 @@ export default function TaskFormDialog({
 
   const confirmEscalate = async () => {
     if (!task || !escalateTo) return
+    const reviewer = escalateOptions.ordered.find((p) => p.id === escalateTo)
+    const proceed = await ensureMember(task.project_id, escalateTo, reviewer?.name ?? "")
+    if (!proceed) return
     await escalate.mutateAsync({ taskId: task.id, reviewerPersonId: escalateTo, comment: null })
     setEscalating(false)
     setEscalateTo("")
@@ -421,6 +423,7 @@ export default function TaskFormDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
@@ -926,5 +929,7 @@ export default function TaskFormDialog({
         </Form>
       </DialogContent>
     </Dialog>
+    {ensureMemberDialog}
+    </>
   )
 }

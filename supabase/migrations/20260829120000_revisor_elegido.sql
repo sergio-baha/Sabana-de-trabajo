@@ -25,13 +25,20 @@
 --   5. Cada salto (entregada / escalada / completada / devuelta) queda en
 --      un historial con fecha, para control.
 
+-- Este archivo es idempotente a propósito: se puede volver a correr entero
+-- sin importar hasta dónde haya llegado un intento anterior (p. ej. si un
+-- borrador previo alcanzó a crear la columna antes de que se corrigieran
+-- los huecos de seguridad que traía). Cada paso usa IF EXISTS/IF NOT
+-- EXISTS, o create-or-replace, para converger al mismo estado final sin
+-- importar el punto de partida.
+
 -- ---------------------------------------------------------------------------
 -- 1. Quién debe actuar ahora mismo
 -- ---------------------------------------------------------------------------
 alter table public.tasks
-  add column current_reviewer_person_id uuid references public.people (id) on delete set null;
+  add column if not exists current_reviewer_person_id uuid references public.people (id) on delete set null;
 
-create index tasks_current_reviewer_idx on public.tasks (current_reviewer_person_id);
+create index if not exists tasks_current_reviewer_idx on public.tasks (current_reviewer_person_id);
 
 create or replace function public.is_current_reviewer(p_task_id uuid)
 returns boolean
@@ -113,7 +120,7 @@ grant execute on function public.validate_task_reviewer(uuid, uuid, uuid) to aut
 -- ---------------------------------------------------------------------------
 -- 2. Historial de saltos — las fechas de control que pidió el usuario
 -- ---------------------------------------------------------------------------
-create table public.task_review_hops (
+create table if not exists public.task_review_hops (
   id uuid primary key default gen_random_uuid(),
   task_id uuid not null references public.tasks (id) on delete cascade,
   action text not null check (action in ('enviada', 'escalada', 'completada', 'devuelta')),
@@ -124,7 +131,7 @@ create table public.task_review_hops (
   created_at timestamptz not null default now()
 );
 
-create index task_review_hops_task_idx on public.task_review_hops (task_id, created_at);
+create index if not exists task_review_hops_task_idx on public.task_review_hops (task_id, created_at);
 
 alter table public.task_review_hops enable row level security;
 revoke all on public.task_review_hops from anon;
@@ -132,6 +139,7 @@ revoke all on public.task_review_hops from anon;
 -- igual que task_time_reports — nadie escribe el historial a mano.
 grant select on public.task_review_hops to authenticated;
 
+drop policy if exists "task_review_hops_select" on public.task_review_hops;
 create policy "task_review_hops_select" on public.task_review_hops
   for select to authenticated
   using (exists (select 1 from public.tasks t where t.id = task_review_hops.task_id));
@@ -442,10 +450,10 @@ $$;
 -- `true` sin más condición — volvía a abrirle a un Gestor las tareas de
 -- proyectos ajenos. Se corrige acá, conservando esa migración como la base.
 -- ---------------------------------------------------------------------------
-drop policy "tasks_select_scoped" on public.tasks;
-drop policy "tasks_insert_write" on public.tasks;
-drop policy "tasks_update_write" on public.tasks;
-drop policy "tasks_delete_write" on public.tasks;
+drop policy if exists "tasks_select_scoped" on public.tasks;
+drop policy if exists "tasks_insert_write" on public.tasks;
+drop policy if exists "tasks_update_write" on public.tasks;
+drop policy if exists "tasks_delete_write" on public.tasks;
 
 create policy "tasks_select_scoped" on public.tasks
   for select to authenticated
@@ -519,5 +527,12 @@ create policy "tasks_delete_write" on public.tasks
     )
   );
 
--- Avisos en vivo: el historial también se sincroniza sin recargar.
-alter publication supabase_realtime add table public.task_review_hops;
+-- Avisos en vivo: el historial también se sincroniza sin recargar. Postgres
+-- no tiene "ADD TABLE IF NOT EXISTS" para publicaciones — se ignora a mano
+-- el único error posible (ya estaba agregada).
+do $$
+begin
+  alter publication supabase_realtime add table public.task_review_hops;
+exception
+  when duplicate_object then null;
+end $$;
