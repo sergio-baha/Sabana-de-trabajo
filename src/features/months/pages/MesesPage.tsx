@@ -1,7 +1,8 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import {
   CalendarRange,
   CheckCircle2,
+  Circle,
   Copy,
   EyeOff,
   History,
@@ -30,13 +31,20 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import ConfirmDialog from "@/components/shared/ConfirmDialog"
 import MonthFormDialog from "@/features/months/components/MonthFormDialog"
 import DuplicateMonthDialog from "@/features/months/components/DuplicateMonthDialog"
 import MonthStatusBadge from "@/features/months/components/MonthStatusBadge"
 import SnapshotsDialog from "@/features/snapshots/components/SnapshotsDialog"
-import { useDeleteMonth, useMonths, useUpdateMonth } from "@/features/months/hooks/useMonthsQueries"
+import {
+  useDeleteMonth,
+  useGestorChecks,
+  useMonths,
+  useUpdateMonth,
+} from "@/features/months/hooks/useMonthsQueries"
 import type { Month } from "@/features/months/api/monthsApi"
+import { useProfiles } from "@/hooks/useProfiles"
 import { useSessionStore } from "@/stores/sessionStore"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
 import { canManageMonths } from "@/lib/roles"
@@ -46,6 +54,25 @@ export default function MesesPage() {
   const { data: months, isLoading } = useMonths()
   const updateMonth = useUpdateMonth()
   const deleteMonth = useDeleteMonth()
+  // Cada gestor marca su propia casilla (ver *_check_planeacion_por_gestor.sql);
+  // acá se arma, por mes, cuáles de todos los gestores activos ya la
+  // marcaron — "cada gestor" es toda cuenta activa con rol Gestor, tenga o
+  // no un proyecto asignado ese mes en particular.
+  const { data: profiles } = useProfiles()
+  const { data: gestorChecks } = useGestorChecks()
+  const activeGestors = useMemo(
+    () => (profiles ?? []).filter((p) => p.role === "gestor" && p.is_active),
+    [profiles]
+  )
+  const checkedProfileIdsByMonth = useMemo(() => {
+    const map = new Map<string, Set<string>>()
+    for (const check of gestorChecks ?? []) {
+      const set = map.get(check.month_id) ?? new Set<string>()
+      set.add(check.profile_id)
+      map.set(check.month_id, set)
+    }
+    return map
+  }, [gestorChecks])
   const { activeMonthId, setActiveMonthId } = useActiveMonthStore()
 
   const [formOpen, setFormOpen] = useState(false)
@@ -164,15 +191,42 @@ export default function MesesPage() {
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <MonthStatusBadge status={month.status} releasedAt={month.released_at} />
-                        {month.planning_ready_at && !month.released_at && (
-                          <Badge
-                            variant="ghost"
-                            className="bg-success-muted text-success"
-                            title={`Marcado el ${new Date(month.planning_ready_at).toLocaleDateString("es-CO")}`}
-                          >
-                            <CheckCircle2 /> Planeación lista
-                          </Badge>
-                        )}
+                        {!month.released_at && activeGestors.length > 0 && (() => {
+                          const checkedIds = checkedProfileIdsByMonth.get(month.id) ?? new Set<string>()
+                          const checkedCount = activeGestors.filter((g) => checkedIds.has(g.id)).length
+                          const allChecked = checkedCount === activeGestors.length
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant="ghost"
+                                  className={
+                                    allChecked
+                                      ? "bg-success-muted text-success"
+                                      : "bg-muted text-muted-foreground"
+                                  }
+                                >
+                                  <CheckCircle2 />
+                                  {checkedCount}/{activeGestors.length} gestores listos
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-56">
+                                <ul className="flex flex-col gap-0.5 text-xs">
+                                  {activeGestors.map((gestor) => (
+                                    <li key={gestor.id} className="flex items-center gap-1.5">
+                                      {checkedIds.has(gestor.id) ? (
+                                        <CheckCircle2 className="size-3 shrink-0 text-success" />
+                                      ) : (
+                                        <Circle className="size-3 shrink-0 text-muted-foreground/50" />
+                                      )}
+                                      {gestor.full_name}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </TooltipContent>
+                            </Tooltip>
+                          )
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell>{month.default_hours} h</TableCell>

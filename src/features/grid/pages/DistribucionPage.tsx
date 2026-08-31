@@ -41,7 +41,11 @@ import {
   useSeedMonthPeople,
   useUpdatePerson,
 } from "@/features/people/hooks/usePeopleQueries"
-import { useMonths, useSetPlanningReady } from "@/features/months/hooks/useMonthsQueries"
+import {
+  useGestorChecks,
+  useMonths,
+  useSetGestorCheck,
+} from "@/features/months/hooks/useMonthsQueries"
 import { usePlanningExclusions } from "@/features/people/hooks/usePlanningExclusions"
 import {
   useDeleteProject,
@@ -125,7 +129,14 @@ export default function DistribucionPage() {
   const { data: months } = useMonths()
   const activeMonth = months?.find((m) => m.id === activeMonthId)
   const monthLocked = Boolean(activeMonth && activeMonth.status !== "abierto")
-  const setPlanningReady = useSetPlanningReady()
+  const setGestorCheck = useSetGestorCheck()
+  // "Planeación lista" ya no es una marca única por mes: cada gestor tiene
+  // su propia casilla (ver *_check_planeacion_por_gestor.sql) — acá solo
+  // hace falta saber si YO (quien tiene la sábana abierta) ya la marqué.
+  const { data: gestorChecks } = useGestorChecks()
+  const myCheck = (gestorChecks ?? []).find(
+    (c) => c.month_id === activeMonthId && c.profile_id === profile?.id
+  )
   const canEdit = isGestorOrAdmin(profile?.role) && (!monthLocked || isAdmin(profile?.role))
 
   const { data: people, isLoading: loadingPeople } = usePeople(activeMonthId)
@@ -865,39 +876,40 @@ export default function DistribucionPage() {
           son los únicos que pueden estar aquí con el mes sin liberar. */}
       {activeMonth?.released_at === null && (
         <div className="animate-fade-in flex flex-wrap items-start gap-3 rounded-xl border border-border bg-accent/60 p-3.5 text-sm">
-          {activeMonth.planning_ready_at ? (
+          {myCheck ? (
             <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
           ) : (
             <EyeOff className="mt-0.5 size-4 shrink-0 text-primary" />
           )}
           <span className="min-w-56 flex-1">
             <strong>{activeMonth.name}</strong>{" "}
-            {activeMonth.planning_ready_at ? (
+            {myCheck ? (
               <>
-                está marcado como <strong>planeación lista</strong>. El administrador ya puede
-                liberarlo al equipo; mientras tanto sigues pudiendo ajustar las horas.
+                — marcaste tu planeación como <strong>lista</strong>. El administrador ve tu
+                casilla marcada en Meses; mientras tanto sigues pudiendo ajustar las horas.
               </>
             ) : (
               <>
                 está en preparación: el equipo todavía no lo ve. Reparte las horas y carga las
-                actividades, y cuando esté armado avísale al administrador con el botón.
+                actividades, y cuando termines tu parte márcala lista — el administrador ve en
+                Meses la casilla de cada gestor.
               </>
             )}
           </span>
           {isGestorOrAdmin(profile?.role) && !monthLocked && (
             <Button
-              variant={activeMonth.planning_ready_at ? "ghost" : "default"}
+              variant={myCheck ? "ghost" : "default"}
               size="sm"
-              disabled={setPlanningReady.isPending}
+              disabled={setGestorCheck.isPending}
               onClick={() =>
-                setPlanningReady.mutate({
+                setGestorCheck.mutate({
                   monthId: activeMonth.id,
-                  ready: !activeMonth.planning_ready_at,
+                  checked: !myCheck,
                 })
               }
             >
               <CheckCircle2 />
-              {activeMonth.planning_ready_at ? "Quitar la marca" : "Planeación lista"}
+              {myCheck ? "Quitar mi marca" : "Marcar mi planeación como lista"}
             </Button>
           )}
         </div>

@@ -4,8 +4,9 @@ import {
   createMonth,
   deleteMonth,
   duplicateMonth,
+  listGestorChecks,
   listMonths,
-  setPlanningReady,
+  setGestorCheck,
   updateMonth,
   type MonthInsert,
   type MonthUpdate,
@@ -13,6 +14,7 @@ import {
 
 export const monthsKeys = {
   all: ["months"] as const,
+  gestorChecks: ["month_gestor_checks"] as const,
 }
 
 export function useMonths() {
@@ -55,17 +57,21 @@ export function useDeleteMonth() {
   })
 }
 
-export function useSetPlanningReady() {
+export function useGestorChecks() {
+  return useQuery({ queryKey: monthsKeys.gestorChecks, queryFn: listGestorChecks })
+}
+
+export function useSetGestorCheck() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ monthId, ready }: { monthId: string; ready: boolean }) =>
-      setPlanningReady(monthId, ready),
-    onSuccess: (_data, { ready }) => {
-      queryClient.invalidateQueries({ queryKey: monthsKeys.all })
+    mutationFn: ({ monthId, checked }: { monthId: string; checked: boolean }) =>
+      setGestorCheck(monthId, checked),
+    onSuccess: (_data, { checked }) => {
+      queryClient.invalidateQueries({ queryKey: monthsKeys.gestorChecks })
       toast.success(
-        ready
-          ? "Planeación marcada como lista. El Administrador ya puede liberar el mes."
-          : "Se quitó la marca de planeación lista."
+        checked
+          ? "Marcaste tu planeación como lista."
+          : "Se quitó tu marca de planeación lista."
       )
     },
     onError: (error: Error) => toast.error(error.message),

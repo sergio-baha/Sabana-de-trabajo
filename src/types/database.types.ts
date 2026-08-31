@@ -608,6 +608,42 @@ export type Database = {
           },
         ]
       }
+      month_gestor_checks: {
+        Row: {
+          checked_at: string
+          id: string
+          month_id: string
+          profile_id: string
+        }
+        Insert: {
+          checked_at?: string
+          id?: string
+          month_id: string
+          profile_id: string
+        }
+        Update: {
+          checked_at?: string
+          id?: string
+          month_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "month_gestor_checks_month_id_fkey"
+            columns: ["month_id"]
+            isOneToOne: false
+            referencedRelation: "months"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "month_gestor_checks_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       months: {
         Row: {
           created_at: string
@@ -616,8 +652,6 @@ export type Database = {
           id: string
           name: string
           notes: string | null
-          planning_ready_at: string | null
-          planning_ready_by: string | null
           released_at: string | null
           released_by: string | null
           source_month_id: string | null
@@ -646,8 +680,6 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
-          planning_ready_at?: string | null
-          planning_ready_by?: string | null
           released_at?: string | null
           released_by?: string | null
           source_month_id?: string | null
@@ -1823,8 +1855,8 @@ export type Database = {
         Args: { p_label?: string; p_month_id: string }
         Returns: string
       }
-      set_planning_ready: {
-        Args: { p_month_id: string; p_ready: boolean }
+      set_gestor_check: {
+        Args: { p_checked: boolean; p_month_id: string }
         Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
