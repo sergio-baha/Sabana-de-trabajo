@@ -1011,7 +1011,7 @@ export default function DistribucionPage() {
         />
       ) : (
         <div className="flex flex-col gap-3">
-          <div onPaste={handlePaste} className="overflow-hidden rounded-md border border-border">
+          <div onPaste={handlePaste} className="overflow-x-auto rounded-md border border-border">
             <DataGrid
               className="sabana-grid"
               columns={columns}
