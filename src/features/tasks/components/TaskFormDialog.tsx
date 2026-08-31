@@ -136,6 +136,14 @@ const toNumberOrNull = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+const formatReviewDate = (iso: string) =>
+  new Date(iso).toLocaleString("es-CO", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+
 const parseTags = (value: string) =>
   value
     .split(",")
@@ -322,6 +330,7 @@ export default function TaskFormDialog({
     myPerson && task && task.current_reviewer_person_id === myPerson.id
   )
   const canReview = !readOnly && (!writesOwnWorkOnly(profile?.role) || isCurrentReviewer)
+  const currentReviewerName = people.find((p) => p.id === task?.current_reviewer_person_id)?.name
 
   // Si el proyecto no tiene gerente con cuenta, la entrega no le llega a
   // nadie. Es la regla acordada, pero callarlo dejaría al analista creyendo
@@ -796,6 +805,19 @@ export default function TaskFormDialog({
                 </FormItem>
               )}
             />
+
+            {isEdit && inReview && task?.submitted_at && (
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl bg-muted/60 p-3 text-sm">
+                <span>
+                  <span className="text-muted-foreground">Entregada a revisión: </span>
+                  {formatReviewDate(task.submitted_at)}
+                </span>
+                <span>
+                  <span className="text-muted-foreground">Revisor actual: </span>
+                  {currentReviewerName ?? "—"}
+                </span>
+              </div>
+            )}
 
             {isEdit && requiresReview && (
               <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/60 p-3 text-sm">
