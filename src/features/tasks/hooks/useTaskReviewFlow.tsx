@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import SubmitReviewDialog from "@/features/tasks/components/SubmitReviewDialog"
 import ReturnTaskDialog, { type PendingReturn } from "@/features/tasks/components/ReturnTaskDialog"
 import { getProjectReviewOptions } from "@/features/tasks/lib/reviewerOptions"
@@ -57,12 +57,19 @@ export function useTaskReviewFlow({
 
   const submitProject = projects.find((p) => p.id === taskToSubmit?.project_id)
   const requiresReviewer = requiresReviewerPick(profile?.role, submitProject?.created_by, profile?.id)
-  const reviewerOptions = getProjectReviewOptions(
-    taskToSubmit?.project_id,
-    projectManagers,
-    projectMembers,
-    people,
-    myPersonId
+  // Recorre proyectos/miembros y arma dos arreglos ordenados: no vale la
+  // pena repetirlo en cada tecleo del diálogo de entrega, solo cuando
+  // cambia el proyecto en cuestión o el roster.
+  const reviewerOptions = useMemo(
+    () =>
+      getProjectReviewOptions(
+        taskToSubmit?.project_id,
+        projectManagers,
+        projectMembers,
+        people,
+        myPersonId
+      ),
+    [taskToSubmit?.project_id, projectManagers, projectMembers, people, myPersonId]
   )
 
   const dialogs = (

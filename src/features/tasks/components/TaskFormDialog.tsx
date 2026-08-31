@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { CheckCheck, CornerUpLeft, Plus, Send, ShieldCheck, X } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -218,6 +218,14 @@ export default function TaskFormDialog({
     setJustCreated(null)
     setNewProjectName("")
     setAddingProject(false)
+    // Sin esto, cerrar el diálogo con Escape/clic afuera (en vez del botón
+    // "Cancelar" del recuadro inline) dejaba "Devolver"/"Reasignar" abiertos
+    // con el texto de la tarea anterior — y al reabrir sobre OTRA tarea, ese
+    // motivo/reasignación quedaba listo para confirmarse sobre la que no era.
+    setReturning(false)
+    setReturnComment("")
+    setEscalating(false)
+    setEscalateTo("")
     // `defaultAssigneeIds` se deja fuera a propósito: el caller suele pasar
     // un array literal nuevo en cada render, y si entrara a las deps el
     // formulario se resetearía en cada tecleo mientras el diálogo está
@@ -294,8 +302,13 @@ export default function TaskFormDialog({
   const requiresReview =
     writesOwnWorkOnly(profile?.role) && !isAnalistaTecnologia(profile?.role) && !ownsProject
 
+  // "En revisión" también se filtra: este selector hace un UPDATE llano
+  // (sin RPC), así que nunca elige revisor — entrar por acá cuando el
+  // circuito lo exige solo llega hasta el trigger de la base, que lo
+  // rechaza con un mensaje genérico. La vía real es "Entregar" (arrastrar
+  // la tarjeta o el botón del tablero), que sí abre el diálogo del revisor.
   const statusOptions = requiresReview
-    ? STATUS_OPTIONS.filter(([value]) => value !== "completada")
+    ? STATUS_OPTIONS.filter(([value]) => value !== "completada" && value !== "en_revision")
     : STATUS_OPTIONS
 
   const { myPerson } = useMyPerson(monthId)
@@ -323,12 +336,21 @@ export default function TaskFormDialog({
   const [escalating, setEscalating] = useState(false)
   const [escalateTo, setEscalateTo] = useState("")
 
-  const escalateOptions = getProjectReviewOptions(
-    task?.project_id,
-    projectManagers,
-    projectMembers,
-    people,
-    myPerson?.id
+  // Al reasignar, además de no ofrecerte a ti mismo, tampoco se ofrece a
+  // quien la entregó originalmente — eso es "Devolver", no "Reasignar" (el
+  // backend, validate_task_reviewer, es quien de verdad lo hace cumplir).
+  const originalSubmitterPersonId = people.find((p) => p.profile_id === task?.submitted_by)?.id
+  const escalateOptions = useMemo(
+    () =>
+      getProjectReviewOptions(
+        task?.project_id,
+        projectManagers,
+        projectMembers,
+        people,
+        myPerson?.id,
+        originalSubmitterPersonId
+      ),
+    [task?.project_id, projectManagers, projectMembers, people, myPerson?.id, originalSubmitterPersonId]
   )
 
   const approveReview = async () => {

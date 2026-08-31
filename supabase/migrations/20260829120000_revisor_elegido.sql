@@ -51,6 +51,65 @@ $$;
 revoke all on function public.is_current_reviewer(uuid) from public;
 grant execute on function public.is_current_reviewer(uuid) to authenticated;
 
+-- Nadie se revisa a sí mismo, y el revisor tiene que ser alguien real del
+-- equipo del proyecto — sin esto, la protección "no te asignes a ti mismo"
+-- solo vivía en el <Select> del frontend, y un llamado directo al RPC (o un
+-- "reasignar" hacia el remitente original) la saltaba entera.
+create or replace function public.validate_task_reviewer(
+  p_project_id uuid,
+  p_reviewer_person_id uuid,
+  p_original_submitter uuid
+)
+returns void
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_reviewer_profile uuid;
+  v_on_team boolean;
+begin
+  select profile_id into v_reviewer_profile
+  from public.people
+  where id = p_reviewer_person_id;
+
+  if v_reviewer_profile is null then
+    raise exception 'Esa persona no tiene cuenta vinculada, no puede revisar'
+      using errcode = 'check_violation';
+  end if;
+
+  if v_reviewer_profile = auth.uid() then
+    raise exception 'No puedes asignarte la revisión a ti mismo'
+      using errcode = 'check_violation';
+  end if;
+
+  if p_original_submitter is not null and v_reviewer_profile = p_original_submitter then
+    raise exception 'No puedes reasignarla a quien la entregó — usa "Devolver"'
+      using errcode = 'check_violation';
+  end if;
+
+  select
+    exists (
+      select 1 from public.project_managers pm
+      where pm.project_id = p_project_id and pm.person_id = p_reviewer_person_id
+    )
+    or exists (
+      select 1 from public.project_members pmem
+      where pmem.project_id = p_project_id and pmem.person_id = p_reviewer_person_id
+    )
+  into v_on_team;
+
+  if not v_on_team then
+    raise exception 'Elige a alguien del equipo de este proyecto'
+      using errcode = 'check_violation';
+  end if;
+end;
+$$;
+
+revoke all on function public.validate_task_reviewer(uuid, uuid, uuid) from public;
+grant execute on function public.validate_task_reviewer(uuid, uuid, uuid) to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- 2. Historial de saltos — las fechas de control que pidió el usuario
 -- ---------------------------------------------------------------------------
@@ -117,6 +176,10 @@ begin
     raise exception 'Elige quién debe revisar esta entrega';
   end if;
 
+  if p_reviewer_person_id is not null then
+    perform public.validate_task_reviewer(v_task.project_id, p_reviewer_person_id, null);
+  end if;
+
   if p_hours is not null and p_hours > 0 then
     insert into public.task_time_reports (task_id, round, hours, note, reported_by)
     values (p_task_id, coalesce(v_task.returned_count, 0) + 1, p_hours, p_note, auth.uid());
@@ -124,6 +187,16 @@ begin
 
   select id into v_from_person_id from public.people
   where profile_id = auth.uid() and month_id = v_task.month_id;
+
+  -- Quien entrega no siempre tiene fila propia en el roster del mes (p. ej.
+  -- un gestor entregando en nombre de alguien): sin esto, "de quién" queda
+  -- en blanco en el historial. Se cae al primer asignado de la tarea.
+  if v_from_person_id is null then
+    select ta.person_id into v_from_person_id
+    from public.task_assignees ta
+    where ta.task_id = p_task_id
+    limit 1;
+  end if;
 
   insert into public.task_review_hops (task_id, action, from_person_id, to_person_id, created_by)
   values (p_task_id, 'enviada', v_from_person_id, p_reviewer_person_id, auth.uid());
@@ -177,6 +250,11 @@ begin
   if p_reviewer_person_id is null then
     raise exception 'Elige a quién le reasignas la revisión';
   end if;
+
+  -- Nadie se revisa a sí mismo, ni "escalar" se usa para devolvérsela por la
+  -- puerta de atrás a quien la entregó originalmente — eso es lo que existe
+  -- "Devolver" para hacer, con motivo obligatorio.
+  perform public.validate_task_reviewer(v_task.project_id, p_reviewer_person_id, v_task.submitted_by);
 
   insert into public.task_review_hops (task_id, action, from_person_id, to_person_id, comment, created_by)
   values (p_task_id, 'escalada', v_task.current_reviewer_person_id, p_reviewer_person_id, p_comment, auth.uid());
@@ -262,10 +340,32 @@ begin
     return new;
   end if;
 
-  if new.status = 'completada'
-     and public.task_requires_review(new.project_id)
-     and not public.is_own_person(old.current_reviewer_person_id) then
-    raise exception 'Esta tarea la cierra quien tiene la revisión. Envíala a revisión si no la tienes.'
+  -- OJO: task_requires_review() responde "¿el que está actuando necesita
+  -- revisión?" (mira SU rol y si SU proyecto es propio) — no "¿esta entrega
+  -- puntual tiene un revisor asignado?". Usarla acá para decidir quién
+  -- puede cerrar dejaba pasar a cualquier gestor/admin (task_requires_review
+  -- siempre da falso para ellos, sin importar el proyecto) y hasta al
+  -- Analista que creó el proyecto (cae en la excepción de "no te revisas a
+  -- ti mismo" aunque la tarea sea de otra persona). La pregunta correcta es
+  -- sobre el ESTADO DE LA TAREA: si tiene un revisor asignado, solo ese
+  -- revisor (o el gestor del proyecto, o admin) puede cerrarla — sin
+  -- importar el rol de quien lo intenta.
+  if new.status = 'completada' and old.status = 'en_revision' and old.current_reviewer_person_id is not null then
+    if not (
+      public.is_admin()
+      or public.is_project_manager(new.project_id)
+      or public.is_own_person(old.current_reviewer_person_id)
+    ) then
+      raise exception 'Esta tarea la cierra quien tiene la revisión.'
+        using errcode = 'check_violation';
+    end if;
+  elsif new.status = 'completada' and public.task_requires_review(new.project_id) then
+    -- Respaldo del comportamiento original: no debería alcanzarse casi
+    -- nunca (el bloque de abajo ya exige revisor al entrar a 'en_revision'
+    -- cuando el circuito aplica), pero si por lo que sea la tarea nunca
+    -- pasó por el revisor elegido, un Analista sigue sin poder cerrarla
+    -- directo.
+    raise exception 'Esta tarea la cierra el gestor del proyecto. Envíala a revisión.'
       using errcode = 'check_violation';
   end if;
 
@@ -331,6 +431,16 @@ $$;
 --    sigue viéndola "quieta" en 'en_revision' mientras no le toca actuar —
 --    solo no puede reescribir el estado mientras el revisor actual sea
 --    otra persona, y eso lo hacen cumplir los RPCs de arriba, no esta regla.
+--
+-- OJO — esto reescribe tasks_select_scoped completo (create or replace no
+-- admite parches en políticas), así que hay que partir de la versión más
+-- reciente (*_devolucion_con_motivo_y_alcance.sql), no de una anterior: esa
+-- migración acotó a un Gestor a solo los proyectos que gerencia (antes veía
+-- TODO el mes). Una versión de este archivo que llevó esta migración a
+-- producción reescribió por error tasks_select_scoped con un patrón viejo
+-- ("not is_analista_role() or ...") que para cualquier no-analista es
+-- `true` sin más condición — volvía a abrirle a un Gestor las tareas de
+-- proyectos ajenos. Se corrige acá, conservando esa migración como la base.
 -- ---------------------------------------------------------------------------
 drop policy "tasks_select_scoped" on public.tasks;
 drop policy "tasks_insert_write" on public.tasks;
@@ -340,9 +450,19 @@ drop policy "tasks_delete_write" on public.tasks;
 create policy "tasks_select_scoped" on public.tasks
   for select to authenticated
   using (
-    not public.is_analista_role()
+    public.is_admin()
     or (
-      public.is_month_released(month_id)
+      not public.is_analista_role()
+      and (
+        public.is_project_manager(project_id)
+        or created_by = auth.uid()
+        or public.is_task_assignee(id)
+        or public.is_own_person(current_reviewer_person_id)
+      )
+    )
+    or (
+      public.is_analista_role()
+      and public.is_month_released(month_id)
       and (
         public.is_task_assignee(id)
         or created_by = auth.uid()
