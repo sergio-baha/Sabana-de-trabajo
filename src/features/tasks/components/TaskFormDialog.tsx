@@ -60,7 +60,7 @@ import {
 import { usePhases } from "@/features/projects/hooks/useProjectBudgetQueries"
 import { usePeopleByRole } from "@/features/people/hooks/usePeopleByRole"
 import { useSessionStore } from "@/stores/sessionStore"
-import { canCreateProjects, isAnalistaTecnologia, writesOwnWorkOnly } from "@/lib/roles"
+import { canCreateProjects, requiresReviewerPick, writesOwnWorkOnly } from "@/lib/roles"
 import { Separator } from "@/components/ui/separator"
 import TaskCommentThread from "@/features/tasks/components/TaskCommentThread"
 import type { Project } from "@/features/projects/api/projectsApi"
@@ -304,12 +304,16 @@ export default function TaskFormDialog({
   // ── Circuito de revisión ────────────────────────────────────────────
   // Espejo en la interfaz de task_requires_review() en la base. La regla de
   // verdad vive allá; esto solo evita ofrecer una acción que sería
-  // rechazada. Quedan fuera del circuito el Analista de Tecnología y quien
-  // trabaja en un proyecto que él mismo creó.
+  // rechazada. Un work item sin crear todavía se trata como propio (va a
+  // quedar creado por quien lo está llenando).
   const selectedProject = projectOptions.find((p) => p.id === selectedProjectId)
-  const ownsProject = Boolean(selectedProject && selectedProject.created_by === profile?.id)
-  const requiresReview =
-    writesOwnWorkOnly(profile?.role) && !isAnalistaTecnologia(profile?.role) && !ownsProject
+  const requiresReview = requiresReviewerPick(
+    profile?.role,
+    selectedProject?.created_by,
+    task ? task.created_by : profile?.id,
+    selectedProject?.category,
+    profile?.id
+  )
 
   // "En revisión" también se filtra: este selector hace un UPDATE llano
   // (sin RPC), así que nunca elige revisor — entrar por acá cuando el

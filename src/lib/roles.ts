@@ -105,15 +105,22 @@ export const requiresTimeReport = (
 
 // Al entregar, ¿hay que elegir quién revisa? Espejo de task_requires_review()
 // en la base: el circuito es solo para el Analista "a secas" (el de
-// Tecnología cierra su propio trabajo) y solo cuando el proyecto no es suyo
-// — ojo que esto se compara contra el DUEÑO DEL PROYECTO, no de la tarea
-// (requiresTimeReport sí compara contra la tarea; pueden divergir: alguien
-// puede crear su propia tarea dentro de un proyecto ajeno).
+// Tecnología cierra su propio trabajo), y queda fuera si el proyecto es
+// suyo, si la TAREA puntual es suya (aunque el proyecto sea ajeno), o si el
+// proyecto es de categoría 'emergente' (urgencias sin planear, no pasan por
+// gestor).
 export const requiresReviewerPick = (
   role: AppRole | undefined | null,
   projectCreatedBy: string | null | undefined,
+  taskCreatedBy: string | null | undefined,
+  projectCategory: string | null | undefined,
   profileId: string | undefined
-) => role === "analista" && Boolean(profileId) && projectCreatedBy !== profileId
+) =>
+  role === "analista" &&
+  Boolean(profileId) &&
+  projectCreatedBy !== profileId &&
+  taskCreatedBy !== profileId &&
+  projectCategory !== "emergente"
 
 // Borrar una tarea: manda la autoría, con el alcance del rol encima. El
 // Administrador borra cualquiera, el Gestor lo suyo y lo de los proyectos que

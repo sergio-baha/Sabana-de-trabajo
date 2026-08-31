@@ -62,7 +62,13 @@ export function useTaskReviewFlow({
   }
 
   const submitProject = projects.find((p) => p.id === taskToSubmit?.project_id)
-  const requiresReviewer = requiresReviewerPick(profile?.role, submitProject?.created_by, profile?.id)
+  const requiresReviewer = requiresReviewerPick(
+    profile?.role,
+    submitProject?.created_by,
+    taskToSubmit?.created_by,
+    submitProject?.category,
+    profile?.id
+  )
   // Todo el roster, gestores primero: no vale la pena repetirlo en cada
   // tecleo del diálogo de entrega, solo cuando cambia el roster.
   const reviewerOptions = useMemo(
