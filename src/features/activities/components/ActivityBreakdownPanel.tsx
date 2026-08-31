@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import ConfirmDialog from "@/components/shared/ConfirmDialog"
+import { cn } from "@/lib/utils"
 import {
   useAddActivity,
   useDeleteActivity,
@@ -79,6 +80,9 @@ export default function ActivityBreakdownPanel({
   }, [phases])
 
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT)
+  // La lista muestra solo el título; un clic la despliega para ver la
+  // descripción larga, en vez de mostrarla siempre y alargar cada fila.
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [toDelete, setToDelete] = useState<ActivityWithCell | null>(null)
   // Se resuelve ANTES de abrir la confirmación: si la tarea que generó esta
   // actividad ya tiene avance (el analista la movió o comentó), hay que
@@ -174,21 +178,43 @@ export default function ActivityBreakdownPanel({
               Agrega una para encargarle un trabajo concreto.
             </p>
           )}
-          {activities.map((activity) => (
+          {activities.map((activity) => {
+            const hasNotes = Boolean(activity.notes?.trim())
+            const isExpanded = expandedId === activity.id
+            return (
             <div
               key={activity.id}
-              className="flex items-start justify-between gap-2 rounded-md border border-border p-2"
+              className="flex flex-col gap-1.5 rounded-md border border-border p-2"
             >
-              <div className="flex flex-col gap-0.5">
-                <p className="text-sm">{activity.description}</p>
-                <p className="text-xs text-muted-foreground">
-                  {phaseNameById.get(activity.phase_id ?? "")}
-                  {activity.phase_id && activity.activity_date && " · "}
-                  {activity.activity_date}
-                  {(activity.phase_id || activity.activity_date) && " · "}
-                  {activity.hours} h
-                </p>
-              </div>
+              <div className="flex items-start justify-between gap-2">
+                <button
+                  type="button"
+                  // Solo el título se ve de entrada; si hay descripción, un
+                  // clic la despliega debajo — sin desplegable no tiene
+                  // sentido ofrecer el clic.
+                  onClick={() => hasNotes && setExpandedId(isExpanded ? null : activity.id)}
+                  disabled={!hasNotes}
+                  className={cn(
+                    "flex-1 text-left",
+                    hasNotes && "cursor-pointer"
+                  )}
+                >
+                  <p className="text-sm">
+                    {activity.description}
+                    {hasNotes && (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        {isExpanded ? "▴" : "▾"}
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {phaseNameById.get(activity.phase_id ?? "")}
+                    {activity.phase_id && activity.activity_date && " · "}
+                    {activity.activity_date}
+                    {(activity.phase_id || activity.activity_date) && " · "}
+                    {activity.hours} h
+                  </p>
+                </button>
               {!readOnly && (
                 <div className="flex shrink-0 gap-1">
                   <Button
@@ -210,8 +236,15 @@ export default function ActivityBreakdownPanel({
                   </Button>
                 </div>
               )}
+              </div>
+              {isExpanded && hasNotes && (
+                <p className="rounded bg-muted/60 p-1.5 text-xs whitespace-pre-wrap text-muted-foreground">
+                  {activity.notes}
+                </p>
+              )}
             </div>
-          ))}
+            )
+          })}
         </div>
       </ScrollArea>
 
