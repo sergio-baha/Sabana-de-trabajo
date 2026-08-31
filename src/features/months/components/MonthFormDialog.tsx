@@ -80,7 +80,7 @@ export default function MonthFormDialog({ open, onOpenChange, month }: MonthForm
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90svh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar mes" : "Nuevo mes en blanco"}</DialogTitle>
           <DialogDescription>

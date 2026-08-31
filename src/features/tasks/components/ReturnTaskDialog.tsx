@@ -52,7 +52,7 @@ export default function ReturnTaskDialog({ pending, onOpenChange }: ReturnTaskDi
 
   return (
     <Dialog open={Boolean(pending)} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Devolver la tarea</DialogTitle>
           <DialogDescription>

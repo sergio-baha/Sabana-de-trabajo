@@ -121,7 +121,7 @@ export default function EntregableFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar entregable" : "Nuevo entregable"}</DialogTitle>
           <DialogDescription>

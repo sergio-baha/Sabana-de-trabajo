@@ -129,7 +129,7 @@ export default function FinanzaFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90svh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Corregir ejecución" : "Registrar ejecución"}</DialogTitle>
           <DialogDescription>

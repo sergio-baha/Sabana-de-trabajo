@@ -30,7 +30,7 @@ export default function AssignTicketDialog({ ticket, onOpenChange, onAssign }: P
 
   return (
     <Dialog open={Boolean(ticket)} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90svh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Asignar el ticket #{ticket?.ticket_number}</DialogTitle>
           <DialogDescription>

@@ -80,7 +80,7 @@ export default function DuplicateMonthDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90svh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Duplicar mes</DialogTitle>
           <DialogDescription>
