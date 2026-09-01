@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import ConfirmDialog from "@/components/shared/ConfirmDialog"
 import { cn } from "@/lib/utils"
 import {
@@ -170,9 +169,14 @@ export default function ActivityBreakdownPanel({
         aparezca ubicada en el tiempo.
       </p>
 
-      <ScrollArea className="max-h-64">
-        <div className="flex flex-col gap-2 pr-3">
-          {activities.length === 0 && (
+      {/* Sin scroll propio: antes tenía uno acotado a 256px, anidado dentro
+          del scroll del diálogo (CellDetailsDialog) — al pasar el mouse por
+          encima, que es donde naturalmente cae, el gesto se quedaba
+          atrapado en esta lista y no seguía bajando al resto del diálogo
+          (el formulario "Nueva actividad" quedaba fuera de alcance). Una
+          sola región de scroll, la del diálogo, es más predecible. */}
+      <div className="flex flex-col gap-2">
+        {activities.length === 0 && (
             <p className="text-sm text-muted-foreground">
               Sin actividades todavía — las horas de esta celda se editan directo en la grilla.
               Agrega una para encargarle un trabajo concreto.
@@ -245,8 +249,7 @@ export default function ActivityBreakdownPanel({
             </div>
             )
           })}
-        </div>
-      </ScrollArea>
+      </div>
 
       {!readOnly && (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 border-t border-border pt-3">
