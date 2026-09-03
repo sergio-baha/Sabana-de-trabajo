@@ -752,6 +752,56 @@ export type Database = {
           },
         ]
       }
+      outbox: {
+        Row: {
+          attempts: number
+          body: string
+          created_at: string
+          id: string
+          kind: string
+          last_error: string | null
+          sent_at: string | null
+          subject: string
+          task_id: string | null
+          thread_reference: string | null
+          to_email: string
+        }
+        Insert: {
+          attempts?: number
+          body: string
+          created_at?: string
+          id?: string
+          kind: string
+          last_error?: string | null
+          sent_at?: string | null
+          subject: string
+          task_id?: string | null
+          thread_reference?: string | null
+          to_email: string
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          last_error?: string | null
+          sent_at?: string | null
+          subject?: string
+          task_id?: string | null
+          thread_reference?: string | null
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbox_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           available_hours: number
