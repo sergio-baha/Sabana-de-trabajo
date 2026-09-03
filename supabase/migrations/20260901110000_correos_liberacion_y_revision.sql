@@ -44,7 +44,8 @@ begin
     p.email,
     'Ya puedes ver ' || new.name,
     coalesce(v_released_by_name, 'El administrador') || ' liberó "' || new.name || '". ' ||
-      'Ya puedes ver tus horas y tus tareas de ese mes en la plataforma.'
+      'Ya puedes ver tus horas y tus tareas de ese mes en la plataforma:' ||
+      chr(10) || chr(10) || 'https://sabana-de-trabajo.pages.dev'
   from public.profiles p
   where p.role in ('gestor', 'analista')
     and p.is_active
@@ -108,7 +109,8 @@ begin
     'Te toca revisar: ' || new.title,
     coalesce(v_actor_name, 'Alguien') || ' te asignó revisar "' || new.title || '"' ||
       coalesce(' del proyecto ' || v_project_name, '') || '.' || chr(10) || chr(10) ||
-      'Entra a la plataforma para revisarla — te aparece en tu tablero de Tareas, en "Por hacer".'
+      'Entra a la plataforma para revisarla — te aparece en tu tablero de Tareas, en "Por hacer":' ||
+      chr(10) || chr(10) || 'https://sabana-de-trabajo.pages.dev/tareas'
   );
 
   return null;
