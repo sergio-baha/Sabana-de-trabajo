@@ -32,7 +32,7 @@ Teams y Graph se suman como **canales**, no como motor.
            │   calendarView      │          │
            └────────┬────────────┘  ┌───────▼───────┐ ┌───────────────┐
                     │               │ outbox-worker │ │ teams-worker  │
-        calendar_events_cache       │  (Postmark)   │ │ (Bot / Flow)  │
+        calendar_events_cache       │   (Graph)     │ │ (Bot / Flow)  │
                     │               └───────┬───────┘ └───────┬───────┘
                     └───────────► Adaptive Card / correo con enlace firmado
                                             │
@@ -168,7 +168,7 @@ alter table public.outbox add constraint outbox_kind_check
 | **0. Habilitación** | App registration en Entra ID, consentimiento del administrador del tenant, Application Access Policy acotada al grupo piloto, secretos en Supabase (`GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`). | Administrador de M365. **Es la ruta crítica para la Fase 3: arrancar la gestión ya.** |
 | **1. Datos** ✅ | `daily_time_logs`, `time_requests`, vista `planeado_vs_ejecutado`, RPC `log_daily_time`. Ver `20260922100000_registro_diario.sql`. | — |
 | **2. Canal correo** ✅ | Latido de Power Automate → Edge `daily-time-request` → `outbox` → formulario público `/registro/:token` (Edge `time-log`). Hora, días y encendido parametrizables en Configuración. **La funcionalidad ya opera sin Teams ni Graph.** Puesta en marcha: [`POWER_AUTOMATE_RECORDATORIO.md`](POWER_AUTOMATE_RECORDATORIO.md). | 1 |
-| **3. Calendario** ✅ | Edge `graph-calendar-sync`: consulta `/users/{correo}/calendarView` del día, llena `calendar_events_cache` y sugiere la celda de la sábana cruzando el asunto contra nombres de proyecto y subproyecto. Habilitación en Entra ID: [`CALENDARIO_OUTLOOK.md`](CALENDARIO_OUTLOOK.md). | 0, 1 |
+| **3. Calendario** ✅ | Edge `graph-calendar-sync`: consulta `/users/{correo}/calendarView` del día, llena `calendar_events_cache` y sugiere la celda de la sábana cruzando el asunto contra nombres de proyecto y subproyecto. Habilitación en Entra ID: [`MICROSOFT_365.md`](MICROSOFT_365.md). | 0, 1 |
 | **4. Teams** | Flujo de Power Automate + Edge `teams-worker` y `time-log-hook` (firma del webhook, idempotencia por `request_id`, las mismas tres defensas de `email-to-task`). | 0, 2, 3 |
 | **5. Tablero** | Vista `planeado_vs_ejecutado` (join de `allocations`/`activities` contra `daily_time_logs` por persona-proyecto-mes) + pantalla en Reportes con desviación y cobertura de registro. | 1, 2 |
 | **6. Piloto y rollout** | 6–10 personas, dos semanas. Métrica de corte: **tasa de registro diario ≥ 80 %** sostenida en la segunda semana. Ajustes, comunicación y ampliación por áreas. | 4, 5 |
@@ -191,7 +191,7 @@ Las fases 2 y 3 son paralelizables una vez cerrada la 1. La 2 entrega valor por 
 El código de las Fases 1, 2 y 3 está escrito. Lo que queda son las dos cosas que se hacen **fuera del repositorio**, en el tenant de Microsoft:
 
 1. **Armar el flujo de Power Automate** — [`POWER_AUTOMATE_RECORDATORIO.md`](POWER_AUTOMATE_RECORDATORIO.md). Un disparador de recurrencia y una acción HTTP; el resto ya está resuelto del lado de la plataforma. Confirmar de paso la licencia Premium para la acción HTTP: si no la hay, el mismo latido sale por `pg_cron` + `pg_net` sin cambiar nada más.
-2. **Registrar la aplicación en Entra ID** y acotarla con la Application Access Policy — [`CALENDARIO_OUTLOOK.md`](CALENDARIO_OUTLOOK.md). Lo hace quien administre M365. Es la ruta crítica y no depende de nada de lo anterior, así que conviene radicarlo ya.
+2. **Registrar la aplicación en Entra ID** y acotarla con la Application Access Policy — [`MICROSOFT_365.md`](MICROSOFT_365.md). Lo hace quien administre M365. Es la ruta crítica y no depende de nada de lo anterior, así que conviene radicarlo ya.
 
 Y, en paralelo, definir el grupo piloto y la hora del recordatorio con sus líderes — la hora se cambia en Configuración cuantas veces haga falta.
 

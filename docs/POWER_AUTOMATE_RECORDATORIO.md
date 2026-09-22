@@ -50,11 +50,16 @@ supabase secrets set TIME_REQUEST_SECRET="$(openssl rand -hex 32)"
 supabase secrets set APP_BASE_URL="https://<dominio-de-la-aplicación>"
 ```
 
-`POSTMARK_TOKEN` y `SUPPORT_FROM_EMAIL` ya están configurados: el
-recordatorio sale por la misma bandeja (`public.outbox`) y el mismo
+El recordatorio sale por la misma bandeja (`public.outbox`) y el mismo
 `outbox-worker` que los avisos de tickets y de liberación de mes. No hay un
-segundo proveedor de correo que mantener ni un segundo lugar donde mirar
-cuando un correo no llega.
+segundo transporte que mantener ni un segundo lugar donde mirar cuando un
+correo no llega.
+
+**Ese transporte hay que configurarlo aparte**, en
+[`MICROSOFT_365.md`](MICROSOFT_365.md): la plataforma manda por Microsoft
+Graph desde un buzón corporativo. Sin eso, el recordatorio se encola
+correctamente y no sale nadie a entregarlo — que es exactamente lo que
+estuvo pasando, en silencio, durante semanas.
 
 Guarda el valor de `TIME_REQUEST_SECRET` en algún lado antes de seguir: hay
 que volver a escribirlo en el paso 4 (en el flujo o en Vault, según la opción)
@@ -254,7 +259,7 @@ reintento del webhook de Teams (Fase 4) no duplique nada.
   flujo más y no otra migración.
 - **Calendario de Outlook** (Fase 3). El código está listo, pero depende de
   una registración de aplicación en Entra ID que hace el administrador de
-  M365: ver [`CALENDARIO_OUTLOOK.md`](CALENDARIO_OUTLOOK.md). Mientras no esté,
+  M365: ver [`MICROSOFT_365.md`](MICROSOFT_365.md). Mientras no esté,
   el formulario llega en blanco y todo lo demás funciona igual.
 - **Tablero planeado vs. ejecutado** (Fase 5). La vista
   `planeado_vs_ejecutado` ya existe y ya tiene datos; falta la pantalla en
