@@ -63,6 +63,14 @@ export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/reset-password", element: <ResetPasswordPage /> },
+  // Registro diario abierto desde el enlace del correo. Va fuera de
+  // ProtectedRoute a propósito: el token del enlace hace de credencial, con
+  // alcance de un solo día y una sola persona (ver la Edge Function
+  // `time-log`). Es lo que permite que registrar cueste 30 segundos.
+  {
+    path: "/registro/:token",
+    lazy: lazyPage(() => import("@/features/timelog/pages/RegistroDiarioPage")),
+  },
   {
     element: <ProtectedRoute />,
     children: [

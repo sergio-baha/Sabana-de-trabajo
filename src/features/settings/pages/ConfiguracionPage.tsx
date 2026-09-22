@@ -6,6 +6,7 @@ import UsersTable from "@/features/settings/components/UsersTable"
 import InvitationsPanel from "@/features/settings/components/InvitationsPanel"
 import RatesCard from "@/features/projects/components/RatesCard"
 import OutboxPanel from "@/features/settings/components/OutboxPanel"
+import RecordatorioTiemposPanel from "@/features/settings/components/RecordatorioTiemposPanel"
 import NoActiveMonth from "@/components/shared/NoActiveMonth"
 import { usePeople } from "@/features/people/hooks/usePeopleQueries"
 import { useActiveMonthStore } from "@/stores/activeMonthStore"
@@ -30,6 +31,7 @@ export default function ConfiguracionPage() {
           <TabsTrigger value="invitaciones">Invitaciones</TabsTrigger>
           <TabsTrigger value="tarifas">Tarifas</TabsTrigger>
           <TabsTrigger value="correos">Correos</TabsTrigger>
+          <TabsTrigger value="tiempos">Registro de tiempos</TabsTrigger>
         </TabsList>
         <TabsContent value="general" className="mt-4">
           <GeneralSettingsForm />
@@ -53,6 +55,9 @@ export default function ConfiguracionPage() {
         </TabsContent>
         <TabsContent value="correos" className="mt-4">
           <OutboxPanel />
+        </TabsContent>
+        <TabsContent value="tiempos" className="mt-4">
+          <RecordatorioTiemposPanel />
         </TabsContent>
       </Tabs>
     </div>
