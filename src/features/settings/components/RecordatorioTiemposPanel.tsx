@@ -253,17 +253,36 @@ export default function RecordatorioTiemposPanel() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t pt-4">
-          <Button onClick={guardar} disabled={updateSettings.isPending}>
-            {updateSettings.isPending ? "Guardando…" : "Guardar cambios"}
-          </Button>
-          {/* Probar el circuito completo sin esperar a la hora. No salta el
-              control de duplicados: a quien ya le llegó hoy, no le vuelve a
-              llegar por darle a este botón. */}
-          <Button variant="outline" onClick={enviarAhora} disabled={enviando || !enabled}>
-            <Send className="size-4" />
-            {enviando ? "Enviando…" : "Enviar ahora"}
-          </Button>
+        <div className="flex flex-col gap-2 border-t pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={guardar} disabled={updateSettings.isPending}>
+              {updateSettings.isPending ? "Guardando…" : "Guardar cambios"}
+            </Button>
+            {/* Probar el circuito completo sin esperar a la hora. No salta el
+                control de duplicados: a quien ya le llegó hoy, no le vuelve a
+                llegar por darle a este botón.
+
+                Se mira `settings`, que es lo GUARDADO, y no `enabled`, que es
+                lo que está en pantalla. Con el estado local, encender el
+                interruptor sin guardar habilitaba el botón y el envío moría
+                del otro lado con un "recordatorio desactivado" que nadie
+                relacionaba con el cambio sin guardar. */}
+            <Button
+              variant="outline"
+              onClick={enviarAhora}
+              disabled={enviando || !settings.time_request_enabled}
+            >
+              <Send className="size-4" />
+              {enviando ? "Enviando…" : "Enviar ahora"}
+            </Button>
+          </div>
+
+          {/* Un botón deshabilitado sin decir por qué obliga a adivinar. */}
+          {!settings.time_request_enabled && (
+            <p className="text-xs text-muted-foreground">
+              Para poder enviar una prueba, enciende el recordatorio y guarda los cambios.
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>
