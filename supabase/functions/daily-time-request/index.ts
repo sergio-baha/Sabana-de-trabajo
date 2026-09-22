@@ -114,6 +114,15 @@ async function sincronizarCalendario(fecha: string): Promise<string> {
       signal: AbortSignal.timeout(60_000),
     })
     const body = await res.json()
+
+    // Un fallo tiene que verse como fallo. Sin este chequeo, un error de
+    // configuración de Graph caía en el `?? 0` de abajo y se reportaba como
+    // "0 eventos" — indistinguible de un día sin reuniones. El peor tipo de
+    // error es el que se disfraza de resultado normal.
+    if (!res.ok || body?.error) {
+      return `falló: ${body?.error ?? `HTTP ${res.status}`}`
+    }
+
     return body?.skipped ?? `${body?.eventos ?? 0} eventos`
   } catch (e) {
     // Se reporta en la respuesta para que quede en el historial del flujo,
