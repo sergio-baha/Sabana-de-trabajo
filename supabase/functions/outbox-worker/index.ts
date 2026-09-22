@@ -33,7 +33,21 @@ function json(body: unknown, status = 200) {
   })
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // QUIÉN PUEDE VACIAR LA BANDEJA: la llama pg_cron por pg_net, que no tiene
+  // usuario. Se desplegó con verify_jwt desactivado porque las llaves nuevas
+  // de Supabase (`sb_publishable_…`) no son JWT y la puerta de las Edge
+  // Functions las rechaza — así que la autenticación la hace la función, con
+  // el mismo secreto compartido que ya usa daily-time-request.
+  //
+  // Sin esta comprobación la URL sería un botón público de "manda todo lo
+  // pendiente ahora". No expone datos, pero sí deja que un tercero decida
+  // cuándo le llegan los correos al equipo.
+  const secret = Deno.env.get("TIME_REQUEST_SECRET")
+  if (secret && req.headers.get("X-Webhook-Secret") !== secret) {
+    return json({ error: "Firma inválida" }, 401)
+  }
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!

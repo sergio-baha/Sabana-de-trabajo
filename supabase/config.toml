@@ -447,3 +447,12 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/graph-calendar-sync/deno.json"
 entrypoint = "./functions/graph-calendar-sync/index.ts"
+
+# Vacía public.outbox por Postmark. La llama pg_cron vía pg_net, que no
+# tiene usuario; las llaves nuevas de Supabase no son JWT, así que la
+# autenticación la hace la propia función con TIME_REQUEST_SECRET.
+[functions.outbox-worker]
+enabled = true
+verify_jwt = false
+import_map = "./functions/outbox-worker/deno.json"
+entrypoint = "./functions/outbox-worker/index.ts"
