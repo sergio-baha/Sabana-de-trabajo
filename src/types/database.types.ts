@@ -752,10 +752,121 @@ export type Database = {
           },
         ]
       }
+      daily_time_logs: {
+        Row: {
+          calendar_event_id: string | null
+          created_at: string
+          created_by: string | null
+          hours: number
+          id: string
+          line_id: string | null
+          log_date: string
+          month_id: string
+          note: string | null
+          person_id: string
+          project_id: string | null
+          source: string
+          task_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          calendar_event_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          hours: number
+          id?: string
+          line_id?: string | null
+          log_date: string
+          month_id: string
+          note?: string | null
+          person_id: string
+          project_id?: string | null
+          source?: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calendar_event_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          hours?: number
+          id?: string
+          line_id?: string | null
+          log_date?: string
+          month_id?: string
+          note?: string | null
+          person_id?: string
+          project_id?: string | null
+          source?: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_time_logs_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_time_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_requests: {
+        Row: {
+          channel: string
+          created_at: string
+          expires_at: string
+          id: string
+          person_id: string
+          request_date: string
+          responded_at: string | null
+          sent_at: string | null
+          token_hash: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          person_id: string
+          request_date: string
+          responded_at?: string | null
+          sent_at?: string | null
+          token_hash: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          person_id?: string
+          request_date?: string
+          responded_at?: string | null
+          sent_at?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_requests_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outbox: {
         Row: {
           attempts: number
           body: string
+          channel: string
           created_at: string
           id: string
           kind: string
@@ -769,6 +880,7 @@ export type Database = {
         Insert: {
           attempts?: number
           body: string
+          channel?: string
           created_at?: string
           id?: string
           kind: string
@@ -782,6 +894,7 @@ export type Database = {
         Update: {
           attempts?: number
           body?: string
+          channel?: string
           created_at?: string
           id?: string
           kind?: string
@@ -1386,6 +1499,14 @@ export type Database = {
           default_working_days: number
           id: number
           logo_url: string | null
+          time_request_calendar_enabled: boolean
+          time_request_enabled: boolean
+          time_request_excluded_roles: Database["public"]["Enums"]["app_role"][]
+          time_request_teams_enabled: boolean
+          time_request_time: string
+          time_request_timezone: string
+          time_request_token_hours: number
+          time_request_weekdays: number[]
           updated_at: string
           updated_by: string | null
         }
@@ -1396,6 +1517,14 @@ export type Database = {
           default_working_days?: number
           id?: number
           logo_url?: string | null
+          time_request_calendar_enabled?: boolean
+          time_request_enabled?: boolean
+          time_request_excluded_roles?: Database["public"]["Enums"]["app_role"][]
+          time_request_teams_enabled?: boolean
+          time_request_time?: string
+          time_request_timezone?: string
+          time_request_token_hours?: number
+          time_request_weekdays?: number[]
           updated_at?: string
           updated_by?: string | null
         }
@@ -1406,6 +1535,14 @@ export type Database = {
           default_working_days?: number
           id?: number
           logo_url?: string | null
+          time_request_calendar_enabled?: boolean
+          time_request_enabled?: boolean
+          time_request_excluded_roles?: Database["public"]["Enums"]["app_role"][]
+          time_request_teams_enabled?: boolean
+          time_request_time?: string
+          time_request_timezone?: string
+          time_request_token_hours?: number
+          time_request_weekdays?: number[]
           updated_at?: string
           updated_by?: string | null
         }
@@ -1698,6 +1835,19 @@ export type Database = {
     // si es opcional (presupuestos, fechas) — ver NULLABLE en
     // scratchpad/rebuild-types.mjs.
     Views: {
+      planeado_vs_ejecutado: {
+        Row: {
+          desviacion: number
+          dias_registrados: number | null
+          fuera_de_plan: boolean
+          horas_ejecutadas: number
+          horas_planeadas: number
+          month_id: string
+          person_id: string
+          project_id: string | null
+        }
+        Relationships: []
+      }
       v_manager_month_totals: {
         Row: {
           allocated_hours: number
@@ -1896,6 +2046,40 @@ export type Database = {
     }
     Functions: {
       can_manage_project: { Args: { p_project_id: string }; Returns: boolean }
+      current_work_month: { Args: never; Returns: string }
+      my_person_id: { Args: { p_month_id?: string }; Returns: string }
+      log_daily_time: {
+        Args: { p_date: string; p_entries: Json }
+        Returns: number
+      }
+      time_log_options: {
+        Args: { p_person_id: string }
+        Returns: {
+          project_id: string
+          project_name: string
+          color: string
+          line_id: string | null
+          line_name: string | null
+          horas_planeadas: number
+        }[]
+      }
+      time_request_due: {
+        Args: { p_now?: string }
+        Returns: {
+          is_due: boolean
+          request_date: string | null
+          reason: string
+        }[]
+      }
+      time_request_recipients_preview: {
+        Args: never
+        Returns: {
+          full_name: string
+          email: string
+          role: Database["public"]["Enums"]["app_role"]
+          excluido: boolean
+        }[]
+      }
       can_write_month: { Args: { p_month_id: string }; Returns: boolean }
       create_month_from_previous: {
         Args: { p_new_name: string; p_source_month_id: string }
