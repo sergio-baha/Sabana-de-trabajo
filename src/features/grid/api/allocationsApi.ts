@@ -87,3 +87,26 @@ export async function getOrCreateAllocationId(
   if (insertError) throw insertError
   return created.id
 }
+
+// Saca un proyecto de la sábana de UN mes, sin tocar el proyecto ni los demás
+// meses. La pertenencia de un proyecto a un mes no se guarda en ninguna parte:
+// es derivada — un proyecto está en la sábana si tiene filas en `allocations`
+// de ese mes (ver `monthProjectIds` en DistribucionPage). Así que quitarlo es
+// borrar esas filas, y por eso acá sí se borra en vez de poner en 0 como hace
+// `clearAllocationHours`: un 0 es justamente lo que mantiene la fila visible.
+//
+// Se lleva por cascada las actividades y los comentarios anclados a esas
+// celdas (`on delete cascade` en *_activities.sql y *_comments.sql). No hay
+// forma de evitarlo sin dejar huérfanos, así que quien confirma tiene que
+// saberlo: el diálogo lo dice con las cifras del mes.
+export async function removeProjectFromMonth(
+  monthId: string,
+  projectId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("allocations")
+    .delete()
+    .eq("month_id", monthId)
+    .eq("project_id", projectId)
+  if (error) throw error
+}

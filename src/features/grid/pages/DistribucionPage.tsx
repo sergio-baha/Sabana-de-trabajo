@@ -12,6 +12,7 @@ import {
   Grid3x3,
   Layers,
   Lock,
+  MinusCircle,
   MoreHorizontal,
   NotebookText,
   Pencil,
@@ -76,6 +77,7 @@ import {
 import {
   useAllocations,
   useClearAllocations,
+  useRemoveProjectFromMonth,
   useUpsertAllocation,
 } from "@/features/grid/hooks/useAllocationsQueries"
 import { useRealtimeAllocations } from "@/features/grid/hooks/useRealtimeAllocations"
@@ -148,6 +150,7 @@ export default function DistribucionPage() {
   const renameLine = useRenameProjectLine()
   const deleteLine = useDeleteProjectLine()
   const clearAllocations = useClearAllocations(activeMonthId ?? "")
+  const removeProjectFromMonth = useRemoveProjectFromMonth(activeMonthId ?? "")
   const seedPeople = useSeedMonthPeople(activeMonthId ?? "")
   const updatePerson = useUpdatePerson(activeMonthId ?? "")
   useRealtimeAllocations(activeMonthId)
@@ -169,6 +172,7 @@ export default function DistribucionPage() {
   } | null>(null)
   // Fila (o grilla completa) a la que se le van a poner las horas en 0.
   const [rowsToClear, setRowsToClear] = useState<ProjectGridRow[] | null>(null)
+  const [projectToRemove, setProjectToRemove] = useState<Project | null>(null)
   // Alta/edición/baja de proyectos sin salir de la grilla: al repartir horas
   // es cuando uno se da cuenta de que falta un proyecto o que sobra otro, y
   // hasta ahora había que irse a /proyectos y volver.
@@ -208,6 +212,16 @@ export default function DistribucionPage() {
       // deduplique para pintar la fila, sigue siendo estado sucio).
       if (current.includes(projectId)) return prev
       return { ...prev, [key]: [...current, projectId] }
+    })
+  // La contraparte de addProjectToMonth: un proyecto que se sumó al mes pero
+  // todavía no tiene horas vive solo en este estado, así que borrar sus
+  // allocations (no hay ninguna) no lo sacaría de la grilla.
+  const forgetExtraProject = (projectId: string) =>
+    setExtraByMonth((prev) => {
+      const key = activeMonthId ?? ""
+      const current = prev[key] ?? []
+      if (!current.includes(projectId)) return prev
+      return { ...prev, [key]: current.filter((id) => id !== projectId) }
     })
   const deleteProject = useDeleteProject()
   const { data: managers } = useProjectManagers()
@@ -392,6 +406,27 @@ export default function DistribucionPage() {
 
   const clearPlan = rowsToClear ? clearPlanFor(rowsToClear) : null
 
+  // Qué se lleva "Quitar de la sábana del mes". Se recorre `allocations` y no
+  // las filas visibles porque una celda puede pertenecer a alguien que no
+  // tiene columna (un rol excluido de la planeación): igual se borra, así que
+  // igual hay que contarla. Los subproyectos del proyecto se cuentan todos.
+  const removePlan = useMemo(() => {
+    if (!projectToRemove) return null
+    let celdas = 0
+    let horas = 0
+    let actividades = 0
+    let comentarios = 0
+    for (const a of allocations ?? []) {
+      if (a.project_id !== projectToRemove.id) continue
+      const key = cellKey(a.person_id, a.project_id, a.line_id)
+      celdas += 1
+      horas += a.hours
+      actividades += (activitiesByCell.get(key) ?? []).length
+      comentarios += (commentsByCell.get(key) ?? []).length
+    }
+    return { celdas, horas, actividades, comentarios }
+  }, [projectToRemove, allocations, activitiesByCell, commentsByCell])
+
   const columns = useMemo<Column<ProjectGridRow, SummaryRow>[]>(() => {
     const linesByProjectId = new Map<string, ProjectLine[]>()
     for (const line of lines ?? []) {
@@ -446,6 +481,20 @@ export default function DistribucionPage() {
                   }}
                 >
                   <Pencil /> Editar proyecto
+                </DropdownMenuItem>
+                {/* "Quitar de la sábana" vs "Eliminar": quitar es del MES
+                    —el proyecto sigue en el portafolio y en los otros meses,
+                    y se puede volver a sumar con el botón de agregar—;
+                    eliminar es del portafolio entero y se lleva todos los
+                    meses. Van separados para que no se confundan de un clic. */}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    const project = visibleProjects.find((p) => p.id === row.projectId)
+                    if (project) setProjectToRemove(project)
+                  }}
+                >
+                  <MinusCircle /> Quitar de la sábana del mes
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
@@ -1134,6 +1183,42 @@ export default function DistribucionPage() {
             .map((m) => m.person_id)}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(projectToRemove)}
+        onOpenChange={(open) => !open && setProjectToRemove(null)}
+        title={`Quitar "${projectToRemove?.name}" de la sábana de ${activeMonth?.name ?? "este mes"}`}
+        confirmLabel="Quitar del mes"
+        description={
+          removePlan && removePlan.celdas === 0
+            ? "Este proyecto todavía no tiene horas repartidas en el mes, así que solo desaparece de la grilla. Sigue en el portafolio y se puede volver a sumar cuando haga falta."
+            : `Se borran las ${removePlan?.horas ?? 0} h que el proyecto tiene repartidas en este mes (${
+                removePlan?.celdas ?? 0
+              } celda${removePlan?.celdas === 1 ? "" : "s"})${
+                removePlan && removePlan.actividades > 0
+                  ? `, junto con ${removePlan.actividades} actividad${
+                      removePlan.actividades === 1 ? "" : "es"
+                    } del desglose`
+                  : ""
+              }${
+                removePlan && removePlan.comentarios > 0
+                  ? ` y ${removePlan.comentarios} comentario${
+                      removePlan.comentarios === 1 ? "" : "s"
+                    }`
+                  : ""
+              }. El proyecto NO se elimina: sigue en el portafolio, con sus subproyectos, su gerente y sus horas de los otros meses intactas, y se puede volver a sumar a este mes desde «Agregar proyecto». Si solo quieres dejarlo en ceros sin sacarlo de la sábana, usa «Limpiar horas de la fila».`
+        }
+        onConfirm={async () => {
+          if (!projectToRemove) return
+          // Primero el estado local: si el proyecto estaba solo como "extra"
+          // (sumado al mes pero sin horas), es lo único que lo sostiene en la
+          // grilla. El borrado en la base es inofensivo en ese caso — no hay
+          // filas que borrar.
+          forgetExtraProject(projectToRemove.id)
+          await removeProjectFromMonth.mutateAsync(projectToRemove.id)
+          setProjectToRemove(null)
+        }}
+      />
 
       <ConfirmDialog
         open={Boolean(projectToDelete)}

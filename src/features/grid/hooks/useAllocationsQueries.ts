@@ -3,10 +3,13 @@ import { toast } from "sonner"
 import {
   clearAllocationHours,
   listAllocations,
+  removeProjectFromMonth,
   upsertAllocation,
   type Allocation,
 } from "@/features/grid/api/allocationsApi"
 import { projectsKeys } from "@/features/projects/hooks/useProjectsQueries"
+import { activitiesKeys } from "@/features/activities/hooks/useActivitiesQueries"
+import { commentsKeys } from "@/features/comments/hooks/useCommentsQueries"
 
 export const allocationsKeys = {
   all: (monthId: string) => ["allocations", monthId] as const,
@@ -108,6 +111,42 @@ export function useClearAllocations(monthId: string) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: key })
+    },
+  })
+}
+
+// Quitar un proyecto de la sábana del mes. Optimista como las demás: la fila
+// tiene que desaparecer al confirmar, no un segundo después.
+//
+// Invalida también comentarios y actividades porque la cascada de la base se
+// llevó los de esas celdas, y las dos listas viven en su propia caché.
+export function useRemoveProjectFromMonth(monthId: string) {
+  const queryClient = useQueryClient()
+  const key = allocationsKeys.all(monthId)
+
+  return useMutation({
+    mutationFn: (projectId: string) => removeProjectFromMonth(monthId, projectId),
+    onMutate: async (projectId) => {
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<Allocation[]>(key)
+
+      queryClient.setQueryData<Allocation[]>(key, (current = []) =>
+        current.filter((a) => a.project_id !== projectId)
+      )
+
+      return { previous }
+    },
+    onError: (error, _projectId, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous)
+      toast.error("No se pudo quitar el proyecto del mes", { description: error.message })
+    },
+    onSuccess: () => {
+      toast.success("Proyecto quitado de la sábana de este mes")
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key })
+      queryClient.invalidateQueries({ queryKey: activitiesKeys.all(monthId) })
+      queryClient.invalidateQueries({ queryKey: commentsKeys.all(monthId) })
     },
   })
 }
