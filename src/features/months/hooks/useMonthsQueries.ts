@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
+  aplicarHorasDelMes,
   createMonth,
   deleteMonth,
   duplicateMonth,
@@ -11,6 +12,7 @@ import {
   type MonthInsert,
   type MonthUpdate,
 } from "@/features/months/api/monthsApi"
+import { peopleKeys } from "@/features/people/hooks/usePeopleQueries"
 
 export const monthsKeys = {
   all: ["months"] as const,
@@ -37,8 +39,15 @@ export function useUpdateMonth() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: MonthUpdate }) => updateMonth(id, patch),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: monthsKeys.all })
+      // Cambiar `default_hours` reescribe la capacidad del roster en la base
+      // (trigger `propagar_default_hours`), así que la sábana que está en
+      // pantalla quedó mostrando el tope viejo. Se invalida siempre y no solo
+      // cuando el patch trae `default_hours`: el costo es una consulta a una
+      // tabla chica, y la alternativa —adivinar acá qué campos del patch
+      // disparan qué triggers— se desincroniza en cuanto la base cambie.
+      queryClient.invalidateQueries({ queryKey: peopleKeys.all(id) })
       toast.success("Mes actualizado")
     },
     onError: (error) => toast.error("No se pudo actualizar el mes", { description: error.message }),
@@ -88,5 +97,26 @@ export function useDuplicateMonth() {
       toast.success("Mes duplicado")
     },
     onError: (error) => toast.error("No se pudo duplicar el mes", { description: error.message }),
+  })
+}
+
+// Igualar la capacidad del equipo al `default_hours` del mes. Invalida
+// `people` de ESE mes —no el de la pantalla— porque es el roster que acaba de
+// cambiar. `allocations` no se invalida: el reparto de horas no se toca, solo
+// el denominador del semáforo.
+export function useAplicarHorasDelMes() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (monthId: string) => aplicarHorasDelMes(monthId),
+    onSuccess: (count, monthId) => {
+      queryClient.invalidateQueries({ queryKey: peopleKeys.all(monthId) })
+      if (count > 0) {
+        toast.success(`Se igualaron las horas de ${count} persona${count === 1 ? "" : "s"}`)
+      } else {
+        toast.info("Todo el equipo ya tenía las horas del mes")
+      }
+    },
+    onError: (error) =>
+      toast.error("No se pudieron aplicar las horas del mes", { description: error.message }),
   })
 }

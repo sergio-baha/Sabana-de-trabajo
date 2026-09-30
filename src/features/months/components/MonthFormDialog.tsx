@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -114,6 +115,18 @@ export default function MonthFormDialog({ open, onOpenChange, month }: MonthForm
                     <FormControl>
                       <Input type="number" min={1} {...field} value={field.value as number} />
                     </FormControl>
+                    {/* Antes este campo no tenía ningún efecto después de
+                        crear el mes, y no había forma de saberlo desde acá.
+                        Ahora sí lo tiene, y conviene decir hasta dónde llega:
+                        a quien tenga una capacidad propia no lo toca. */}
+                    {isEdit && (
+                      <FormDescription>
+                        Al guardar, estas horas se aplican al equipo del mes en la sábana.
+                        Quien tenga una capacidad distinta (vacaciones, medio tiempo) se deja
+                        como está — para igualar a todos, usa «Aplicar horas al equipo» en el
+                        menú del mes.
+                      </FormDescription>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

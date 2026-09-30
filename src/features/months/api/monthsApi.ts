@@ -65,3 +65,17 @@ export async function duplicateMonth(sourceMonthId: string, newName: string): Pr
   if (error) throw error
   return data
 }
+
+// Iguala la capacidad de todo el equipo del mes a `default_hours`, incluidas
+// las personas que tenían una cifra propia. La propagación normal la hace un
+// trigger al editar el mes y respeta esas excepciones (ver
+// *_horas_del_mes_al_editar.sql); esto es el borrón y cuenta nueva explícito,
+// y también la única salida para los meses que quedaron descuadrados antes de
+// que ese trigger existiera. Devuelve cuántas personas cambiaron.
+export async function aplicarHorasDelMes(monthId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("aplicar_horas_del_mes", {
+    p_month_id: monthId,
+  })
+  if (error) throw error
+  return data ?? 0
+}

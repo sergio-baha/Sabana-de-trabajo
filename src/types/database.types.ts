@@ -2113,6 +2113,10 @@ export type Database = {
         Args: { p_month_id: string }
         Returns: number
       }
+      aplicar_horas_del_mes: {
+        Args: { p_month_id: string }
+        Returns: number
+      }
       is_month_released: { Args: { p_month_id: string }; Returns: boolean }
       task_requires_time_report: { Args: { p_task_id: string }; Returns: boolean }
       submit_task_for_review: {

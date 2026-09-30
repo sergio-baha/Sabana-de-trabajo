@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  RefreshCw,
   Send,
   Trash2,
 } from "lucide-react"
@@ -40,6 +41,7 @@ import SnapshotsDialog from "@/features/snapshots/components/SnapshotsDialog"
 import {
   useDeleteMonth,
   useGestorChecks,
+  useAplicarHorasDelMes,
   useMonths,
   useUpdateMonth,
 } from "@/features/months/hooks/useMonthsQueries"
@@ -54,6 +56,7 @@ export default function MesesPage() {
   const { data: months, isLoading } = useMonths()
   const updateMonth = useUpdateMonth()
   const deleteMonth = useDeleteMonth()
+  const aplicarHoras = useAplicarHorasDelMes()
   // Cada gestor marca su propia casilla (ver *_check_planeacion_por_gestor.sql);
   // acá se arma, por mes, cuáles de todos los gestores activos ya la
   // marcaron — "cada gestor" es toda cuenta activa con rol Gestor, tenga o
@@ -82,6 +85,7 @@ export default function MesesPage() {
   const [monthToDelete, setMonthToDelete] = useState<Month | null>(null)
   const [monthToRelease, setMonthToRelease] = useState<Month | null>(null)
   const [snapshotsMonth, setSnapshotsMonth] = useState<Month | null>(null)
+  const [monthToLevelHours, setMonthToLevelHours] = useState<Month | null>(null)
 
   // Un solo permiso para todo el módulo: administrar meses es del
   // Administrador y solo él llega hasta acá (RoleRoute). El chequeo se
@@ -274,6 +278,18 @@ export default function MesesPage() {
                               <Pencil /> Editar
                             </DropdownMenuItem>
                           )}
+                          {/* Editar el mes ya propaga sus horas al equipo, pero
+                              solo a quien seguía en el valor anterior (lo hace
+                              un trigger, ver *_horas_del_mes_al_editar.sql).
+                              Esto es el martillo: iguala TAMBIÉN a quien tenga
+                              una capacidad propia. Es la salida para los meses
+                              que quedaron descuadrados desde antes de que la
+                              propagación existiera. */}
+                          {canWrite && (
+                            <DropdownMenuItem onClick={() => setMonthToLevelHours(month)}>
+                              <RefreshCw /> Aplicar horas al equipo
+                            </DropdownMenuItem>
+                          )}
                           {canWrite && month.status !== "archivado" && (
                             <DropdownMenuItem onClick={() => toggleOpenClosed(month)}>
                               {month.status === "abierto" ? "Cerrar mes" : "Reabrir mes"}
@@ -316,6 +332,17 @@ export default function MesesPage() {
         onOpenChange={setDuplicateOpen}
         months={months ?? []}
         defaultSourceId={duplicateSourceId}
+      />
+      <ConfirmDialog
+        open={Boolean(monthToLevelHours)}
+        onOpenChange={(open) => !open && setMonthToLevelHours(null)}
+        title={`Aplicar las horas de "${monthToLevelHours?.name}" al equipo`}
+        confirmLabel="Aplicar"
+        description={`Todas las personas del mes quedarán con ${monthToLevelHours?.default_hours} h disponibles, incluidas las que tengan una cifra propia (vacaciones, medio tiempo, una entrada a mitad de mes): esas se pierden y habría que volver a escribirlas en la sábana. El reparto de horas entre proyectos no se toca — cambia el tope contra el que se compara, así que el semáforo de la sábana sí puede cambiar de color.`}
+        onConfirm={async () => {
+          if (!monthToLevelHours) return
+          await aplicarHoras.mutateAsync(monthToLevelHours.id)
+        }}
       />
       <ConfirmDialog
         open={Boolean(monthToDelete)}
