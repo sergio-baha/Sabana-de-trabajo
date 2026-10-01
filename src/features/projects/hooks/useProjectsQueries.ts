@@ -14,6 +14,7 @@ import {
   type ProjectUpdate,
 } from "@/features/projects/api/projectsApi"
 import { invalidateTotals } from "@/features/projects/hooks/useProjectBudgetQueries"
+import { projectLinesKeys } from "@/features/projects/hooks/useProjectLinesQueries"
 
 // Los proyectos y su equipo son durables: las claves no llevan mes. Lo que
 // cambia mes a mes son las horas (allocations), que tienen su propio caché.
@@ -52,6 +53,20 @@ export function useCreateProject() {
     mutationFn: (input: ProjectInsert) => createProject(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectsKeys.all })
+      // Todo proyecto nace con un subproyecto obligatorio que crea un TRIGGER
+      // de la base (project_creates_default_line, ver
+      // *_subproyecto_obligatorio.sql), no esta mutación. El insert responde
+      // con la fila de `projects` y ni se entera de la línea que acaba de
+      // aparecer, así que sin esta invalidación el caché de `project_lines`
+      // sigue sin ella.
+      //
+      // Eso es lo que hacía que un proyecto creado desde la sábana no
+      // apareciera: cada fila de la grilla es proyecto + subproyecto
+      // (buildProjectGridRows recorre las líneas), así que un proyecto sin
+      // líneas en caché produce CERO filas. El proyecto se creaba bien y
+      // quedaba marcado para el mes — simplemente no tenía con qué dibujarse,
+      // y solo asomaba al recargar la página.
+      queryClient.invalidateQueries({ queryKey: projectLinesKeys.all })
       invalidateTotals(queryClient)
       toast.success("Proyecto creado")
     },
@@ -79,6 +94,12 @@ export function useDeleteProject() {
     mutationFn: (id: string) => deleteProject(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectsKeys.all })
+      // La otra cara de lo mismo: borrar el proyecto se lleva sus líneas por
+      // cascada, y el caché se quedaría con subproyectos de algo que ya no
+      // existe. Hoy no se ven (la grilla recorre proyectos, no líneas), pero
+      // es caché mintiendo, y la próxima pantalla que lea las líneas directo
+      // heredaría el error.
+      queryClient.invalidateQueries({ queryKey: projectLinesKeys.all })
       invalidateTotals(queryClient)
       toast.success("Proyecto eliminado")
     },
