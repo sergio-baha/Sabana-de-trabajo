@@ -68,6 +68,24 @@ const filaVacia = (id: string, nombre: string, color?: string): FilaEjecucion =>
  */
 export const esTareaDeProyecto = (task: Task) => task.ticket_number === null
 
+/**
+ * Las bloqueadas no cuentan: es trabajo que no se hizo.
+ *
+ * Una tarjeta bloqueada sumaba su estimado a `pendiente` ("quedan N h
+ * estimadas sin entregar") y al denominador de "X de Y entregadas". Las dos
+ * cifras quedaban infladas con trabajo que nadie va a entregar mientras siga
+ * bloqueado, y la lectura del panel se volvía pesimista por una razón que no
+ * tiene que ver con el desempeño de nadie.
+ *
+ * EXCEPCIÓN DELIBERADA: si la tarjeta YA tiene horas reales reportadas, sí
+ * cuenta. Ese caso existe —se entrega a revisión, el gestor la devuelve, y
+ * después se bloquea— y ahí las horas se trabajaron de verdad: están medidas,
+ * alguien las vivió. Descartarlas sería borrar realidad, no limpiar ruido.
+ * Por eso el filtro mira las horas reportadas y no solo el estado.
+ */
+export const cuentaEnEjecucion = (task: Task) =>
+  esTareaDeProyecto(task) && !(task.status === "bloqueada" && task.completed_hours === null)
+
 function acumular(fila: FilaEjecucion, task: Task, peso: number) {
   const estimado = (task.estimated_hours ?? 0) * peso
   fila.totalTareas += peso
@@ -105,7 +123,7 @@ export function ejecucionPorPersona(
   const filas = new Map<string, FilaEjecucion>()
 
   for (const task of tasks) {
-    if (!esTareaDeProyecto(task)) continue
+    if (!cuentaEnEjecucion(task)) continue
     const responsables = responsablesPorTarea.get(task.id) ?? []
     if (responsables.length === 0) continue
 
@@ -144,7 +162,7 @@ export function ejecucionPorProyecto(
   const filas = new Map<string, FilaEjecucion>()
 
   for (const task of tasks) {
-    if (!esTareaDeProyecto(task)) continue
+    if (!cuentaEnEjecucion(task)) continue
     const meta = nombrePorProyecto.get(task.project_id)
     const fila =
       filas.get(task.project_id) ??

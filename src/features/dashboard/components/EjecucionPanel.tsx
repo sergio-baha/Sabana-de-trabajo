@@ -17,7 +17,7 @@ import {
   desviacionPct,
   ejecucionPorPersona,
   ejecucionPorProyecto,
-  esTareaDeProyecto,
+  cuentaEnEjecucion,
   totalizar,
   type FilaEjecucion,
 } from "@/features/dashboard/lib/ejecucion"
@@ -118,7 +118,10 @@ export default function EjecucionPanel({
   const detalle = useMemo(() => {
     if (seleccion === TODOS) return []
     const propias = tasks.filter((t) => {
-      if (!esTareaDeProyecto(t)) return false
+      // Mismo criterio que los totales: si una bloqueada no suma horas
+      // arriba, tampoco puede aparecer en el detalle de abajo, o la lista no
+      // explicaría la cifra que acompaña.
+      if (!cuentaEnEjecucion(t)) return false
       if (vista === "proyecto") return t.project_id === seleccion
       return assignees.some((a) => a.task_id === t.id && a.person_id === seleccion)
     })
@@ -147,7 +150,8 @@ export default function EjecucionPanel({
         </CardTitle>
         <CardDescription>
           Horas estimadas contra horas reales reportadas al entregar. Se comparan solo las
-          tarjetas ya entregadas; lo que falta se cuenta aparte como pendiente.
+          tarjetas ya entregadas; lo que falta se cuenta aparte como pendiente. Las tarjetas
+          bloqueadas no suman: son trabajo que no se hizo.
         </CardDescription>
       </CardHeader>
 
