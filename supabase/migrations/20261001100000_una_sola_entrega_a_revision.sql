@@ -1,0 +1,38 @@
+-- Entregar una tarjeta sin elegir revisor fallaba con "Could not choose the
+-- best candidate function".
+--
+-- QUÉ PASÓ: en la base conviven DOS `submit_task_for_review`:
+--
+--   submit_task_for_review(p_task_id uuid, p_hours numeric, p_note text)
+--   submit_task_for_review(p_task_id uuid, p_reviewer_person_id uuid,
+--                          p_hours numeric, p_note text)
+--
+-- La primera nació en *_horas_reales_al_entregar.sql. La segunda la agregó
+-- *_revisor_elegido.sql para que quien entrega escoja quién revisa. Pero
+-- `create or replace function` solo reemplaza cuando la firma es IDÉNTICA:
+-- al sumar un parámetro, lo que se creó fue una SOBRECARGA nueva, y la vieja
+-- se quedó ahí, viva y olvidada. *_emergente_y_tarea_propia_sin_revision.sql
+-- volvió a tocar la de cuatro parámetros y tampoco se dio cuenta.
+--
+-- POR QUÉ FALLA SOLO A VECES: todos los parámetros tienen `default null`, y
+-- el cliente omite las claves vacías (`?? undefined` en tasksApi.ts). Cuando
+-- se elige revisor, la llamada lleva cuatro argumentos y solo una candidata
+-- encaja. Cuando NO se elige —una tarjeta emergente, o una que uno se puso a
+-- sí mismo, que por diseño no requieren revisor— la llamada lleva
+-- task+hours+note, y eso le calza igual de bien a las dos: a la vieja
+-- exactamente, y a la nueva con el revisor por defecto. Postgres no adivina
+-- y aborta con 42725. De ahí que el error apareciera justo en el flujo que
+-- no pide revisor, y que nadie lo viera en el que sí.
+--
+-- EL ARREGLO es borrar la vieja. No se pierde nada: la de cuatro parámetros
+-- hace todo lo que hacía aquella y además resuelve el revisor; ningún código
+-- de la aplicación la llama —el cliente manda los argumentos por nombre— y
+-- ninguna otra función de la base la invoca.
+--
+-- LA LECCIÓN, para la próxima vez que haya que agregarle un parámetro a un
+-- RPC: `create or replace` NO reemplaza si cambia la firma. O se mantiene la
+-- firma, o se borra la anterior explícitamente en la misma migración, como
+-- sí hizo *_emergente_y_tarea_propia_sin_revision.sql con
+-- `task_requires_review`. Una sobrecarga olvidada no avisa al desplegar:
+-- espera a que alguien haga la llamada ambigua.
+drop function if exists public.submit_task_for_review(uuid, numeric, text);
